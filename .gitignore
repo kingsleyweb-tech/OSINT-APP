@@ -1,8 +1,23 @@
-# Environment variables
+# Environment variables & secrets
 .env
 .env.*
 !.env.example
 *.env
+backend/.env
+frontend/.env
+landing-page/.env
+
+# Firebase & Security Rules
+.firebase
+firestore.rules
+firebase.rules
+*.rules
+firebase-service-account*.json
+service-account*.json
+
+# Temporary & Scratch Files
+scratch/
+.tempmediaStorage/
 
 # Logs
 logs
@@ -13,14 +28,13 @@ pnpm-debug.log*
 
 # Dependencies & Builds
 node_modules
+**/node_modules
 dist
+**/dist
 dist-ssr
-server/node_modules
-server/dist
 *.local
 
-# Firebase & IDE
-.firebase
+# IDE & OS
 .vscode/*
 !.vscode/extensions.json
 .idea
