@@ -1,0 +1,122 @@
+.people-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.person-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.person-card:hover {
+  border-color: var(--accent-warm-border);
+  background-color: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.person-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.person-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--bg-card-hover);
+  border: 2px solid var(--accent-warm-border);
+  color: var(--accent-warm);
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.person-name {
+  font-family: var(--font-sans) !important;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.person-role {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.person-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.detail-icon {
+  color: var(--accent-warm);
+  flex-shrink: 0;
+}
+
+.empty-people-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background-color: var(--bg-card);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  text-align: center;
+  color: var(--text-muted);
+  box-shadow: var(--shadow-card);
+}
+
+.empty-people-state .empty-icon {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+
+.empty-people-state h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+@media (max-width: 1024px) {
+  .people-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .people-grid {
+    grid-template-columns: 1fr;
+  }
+}

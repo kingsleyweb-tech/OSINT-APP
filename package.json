@@ -1,0 +1,19 @@
+{
+  "name": "osint-platform-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OSINT Intelligence Platform Root Workspace",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:landing": "cd landing-page && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:landing\"",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:landing": "cd landing-page && npm run build",
+    "build": "npm run build:backend && npm run build:frontend && npm run build:landing"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

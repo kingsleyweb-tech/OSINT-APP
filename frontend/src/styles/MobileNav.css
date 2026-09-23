@@ -1,0 +1,302 @@
+/* Minimal Brutalist Burger Menu Overlay with Framed Corner Marks */
+.brutalist-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--overlay-bg, rgba(0, 0, 0, 0.95));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeInOverlay 0.2s ease-out;
+}
+
+:root[data-theme="light"] .brutalist-menu-overlay {
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.brutalist-menu-content {
+  width: 100%;
+  max-width: 760px;
+  height: 94vh;
+  max-height: 850px;
+  background-color: var(--bg-card, #000000);
+  color: var(--text-primary, #ffffff);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl, 0 24px 80px rgba(0, 0, 0, 0.95));
+  padding: 36px 48px;
+  box-sizing: border-box;
+  animation: slideUpMenu 0.22s ease-out;
+  position: relative;
+  border-radius: 4px;
+}
+
+:root[data-theme="light"] .brutalist-menu-content {
+  background-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12);
+}
+
+@keyframes slideUpMenu {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Brutalist Corner Marks (┌ ┐ │ │ └ ┘) */
+.brutalist-corner-mark,
+.brutalist-side-mark {
+  position: absolute;
+  font-family: monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  pointer-events: none;
+  opacity: 0.85;
+  line-height: 1;
+  user-select: none;
+}
+
+.corner-top-left {
+  top: 14px;
+  left: 16px;
+}
+
+.corner-top-right {
+  top: 14px;
+  right: 16px;
+}
+
+.side-middle-left {
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+}
+
+.side-middle-right {
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+}
+
+.corner-bottom-left {
+  bottom: 14px;
+  left: 16px;
+}
+
+.corner-bottom-right {
+  bottom: 14px;
+  right: 16px;
+}
+
+/* Header */
+.brutalist-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+:root[data-theme="light"] .brutalist-menu-header {
+  border-bottom-color: rgba(0, 0, 0, 0.15);
+}
+
+.brutalist-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brutalist-square-bullet {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+
+.brutalist-menu-tag {
+  font-family: monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  text-transform: lowercase;
+}
+
+.brutalist-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brutalist-theme-btn {
+  background: transparent;
+  border: none;
+  font-family: monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: var(--accent-warm, #f59e0b);
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: opacity 0.15s ease;
+}
+
+.brutalist-theme-btn:hover {
+  opacity: 0.75;
+}
+
+.brutalist-close-btn {
+  background: transparent;
+  border: none;
+  font-family: monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: opacity 0.15s ease;
+}
+
+.brutalist-close-btn:hover {
+  opacity: 0.7;
+}
+
+/* Main Left-Aligned Links */
+.brutalist-menu-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 30px 0;
+  align-items: flex-start;
+  text-align: left;
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.brutalist-menu-link {
+  font-family: var(--font-body, 'Inter', system-ui, -apple-system, sans-serif);
+  font-size: 3.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  transition: all 0.2s ease;
+  display: block;
+}
+
+:root[data-theme="light"] .brutalist-menu-link {
+  color: #000000;
+}
+
+.brutalist-menu-link:hover {
+  color: var(--accent-warm, #f59e0b);
+  transform: translateX(10px);
+}
+
+.brutalist-menu-link.active {
+  color: var(--accent-warm, #f59e0b);
+}
+
+/* Footer Section with Profile Badge */
+.brutalist-menu-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+:root[data-theme="light"] .brutalist-menu-footer {
+  border-top-color: rgba(0, 0, 0, 0.15);
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card-hover, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  padding: 5px 14px 5px 6px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.user-profile-badge:hover {
+  border-color: var(--accent-warm-border);
+}
+
+.avatar-initials-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-warm, #f59e0b);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-name-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-chevron {
+  color: var(--text-muted);
+}
+
+.brutalist-logout-btn {
+  background: transparent;
+  border: none;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.brutalist-logout-btn:hover {
+  color: #ef4444;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+  .brutalist-menu-content {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 24px 20px;
+  }
+
+  .brutalist-menu-link {
+    font-size: 2.3rem;
+  }
+
+  .brutalist-corner-mark,
+  .brutalist-side-mark {
+    font-size: 1.3rem;
+  }
+}

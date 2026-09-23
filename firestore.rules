@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User profile access rule
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    
+    // Investigations collection rule
+    match /investigations/{investigationId} {
+      allow read, write: if true;
+      
+      // Subcollections (results, notes, activities)
+      match /{subcollection}/{document=**} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

@@ -1,0 +1,411 @@
+/* ==========================================
+   FULL-PAGE COILING SNAKE LOADER
+   ========================================== */
+
+/* Full-page overlay - covers EVERYTHING */
+.snake-fullpage-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99999;
+  background: radial-gradient(ellipse at center, #0c0a09 0%, #000000 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Background Particles ---- */
+.snake-bg-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(234, 88, 12, 0.4);
+  animation: particleFloat linear infinite;
+}
+
+.particle.p-1 { width: 2px; height: 2px; background: rgba(234, 88, 12, 0.3); }
+.particle.p-2 { width: 4px; height: 4px; background: rgba(251, 146, 60, 0.25); }
+.particle.p-3 { width: 2px; height: 2px; background: rgba(225, 29, 72, 0.2); }
+.particle.p-4 { width: 3px; height: 3px; background: rgba(194, 101, 43, 0.35); }
+.particle.p-5 { width: 5px; height: 5px; background: rgba(234, 88, 12, 0.15); }
+
+@keyframes particleFloat {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  10% { opacity: 1; transform: scale(1); }
+  90% { opacity: 1; }
+  100% { transform: translateY(-100vh) scale(0); opacity: 0; }
+}
+
+/* ---- Radar Pulse Rings ---- */
+.snake-radar-rings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  z-index: 0;
+}
+
+.radar-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid rgba(234, 88, 12, 0.15);
+  border-radius: 50%;
+  animation: radarExpand 4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.r1 { width: 200px; height: 200px; animation-delay: 0s; }
+.r2 { width: 340px; height: 340px; animation-delay: 1s; }
+.r3 { width: 500px; height: 500px; animation-delay: 2s; }
+.r4 { width: 680px; height: 680px; animation-delay: 3s; }
+
+@keyframes radarExpand {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+}
+
+/* ---- Main Content ---- */
+.snake-loader-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 28px;
+  padding: 40px;
+  animation: contentSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+@keyframes contentSlideUp {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Giant Snake SVG ---- */
+.snake-giant-container {
+  width: 280px;
+  height: 280px;
+  position: relative;
+}
+
+.snake-giant-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.snake-track {
+  fill: none;
+  stroke: rgba(234, 88, 12, 0.06);
+  stroke-width: 2;
+}
+
+/* Glow paths (blurred shadows behind main coils) */
+.snake-glow-path {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+
+.glow-1 {
+  stroke: #ea580c;
+  stroke-width: 10;
+  stroke-dasharray: 120 300;
+  animation: coilSpin 2.5s linear infinite, coilSlither 4s ease-in-out infinite alternate;
+}
+
+.glow-2 {
+  stroke: #fb923c;
+  stroke-width: 8;
+  stroke-dasharray: 80 260;
+  animation: coilSpin 2s linear infinite reverse, coilSlither2 3s ease-in-out infinite alternate;
+}
+
+/* Main visible coil paths */
+.snake-main-coil {
+  fill: none;
+  stroke-linecap: round;
+  transform-origin: center;
+}
+
+.coil-outer {
+  stroke: url(#sg1);
+  stroke-width: 7;
+  stroke-dasharray: 130 300;
+  animation: coilSpin 2.5s linear infinite, coilSlither 4s ease-in-out infinite alternate;
+}
+
+.coil-mid {
+  stroke: url(#sg2);
+  stroke-width: 6;
+  stroke-dasharray: 90 250;
+  animation: coilSpin 2s linear infinite reverse, coilSlither2 3s ease-in-out infinite alternate;
+}
+
+.coil-inner {
+  stroke: url(#sg3);
+  stroke-width: 5;
+  stroke-dasharray: 60 200;
+  animation: coilSpin 1.4s linear infinite, coilSlither 2.5s ease-in-out infinite alternate;
+}
+
+.coil-core {
+  stroke: url(#sg1);
+  stroke-width: 4;
+  stroke-dasharray: 35 160;
+  animation: coilSpin 1s linear infinite reverse;
+}
+
+@keyframes coilSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes coilSlither {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -180; }
+}
+
+@keyframes coilSlither2 {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 120; }
+}
+
+/* Snake head dots - orbit with the coils */
+.snake-head {
+  fill: #ff6a00;
+  filter: drop-shadow(0 0 6px #ea580c);
+  transform-origin: 100px 100px;
+}
+
+.head-1 {
+  animation: coilSpin 2.5s linear infinite, headPulse 1s ease-in-out infinite alternate;
+}
+
+.head-2 {
+  animation: coilSpin 2s linear infinite reverse, headPulse 0.8s ease-in-out infinite alternate;
+}
+
+.head-3 {
+  animation: coilSpin 1.4s linear infinite, headPulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes headPulse {
+  0% { r: 3; opacity: 0.7; }
+  100% { r: 6; opacity: 1; }
+}
+
+/* Center eye */
+.snake-eye-outer {
+  fill: rgba(234, 88, 12, 0.2);
+  animation: eyePulseOuter 1.5s ease-in-out infinite alternate;
+}
+
+.snake-eye-inner {
+  fill: #ea580c;
+  animation: eyePulseInner 1s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 12px #ea580c) drop-shadow(0 0 24px rgba(234, 88, 12, 0.5));
+}
+
+@keyframes eyePulseOuter {
+  0% { r: 8; opacity: 0.2; }
+  100% { r: 14; opacity: 0.4; }
+}
+
+@keyframes eyePulseInner {
+  0% { r: 4; opacity: 0.7; }
+  100% { r: 7; opacity: 1; }
+}
+
+/* ---- Target Info ---- */
+.snake-target-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.snake-scanning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #ea580c;
+  background: rgba(234, 88, 12, 0.1);
+  border: 1px solid rgba(234, 88, 12, 0.2);
+  padding: 6px 16px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+.scanning-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ea580c;
+  animation: scanDotPulse 1s ease-in-out infinite;
+}
+
+@keyframes scanDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.6); }
+}
+
+.snake-target-name {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 2rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 20px rgba(234, 88, 12, 0.3);
+}
+
+.snake-target-type {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* ---- Progress Section ---- */
+.snake-progress-section {
+  width: 100%;
+  max-width: 420px;
+}
+
+.snake-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid rgba(234, 88, 12, 0.1);
+}
+
+.snake-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ea580c, #f97316, #ff8c42, #e11d48);
+  background-size: 200% 100%;
+  animation: progressShimmer 2s linear infinite;
+  border-radius: 99px;
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+
+.snake-progress-glow {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff6a00;
+  box-shadow: 0 0 12px #ea580c, 0 0 24px rgba(234, 88, 12, 0.5);
+  animation: glowPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 8px #ea580c; }
+  100% { box-shadow: 0 0 20px #ea580c, 0 0 40px rgba(234, 88, 12, 0.4); }
+}
+
+.snake-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.snake-progress-percent {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #ea580c;
+  font-variant-numeric: tabular-nums;
+}
+
+.snake-step-counter {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 500;
+}
+
+.snake-progress-text {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  min-height: 1.6em;
+  animation: textFadeIn 0.5s ease forwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.step-icon {
+  font-size: 1.1rem;
+}
+
+@keyframes textFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+  .snake-giant-container {
+    width: 200px;
+    height: 200px;
+  }
+
+  .snake-target-name {
+    font-size: 1.4rem;
+  }
+
+  .snake-progress-section {
+    max-width: 300px;
+  }
+
+  .snake-loader-content {
+    padding: 20px;
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .snake-giant-container {
+    width: 340px;
+    height: 340px;
+  }
+
+  .snake-target-name {
+    font-size: 2.4rem;
+  }
+}
