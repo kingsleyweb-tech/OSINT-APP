@@ -112,10 +112,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
 
       {/* Floating Back Button */}
       <div className="auth-back-float-row">
-        <Link to="/" className="auth-back-float-btn">
+        <button onClick={() => navigate(-1)} className="auth-back-float-btn">
           <ArrowLeft size={15} />
           <span>Back</span>
-        </Link>
+        </button>
       </div>
 
       {/* Main Split Layout */}

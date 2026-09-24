@@ -104,6 +104,8 @@
   font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import './styles/LandingPage.css';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -12,6 +12,7 @@ interface LandingLayoutProps {
 
 export const LandingLayout: React.FC<LandingLayoutProps> = ({ currentUser }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isHome = location.pathname === '/';
 
   return (
@@ -21,10 +22,10 @@ export const LandingLayout: React.FC<LandingLayoutProps> = ({ currentUser }) => 
       {/* Back Button — shown on all pages except home */}
       {!isHome && (
         <div className="lp-back-btn-bar">
-          <Link to="/" className="lp-back-btn">
+          <button onClick={() => navigate(-1)} className="lp-back-btn">
             <ArrowLeft size={15} />
-            <span>Back to Home</span>
-          </Link>
+            <span>Back</span>
+          </button>
         </div>
       )}
 
