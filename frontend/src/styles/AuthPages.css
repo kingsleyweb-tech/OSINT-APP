@@ -85,25 +85,34 @@
   color: var(--text-primary);
 }
 
-.auth-back-btn {
+/* ── FLOATING BACK BUTTON ── */
+.auth-back-float-row {
+  width: 100%;
+  max-width: 1280px;
+  padding: 10px 24px 0;
+}
+
+.auth-back-float-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 7px 14px;
+  border-radius: 20px;
   border: 1px solid var(--border-color);
+  background: var(--bg-card);
   color: var(--text-muted);
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   transition: all 0.2s ease;
-  background: transparent;
+  box-shadow: var(--shadow-sm);
 }
 
-.auth-back-btn:hover {
+.auth-back-float-btn:hover {
   color: var(--text-primary);
   border-color: var(--accent-warm-border);
   background: var(--bg-hover);
+  transform: translateX(-2px);
 }
 
 .auth-theme-toggle-btn {
@@ -130,12 +139,12 @@
 .auth-layout {
   display: grid;
   grid-template-columns: 1.25fr 1fr;
-  gap: 48px;
+  gap: 40px;
   width: 100%;
   max-width: 1280px;
   align-items: center;
   margin: auto 0;
-  padding: 32px 24px;
+  padding: 16px 24px 32px;
 }
 
 /* ── LEFT PANEL: REALISTIC OSINT DASHBOARD MOCKUP ── */

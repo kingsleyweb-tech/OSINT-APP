@@ -80,6 +80,38 @@ img { max-width: 100%; display: block; }
   will-change: opacity, transform;
 }
 
+/* ── LANDING BACK BUTTON ── */
+.lp-back-btn-bar {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 40px 0;
+}
+
+.lp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  letter-spacing: 0.01em;
+}
+
+.lp-back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-warm-border);
+  background: var(--bg-card-hover);
+  transform: translateX(-3px);
+}
+
+
 @keyframes lpSlowFadeIn {
   0% {
     opacity: 0;

@@ -106,12 +106,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
             >
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
-            <Link to="/" className="auth-back-btn">
-              <ArrowLeft size={14} /> Back to Home
-            </Link>
           </div>
         </div>
       </header>
+
+      {/* Floating Back Button */}
+      <div className="auth-back-float-row">
+        <Link to="/" className="auth-back-float-btn">
+          <ArrowLeft size={15} />
+          <span>Back</span>
+        </Link>
+      </div>
 
       {/* Main Split Layout */}
       <div className="auth-layout">
