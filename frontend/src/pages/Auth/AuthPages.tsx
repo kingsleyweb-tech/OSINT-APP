@@ -9,13 +9,16 @@ import {
   UserPlus, 
   User, 
   Search, 
-  ArrowLeft
+  ArrowLeft,
+  Sun,
+  Moon
 } from 'lucide-react';
 import '../../styles/AuthPages.css';
 import { signIn, signUp } from '../../firebase/auth';
 import { createUserProfileInDb } from '../../firebase/firestore';
 import appLogo from '../../assets/images/icon.png';
 import { Footer } from '../../landing/components/Footer';
+import { useTheme } from '../../context/ThemeContext';
 
 interface AuthPageProps {
   onLoginSuccess: (user: any) => void;
@@ -23,6 +26,7 @@ interface AuthPageProps {
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -94,6 +98,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
           </nav>
 
           <div className="auth-nav-actions">
+            <button
+              onClick={toggleTheme}
+              className="auth-theme-toggle-btn"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <Link to="/" className="auth-back-btn">
               <ArrowLeft size={14} /> Back to Home
             </Link>
