@@ -1,21 +1,25 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, Sun, Moon } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { signOut as firebaseSignOut } from '../../firebase/auth';
 import '../../styles/MobileNav.css';
 
 interface MobileNavProps {
   isOpen?: boolean;
   userName?: string;
   onClose?: () => void;
+  onSignOut?: () => void;
 }
 
 export const MobileNav: React.FC<MobileNavProps> = ({ 
   isOpen = false, 
   userName = 'Kingsley',
-  onClose 
+  onClose,
+  onSignOut
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
   if (!isOpen) return null;
@@ -31,6 +35,18 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     { path: '/help', label: 'Help & Manual' },
     { path: '/settings', label: 'Settings' },
   ];
+
+  const handleSignOut = async () => {
+    if (onClose) onClose();
+    try {
+      await firebaseSignOut();
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+    localStorage.removeItem('osint_user_session');
+    if (onSignOut) onSignOut();
+    navigate('/');
+  };
 
   return (
     <div className="brutalist-menu-overlay" onClick={onClose}>
@@ -96,10 +112,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
           <button
             className="brutalist-logout-btn"
-            onClick={() => {
-              if (onClose) onClose();
-              window.location.href = '/auth';
-            }}
+            onClick={handleSignOut}
           >
             [sign out]
           </button>

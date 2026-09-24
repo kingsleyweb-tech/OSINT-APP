@@ -9,17 +9,19 @@ interface LayoutProps {
   children: React.ReactNode;
   userName?: string;
   onSearch?: (term: string) => void;
+  onSignOut?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, 
-  userName = "Kingsley"
+  userName = "Kingsley",
+  onSignOut
 }) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   return (
     <div className="app-container">
-      <Sidebar userName={userName} userRole="Investigator" />
+      <Sidebar userName={userName} userRole="Investigator" onSignOut={onSignOut} />
       <div className="main-content">
         <Topbar 
           onToggleMobileNav={() => setIsMobileNavOpen(prev => !prev)} 
@@ -50,6 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({
         isOpen={isMobileNavOpen} 
         userName={userName}
         onClose={() => setIsMobileNavOpen(false)} 
+        onSignOut={onSignOut}
       />
     </div>
   );

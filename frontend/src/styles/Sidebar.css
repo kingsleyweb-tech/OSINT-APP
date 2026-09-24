@@ -184,11 +184,23 @@
   margin-top: 1px;
 }
 
-.user-arrow {
-  width: 14px;
-  height: 14px;
+.sidebar-signout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
   color: var(--text-muted);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   flex-shrink: 0;
+}
+
+.sidebar-signout-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
 }
 
 @media (max-width: 1024px) {

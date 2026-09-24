@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import type { PageId } from '../App';
 
 interface NavbarProps {
@@ -10,6 +10,7 @@ interface NavbarProps {
 const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:5173/auth';
 
 const NAV_ITEMS: { label: string; page: PageId }[] = [
+  { label: 'Home', page: 'home' },
   { label: 'Features', page: 'features' },
   { label: 'How It Works', page: 'how-it-works' },
   { label: 'Documentation', page: 'documentation' },

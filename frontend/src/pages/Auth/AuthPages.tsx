@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, ShieldCheck, Activity, Search, Database } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  LogIn, 
+  UserPlus, 
+  User, 
+  Search, 
+  ChevronRight, 
+  LayoutDashboard, 
+  FolderSearch, 
+  Users, 
+  Globe, 
+  HelpCircle, 
+  Settings,
+  ArrowLeft
+} from 'lucide-react';
 import '../../styles/AuthPages.css';
 import { signIn, signUp } from '../../firebase/auth';
 import { createUserProfileInDb } from '../../firebase/firestore';
@@ -65,92 +82,166 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="auth-page-wrapper">
-      <div className="auth-layout">
-        {/* Left Side - Dashboard Preview & Branding */}
-        <div className="auth-preview-panel">
-          <div className="preview-header">
-            <div className="preview-logo-box">
-              <img src={appLogo} alt="OSINT Platform Logo" className="preview-logo-img" />
-            </div>
-            <div className="preview-brand-info">
-              <span className="preview-brand-name">OSINT <span>Platform</span></span>
-              <span className="preview-brand-tag">Cyber Intelligence & Investigation</span>
-            </div>
+      {/* Top Navigation Bar on Auth Page */}
+      <header className="auth-top-navbar">
+        <div className="auth-nav-inner">
+          <Link to="/" className="auth-nav-logo">
+            <img src={appLogo} alt="OSINT Logo" className="auth-nav-logo-img" />
+            <span className="auth-nav-logo-text">OSINT <span>Platform</span></span>
+          </Link>
+
+          <nav className="auth-nav-menu">
+            <Link to="/" className="auth-nav-item">Home</Link>
+            <Link to="/features" className="auth-nav-item">Features</Link>
+            <Link to="/how-it-works" className="auth-nav-item">How It Works</Link>
+            <Link to="/documentation" className="auth-nav-item">Documentation</Link>
+            <Link to="/about" className="auth-nav-item">About</Link>
+            <Link to="/help-center" className="auth-nav-item">Help</Link>
+          </nav>
+
+          <div className="auth-nav-actions">
+            <Link to="/" className="auth-back-btn">
+              <ArrowLeft size={14} /> Back to Home
+            </Link>
           </div>
+        </div>
+      </header>
 
-          <div className="mockup-frame">
-            <div className="mockup-topbar">
-              <div className="mockup-dots">
-                <span className="dot red" />
-                <span className="dot yellow" />
-                <span className="dot green" />
+      {/* Main Split Layout */}
+      <div className="auth-layout">
+        {/* Left Side - Realistic OSINT Dashboard Mockup */}
+        <div className="auth-preview-panel">
+          <div className="preview-mini-dashboard">
+            {/* Sidebar Mockup */}
+            <div className="mini-sidebar">
+              <div className="mini-brand">
+                <img src={appLogo} alt="OSINT Logo" className="mini-logo-img" />
+                <div className="mini-brand-text">
+                  <div className="mini-title">OSINT</div>
+                  <div className="mini-sub">INVESTIGATION PLATFORM</div>
+                </div>
               </div>
-              <div className="mockup-search-bar">
-                <Search size={12} className="mockup-search-icon" />
-                <span>osint.platform/investigations/live</span>
+
+              <div className="mini-nav-list">
+                <div className="mini-nav-item active">
+                  <LayoutDashboard size={12} />
+                  <span>Dashboard</span>
+                </div>
+                <div className="mini-nav-item">
+                  <Search size={12} />
+                  <span>New Search</span>
+                </div>
+                <div className="mini-nav-item">
+                  <FolderSearch size={12} />
+                  <span>Investigations</span>
+                </div>
+                <div className="mini-nav-item">
+                  <Users size={12} />
+                  <span>People</span>
+                </div>
+                <div className="mini-nav-item">
+                  <Globe size={12} />
+                  <span>Sources</span>
+                </div>
+                <div className="mini-nav-item">
+                  <HelpCircle size={12} />
+                  <span>Help & Docs</span>
+                </div>
+                <div className="mini-nav-item">
+                  <Settings size={12} />
+                  <span>Settings</span>
+                </div>
+              </div>
+
+              <div className="mini-user-badge">
+                <div className="mini-avatar">GI</div>
+                <div className="mini-user-info">
+                  <div className="mini-user-name">Guest Investigator</div>
+                  <div className="mini-user-role">Investigator</div>
+                </div>
+                <ChevronRight size={12} />
               </div>
             </div>
 
-            <div className="mockup-body">
-              <div className="mockup-welcome">
-                <div>
-                  <h4>Welcome back, <span className="highlight">@investigator</span></h4>
-                  <p>All data feeds online • 14 sources synced</p>
-                </div>
-                <div className="mockup-badge"><ShieldCheck size={12} /> System active</div>
-              </div>
-
-              <div className="mockup-quick-access">
-                <div className="mockup-card">
-                  <div className="card-label">SERP ENGINE</div>
-                  <div className="card-val green">Active • 100%</div>
-                </div>
-                <div className="mockup-card">
-                  <div className="card-label">RECENT LOOKUPS</div>
-                  <div className="card-val">28 Targets</div>
-                </div>
-                <div className="mockup-card">
-                  <div className="card-label">SYSTEM HEALTH</div>
-                  <div className="card-val green">Optimal</div>
-                </div>
-              </div>
-
-              <div className="mockup-table">
-                <div className="table-title">
-                  <Activity size={13} />
-                  <span>Recent OSINT Telemetry</span>
-                </div>
-                <div className="table-row header">
-                  <span>TARGET</span>
-                  <span>SOURCE</span>
-                  <span>STATUS</span>
-                </div>
-                <div className="table-row">
-                  <span>john_doe@example.com</span>
-                  <span>Google Index</span>
-                  <span className="status-badge live">Verified</span>
-                </div>
-                <div className="table-row">
-                  <span>@john_doe_99</span>
-                  <span>Social Signals</span>
-                  <span className="status-badge live">12 Handles</span>
-                </div>
-                <div className="table-row">
-                  <span>domain-intel-target.com</span>
-                  <span>DNS & WHOIS</span>
-                  <span className="status-badge live">Resolved</span>
-                </div>
-              </div>
-
-              <div className="mockup-footer-widget">
-                <div className="widget-left">
-                  <Database size={14} className="widget-icon" />
-                  <div>
-                    <div className="widget-title">Active Database Pipeline</div>
-                    <div className="widget-sub">Indexing public record footprints...</div>
+            {/* Content Area Mockup */}
+            <div className="mini-main-content">
+              {/* Header Hero */}
+              <div className="mini-hero-row">
+                <div className="mini-welcome-box">
+                  <h3>Welcome back, Guest</h3>
+                  <p>Search and discover intelligence across multiple platforms.</p>
+                  
+                  <div className="mini-search-widget">
+                    <div className="mini-tabs">
+                      <span className="mini-tab active">Name</span>
+                      <span className="mini-tab">Username</span>
+                    </div>
+                    <div className="mini-search-input-box">
+                      <Search size={11} className="mini-search-icon" />
+                      <span className="mini-search-text">e.g. Kwame Mensah, John Mahama</span>
+                      <span className="mini-search-btn">Search</span>
+                    </div>
                   </div>
                 </div>
-                <div className="widget-status">99.9% Ready</div>
+
+                <div className="mini-spotlight-card">
+                  <div className="spotlight-icon-circle">
+                    <Search size={14} className="spotlight-icon" />
+                  </div>
+                  <h4>More than just search.</h4>
+                  <p>Find connections. Uncover associations. See the bigger picture.</p>
+                </div>
+              </div>
+
+              {/* Bottom Cards: Recent Investigations & Search Activity */}
+              <div className="mini-bottom-grid">
+                <div className="mini-card-box">
+                  <div className="card-box-header">
+                    <span>Recent Investigations</span>
+                    <span className="view-all-link">View all ↗</span>
+                  </div>
+
+                  <div className="mini-investigation-item">
+                    <div className="item-avatar">CA</div>
+                    <div className="item-details">
+                      <div className="item-name">Christiana Abaah</div>
+                      <div className="item-sub">Political Figure / Public Official</div>
+                    </div>
+                    <div className="item-meta">
+                      <span className="item-date">Sep 23</span>
+                      <span className="mini-status-badge">Completed</span>
+                    </div>
+                  </div>
+
+                  <div className="mini-investigation-item">
+                    <div className="item-avatar">CA</div>
+                    <div className="item-details">
+                      <div className="item-name">Christiana Abaah</div>
+                      <div className="item-sub">Political Figure / Public Official</div>
+                    </div>
+                    <div className="item-meta">
+                      <span className="item-date">Sep 23</span>
+                      <span className="mini-status-badge">Completed</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mini-card-box">
+                  <div className="card-box-header">
+                    <span>Search Activity</span>
+                    <span className="range-sub">Last 7 days</span>
+                  </div>
+
+                  <div className="mini-chart-bars">
+                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '30%' }} /><span>Sep 18</span></div>
+                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '20%' }} /><span>Sep 19</span></div>
+                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '25%' }} /><span>Sep 20</span></div>
+                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '35%' }} /><span>Sep 21</span></div>
+                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '15%' }} /><span>Sep 22</span></div>
+                    <div className="chart-bar-col"><div className="bar-fill active" style={{ height: '90%' }} /><span>Sep 23</span></div>
+                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '40%' }} /><span>Sep 24</span></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -188,7 +279,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
                       id="auth-username"
                       type="text"
                       className="auth-input"
-                      placeholder="john_doe"
+                      placeholder="alex_vance"
                       value={username}
                       onChange={e => setUsername(e.target.value)}
                       required={!isLogin}
@@ -205,7 +296,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
                     id="auth-email"
                     type="email"
                     className="auth-input"
-                    placeholder="john_doe@example.com"
+                    placeholder="alex.vance@cyberintel.io"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
@@ -221,7 +312,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
                     id="auth-password"
                     type={showPass ? 'text' : 'password'}
                     className="auth-input"
-                    placeholder="••••••••"
+                    placeholder="••••••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
@@ -241,7 +332,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
                       id="auth-confirm-password"
                       type={showConfirmPass ? 'text' : 'password'}
                       className="auth-input"
-                      placeholder="••••••••"
+                      placeholder="••••••••••••"
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
                       required={!isLogin}
@@ -280,8 +371,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
 
             <p className="auth-legal-footer">
               By creating an account, you agree to our{' '}
-              <a href="#/terms" onClick={(e) => { e.preventDefault(); navigate('/terms'); }}>Terms of Service</a> and{' '}
-              <a href="#/privacy" onClick={(e) => { e.preventDefault(); navigate('/privacy'); }}>Privacy Policy</a>.
+              <Link to="/terms">Terms of Service</Link> and{' '}
+              <Link to="/privacy">Privacy Policy</Link>.
             </p>
           </div>
         </div>

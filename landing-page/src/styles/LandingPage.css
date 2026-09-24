@@ -461,7 +461,7 @@ img { max-width: 100%; display: block; }
 }
 
 .lp-hamburger {
-  display: none;
+  display: none !important;
   background: none;
   border: none;
   color: var(--text-primary);
@@ -985,7 +985,7 @@ img { max-width: 100%; display: block; }
 @media (max-width: 900px) {
   .lp-nav-links { display: none; }
   .lp-nav-auth { display: none; }
-  .lp-hamburger { display: flex; align-items: center; justify-content: center; }
+  .lp-hamburger { display: flex !important; align-items: center; justify-content: center; }
   .lp-grid-2, .lp-grid-3, .lp-grid-4 { grid-template-columns: 1fr; }
   .lp-editorial-grid-2 { grid-template-columns: 1fr; }
   .lp-footer-grid { grid-template-columns: 1fr 1fr; }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Search, 
@@ -7,22 +7,41 @@ import {
   Users, 
   Globe, 
   Settings, 
-  ChevronRight,
-  HelpCircle
+  HelpCircle,
+  LogOut
 } from 'lucide-react';
 import appLogo from '../../assets/images/icon.png';
+import { signOut as firebaseSignOut } from '../../firebase/auth';
 import '../../styles/Sidebar.css';
 
 interface SidebarProps {
   userName?: string;
   userRole?: string;
+  onSignOut?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   userName = "Kingsley Anaab", 
-  userRole = "Investigator" 
+  userRole = "Investigator",
+  onSignOut
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await firebaseSignOut();
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+    localStorage.removeItem('osint_user_session');
+    if (onSignOut) {
+      onSignOut();
+    }
+    navigate('/');
+  };
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -66,17 +85,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      <div className="sidebar-user">
-        <div className="user-avatar">
-            {userName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+      <div className="sidebar-user-wrapper">
+        <div className="sidebar-user">
+          <div className="user-avatar">
+            {userName ? userName.split(' ').map(n => n[0]).join('').substring(0, 2) : 'GI'}
+          </div>
+          <div className="user-info">
+            <div className="user-name">{userName}</div>
+            <div className="user-role">{userRole}</div>
+          </div>
+          <button 
+            className="sidebar-signout-btn" 
+            onClick={handleSignOut}
+            title="Sign Out"
+            aria-label="Sign Out of OSINT Platform"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
-        <div className="user-info">
-          <div className="user-name">{userName}</div>
-          <div className="user-role">{userRole}</div>
-        </div>
-        <ChevronRight className="user-arrow" />
       </div>
     </aside>
   );
 };
-

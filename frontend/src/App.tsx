@@ -54,6 +54,10 @@ function App() {
     }
   };
 
+  const handleSignOut = () => {
+    handleUpdateUserSession(null);
+  };
+
   useEffect(() => {
     const unsubscribe = subscribeToAuth(async (user) => {
       if (user) {
@@ -148,7 +152,7 @@ function App() {
                 path="/dashboard"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <DashboardPage currentUser={currentUser} />
                     </Layout>
                   </ProtectedRoute>
@@ -159,7 +163,7 @@ function App() {
                 path="/new-investigation"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <NewInvestigationPage currentUser={currentUser} />
                     </Layout>
                   </ProtectedRoute>
@@ -170,7 +174,7 @@ function App() {
                 path="/search"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <NewInvestigationPage currentUser={currentUser} />
                     </Layout>
                   </ProtectedRoute>
@@ -181,7 +185,7 @@ function App() {
                 path="/investigations"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationsListPage currentUser={currentUser} />
                     </Layout>
                   </ProtectedRoute>
@@ -192,7 +196,7 @@ function App() {
                 path="/investigations/:id"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="overview" />
                     </Layout>
                   </ProtectedRoute>
@@ -203,7 +207,7 @@ function App() {
                 path="/investigations/:id/overview"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="overview" />
                     </Layout>
                   </ProtectedRoute>
@@ -214,7 +218,7 @@ function App() {
                 path="/investigations/:id/profiles"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="profiles" />
                     </Layout>
                   </ProtectedRoute>
@@ -225,7 +229,7 @@ function App() {
                 path="/investigations/:id/activity"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="activity" />
                     </Layout>
                   </ProtectedRoute>
@@ -236,7 +240,7 @@ function App() {
                 path="/investigations/:id/associations"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="associations" />
                     </Layout>
                   </ProtectedRoute>
@@ -247,7 +251,7 @@ function App() {
                 path="/investigations/:id/sources"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="sources" />
                     </Layout>
                   </ProtectedRoute>
@@ -258,7 +262,7 @@ function App() {
                 path="/investigations/:id/webnews"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="webnews" />
                     </Layout>
                   </ProtectedRoute>
@@ -269,7 +273,7 @@ function App() {
                 path="/investigations/:id/notes"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="notes" />
                     </Layout>
                   </ProtectedRoute>
@@ -280,7 +284,7 @@ function App() {
                 path="/investigations/:id/stats"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage activeTabRoute="stats" />
                     </Layout>
                   </ProtectedRoute>
@@ -291,7 +295,7 @@ function App() {
                 path="/investigations/:id/:tab"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <InvestigationDetailPage />
                     </Layout>
                   </ProtectedRoute>
@@ -302,7 +306,7 @@ function App() {
                 path="/people"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <PeoplePage />
                     </Layout>
                   </ProtectedRoute>
@@ -313,7 +317,7 @@ function App() {
                 path="/sources"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <SourcesPage />
                     </Layout>
                   </ProtectedRoute>
@@ -324,7 +328,7 @@ function App() {
                 path="/help"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <HelpPage />
                     </Layout>
                   </ProtectedRoute>
@@ -335,7 +339,7 @@ function App() {
                 path="/settings"
                 element={
                   <ProtectedRoute user={currentUser}>
-                    <Layout userName={userDisplayName}>
+                    <Layout userName={userDisplayName} onSignOut={handleSignOut}>
                       <SettingsPage 
                         currentUser={currentUser} 
                         onUpdateUser={(updatedName) => setCurrentUser((prev: any) => ({ ...prev, displayName: updatedName }))}

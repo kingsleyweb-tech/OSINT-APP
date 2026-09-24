@@ -10,6 +10,7 @@ interface NavbarProps {
 }
 
 const NAV_ITEMS = [
+  { label: 'Home', path: '/' },
   { label: 'Features', path: '/features' },
   { label: 'How It Works', path: '/how-it-works' },
   { label: 'Documentation', path: '/documentation' },
@@ -77,28 +78,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser }) => {
             )}
           </div>
 
-          {/* Hamburger Menu Button */}
+          {/* Hamburger Menu Button (Only displayed on mobile <= 900px via CSS) */}
           <button
             className="lp-hamburger"
             onClick={() => setMobileOpen(true)}
             aria-label="Open mobile menu"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '6px'
-            }}
           >
             <Menu size={20} />
           </button>
         </div>
       </nav>
 
-      {/* Brutalist Mobile Navigation Overlay (Matches Dashboard Reference Implementation) */}
+      {/* Mobile Navigation Overlay */}
       <LandingMobileNav
         isOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
