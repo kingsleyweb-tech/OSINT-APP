@@ -239,6 +239,13 @@ export class RelevanceEngine {
 
       isExactNameMatch = titleMatch.isExactPhrase || titleMatch.allTokensMatched || snippetMatch.isExactPhrase;
       tokenCoverage = Math.max(titleMatch.tokenCoveragePercent, snippetMatch.tokenCoveragePercent);
+
+      // Verified profile URL bonus: if the URL is a real profile page and the title contains the
+      // full name (exact phrase), grant a large bonus regardless of snippet coverage.
+      // This prevents Facebook/Instagram/YouTube profiles from being incorrectly rejected.
+      if (urlValidation.isVerifiedProfileUrl && titleMatch.isExactPhrase) {
+        urlMatchScore = Math.max(urlMatchScore, 22);
+      }
     }
 
     // Contextual signals (location, org)
@@ -257,8 +264,11 @@ export class RelevanceEngine {
       score += 15;
     }
 
-    // Penalty for partial word collisions or missing tokens
-    if (!isExactNameMatch && !isExactUsernameMatch && tokenCoverage < 50) {
+    // Penalty for partial word collisions or missing tokens.
+    // Only apply when title, snippet AND url all show < 50% coverage.
+    // Do NOT penalize verified profile URLs where the title has the name — the profile IS real.
+    const profileUrlWithNameTitle = urlValidation.isVerifiedProfileUrl && titleMatchScore > 0;
+    if (!isExactNameMatch && !isExactUsernameMatch && tokenCoverage < 50 && !profileUrlWithNameTitle) {
       score = Math.max(0, score - 50);
     }
 

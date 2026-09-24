@@ -113,7 +113,11 @@ export class DeepSearchEngine {
     const serpApi = new SerpApiProvider();
     const usernameDiscovery = new UsernameDiscoveryService();
 
-    const maxQueries = searchDepth === 'quick' ? 8 : searchDepth === 'standard' ? 18 : 35;
+    const isNameSearch = !isUsername;
+    // Name searches need a higher query budget due to richer Stage 1 coverage
+    const maxQueries = isNameSearch
+      ? (searchDepth === 'quick' ? 18 : searchDepth === 'standard' ? 30 : 50)
+      : (searchDepth === 'quick' ? 8 : searchDepth === 'standard' ? 18 : 35);
     const maxPages = searchDepth === 'quick' ? 1 : searchDepth === 'standard' ? 2 : 3;
 
     const allResults: NormalizedResultItem[] = [];
@@ -203,21 +207,48 @@ export class DeepSearchEngine {
     console.log(`[DeepSearchEngine] Executing STAGE 1: Exact Identity Discovery...`);
     const stage1Queries: Array<{ queryStr: string; platform: PlatformEntry }> = [];
 
+    const getPlatform = (id: string) => PLATFORM_REGISTRY.find(p => p.id === id) || PLATFORM_REGISTRY[0];
+
     if (isUsername) {
       const variations = this.generateUsernameVariations(target);
       variations.forEach(v => {
         const qStr = `"${v.username}"`;
-        const genPlatform = PLATFORM_REGISTRY.find(p => p.id === 'gen-broad') || PLATFORM_REGISTRY[0];
+        const genPlatform = getPlatform('gen-broad');
         stage1Queries.push({ queryStr: qStr, platform: genPlatform });
         stage1Queries.push({ queryStr: `"${v.username}" profile OR "${v.username}" account`, platform: genPlatform });
       });
     } else {
-      const genPlatforms = PLATFORM_REGISTRY.filter(p => p.category === 'general' || p.category === 'news');
-      genPlatforms.forEach(p => {
-        if (p.searchPattern) {
-          stage1Queries.push({ queryStr: p.searchPattern(target), platform: p });
-        }
-      });
+      // ── NAME SEARCH: Rich multi-strategy Stage 1 ──
+      const genPlatform = getPlatform('gen-broad');
+
+      // 1. Core identity queries
+      stage1Queries.push({ queryStr: `"${target}"`, platform: genPlatform });
+      stage1Queries.push({ queryStr: `"${target}" profile OR biography`, platform: getPlatform('gen-profile') });
+      stage1Queries.push({ queryStr: `"${target}" site:linkedin.com/in/`, platform: getPlatform('prof-linkedin') });
+
+      // 2. Key social platforms — searched directly in Stage 1 (not deferred to Stage 2)
+      stage1Queries.push({ queryStr: `site:facebook.com "${target}"`, platform: getPlatform('soc-facebook') });
+      stage1Queries.push({ queryStr: `site:instagram.com "${target}"`, platform: getPlatform('soc-instagram') });
+      stage1Queries.push({ queryStr: `site:youtube.com "${target}"`, platform: getPlatform('vid-youtube') });
+      stage1Queries.push({ queryStr: `site:x.com "${target}" OR site:twitter.com "${target}"`, platform: getPlatform('soc-x') });
+      stage1Queries.push({ queryStr: `site:tiktok.com "${target}"`, platform: getPlatform('soc-tiktok') });
+
+      // 3. News & interview discovery
+      stage1Queries.push({ queryStr: `"${target}" news OR interview`, platform: getPlatform('news-main') });
+      stage1Queries.push({ queryStr: `"${target}" announcement OR speech OR conference`, platform: getPlatform('news-events') });
+
+      // 4. Location-specific (if provided)
+      if (query.location) {
+        stage1Queries.push({ queryStr: `"${target}" "${query.location}"`, platform: genPlatform });
+      }
+
+      // 5. Organization/profession hints
+      if (query.organization) {
+        stage1Queries.push({ queryStr: `"${target}" "${query.organization}"`, platform: genPlatform });
+      }
+
+      // 6. Professional & portfolio presence
+      stage1Queries.push({ queryStr: `"${target}" site:github.com OR site:medium.com OR site:reddit.com`, platform: genPlatform });
     }
 
     for (const qObj of stage1Queries) {
@@ -307,7 +338,12 @@ export class DeepSearchEngine {
 
     for (const p of platformEntries) {
       if (totalQueriesExecuted >= maxQueries) break;
-      if (consecutiveZeroYields >= 4 && searchDepth !== 'deep') {
+
+      // For name searches: never early-stop on tier-1 platforms (Facebook, IG, YouTube, LinkedIn, X, TikTok)
+      const isTier1Social = p.tier === 1 && ['social', 'professional', 'video'].includes(p.category);
+      const allowEarlyStop = isUsername ? true : !isTier1Social;
+
+      if (allowEarlyStop && consecutiveZeroYields >= 4 && searchDepth !== 'deep') {
         console.log(`[DeepSearchEngine] Early stopping Stage 2 due to diminishing returns.`);
         break;
       }

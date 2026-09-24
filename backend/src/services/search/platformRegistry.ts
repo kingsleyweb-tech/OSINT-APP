@@ -111,7 +111,7 @@ export const PLATFORM_REGISTRY: PlatformEntry[] = [
     category: 'social',
     domains: ['facebook.com'],
     tier: 1,
-    searchPattern: (t) => `site:facebook.com "${t}"`,
+    searchPattern: (t) => `site:facebook.com "${t}" -site:facebook.com/groups -site:facebook.com/pages`,
     usernameSearchPattern: (u) => `site:facebook.com "${u}"`
   },
   {

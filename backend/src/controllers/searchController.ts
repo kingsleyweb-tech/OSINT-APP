@@ -164,7 +164,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
         profiles: analyzedProfile.socialProfiles.length,
         emails: query.email ? 1 : 0,
         phones: query.phone ? 1 : 0,
-        websites: analyzedProfile.sources.length,
+        websites: allResults.filter(r => r.sourceType === 'Websites & News' || r.sourceType === 'Knowledge & Wikipedia' || !r.sourceType).length,
         other: 0,
         sources: analyzedProfile.sources.length,
         activities: analyzedProfile.activities.length,

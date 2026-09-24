@@ -232,16 +232,25 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
         { name: 'Username Discovery Engine', status: 'Completed', count: 3 }
       ];
 
-  const tabs: { key: string; label: string; count?: number }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'profiles', label: 'Profiles', count: investigation.resultsCount?.profiles || 0 },
-    { key: 'activity', label: 'Activity', count: investigation.resultsCount?.activities || 0 },
-    { key: 'associations', label: 'Associations', count: investigation.resultsCount?.associations || 0 },
-    { key: 'sources', label: 'Sources', count: investigation.resultsCount?.sources || 0 },
-    { key: 'webnews', label: 'Web & News', count: (investigation.webAndNews || []).length || investigation.resultsCount?.websites || 0 },
-    { key: 'notes', label: 'Notes & Findings', count: (investigation.notes || []).length },
-    { key: 'stats', label: 'Metrics & Audit' }
-  ];
+  const tabs: { key: string; label: string; count?: number }[] = (() => {
+    const profiles = (investigation.socialProfiles || []).length;
+    const activities = (investigation.activities || []).length;
+    const associations = (investigation.associations || []).length;
+    const sources = (investigation.sources || []).length;
+    const webNews = (investigation.webAndNews || []).length;
+    const notes = (investigation.notes || []).length;
+
+    return [
+      { key: 'overview', label: 'Overview' },
+      ...(profiles > 0 ? [{ key: 'profiles', label: 'Profiles', count: profiles }] : [{ key: 'profiles', label: 'Profiles' }]),
+      ...(activities > 0 ? [{ key: 'activity', label: 'Activity', count: activities }] : [{ key: 'activity', label: 'Activity' }]),
+      ...(associations > 0 ? [{ key: 'associations', label: 'Associations', count: associations }] : [{ key: 'associations', label: 'Associations' }]),
+      ...(sources > 0 ? [{ key: 'sources', label: 'Sources', count: sources }] : [{ key: 'sources', label: 'Sources' }]),
+      ...(webNews > 0 ? [{ key: 'webnews', label: 'Web & News', count: webNews }] : [{ key: 'webnews', label: 'Web & News' }]),
+      ...(notes > 0 ? [{ key: 'notes', label: 'Notes & Findings', count: notes }] : [{ key: 'notes', label: 'Notes & Findings' }]),
+      { key: 'stats', label: 'Metrics & Audit' }
+    ];
+  })();
 
   const handleExportReport = () => {
     if (!investigation) return;
@@ -312,7 +321,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           <div className="stat-card-data">
             <span className="stat-card-label">Total Sources</span>
-            <span className="stat-card-value">{investigation.resultsCount?.sources || 0}</span>
+            <span className="stat-card-value">{(investigation.sources || []).length}</span>
           </div>
         </div>
 
@@ -322,7 +331,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           <div className="stat-card-data">
             <span className="stat-card-label">Social Profiles</span>
-            <span className="stat-card-value">{investigation.resultsCount?.profiles || 0}</span>
+            <span className="stat-card-value">{(investigation.socialProfiles || []).length}</span>
           </div>
         </div>
 
@@ -332,7 +341,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           <div className="stat-card-data">
             <span className="stat-card-label">Web Results</span>
-            <span className="stat-card-value">{investigation.resultsCount?.websites || investigation.resultsCount?.sources || 0}</span>
+            <span className="stat-card-value">{(investigation.webAndNews || []).length}</span>
           </div>
         </div>
 
@@ -342,7 +351,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           <div className="stat-card-data">
             <span className="stat-card-label">News & Articles</span>
-            <span className="stat-card-value">{investigation.resultsCount?.activities || 0}</span>
+            <span className="stat-card-value">{(investigation.activities || []).length}</span>
           </div>
         </div>
 
@@ -352,7 +361,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           <div className="stat-card-data">
             <span className="stat-card-label">Public Documents</span>
-            <span className="stat-card-value">{investigation.resultsCount?.associations || 0}</span>
+            <span className="stat-card-value">{(investigation.associations || []).length}</span>
           </div>
         </div>
       </div>
@@ -459,11 +468,11 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
             <div className="insights-metrics-list">
               <div className="insight-metric-row">
                 <span className="insight-label">Common usernames found</span>
-                <span className="insight-val">{investigation.resultsCount?.profiles || 3}</span>
+                <span className="insight-val">{(investigation.socialProfiles || []).length}</span>
               </div>
               <div className="insight-metric-row">
                 <span className="insight-label">Mentions across news</span>
-                <span className="insight-val">{investigation.resultsCount?.activities || 4}</span>
+                <span className="insight-val">{(investigation.activities || []).length}</span>
               </div>
               <div className="insight-metric-row">
                 <span className="insight-label">Possible identities</span>
