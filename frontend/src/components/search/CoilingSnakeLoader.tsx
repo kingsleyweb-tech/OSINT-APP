@@ -23,22 +23,22 @@ export const CoilingSnakeLoader: React.FC<CoilingSnakeLoaderProps> = ({ query, s
   useEffect(() => {
     const stepInterval = setInterval(() => {
       setStepIndex((prev) => (prev < PROGRESS_STEPS.length - 1 ? prev + 1 : prev));
-    }, 1800);
+    }, 750);
     return () => clearInterval(stepInterval);
   }, []);
 
   // Smooth progress animation
   useEffect(() => {
-    const targetPercent = ((stepIndex + 1) / PROGRESS_STEPS.length) * 100;
+    const targetPercent = Math.min(100, Math.round(((stepIndex + 1) / PROGRESS_STEPS.length) * 100));
     const animInterval = setInterval(() => {
       setProgressPercent((prev) => {
         if (prev >= targetPercent) {
           clearInterval(animInterval);
           return targetPercent;
         }
-        return prev + 0.5;
+        return Math.min(targetPercent, prev + 1.8);
       });
-    }, 30);
+    }, 20);
     return () => clearInterval(animInterval);
   }, [stepIndex]);
 
