@@ -129,13 +129,13 @@
 }
 
 .preview-mini-dashboard {
-  display: grid;
-  grid-template-columns: 160px 1fr;
+  display: flex;
+  flex-direction: column;
   background: #050505;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
-  min-height: 480px;
+  min-height: 440px;
 }
 
 /* Sidebar Mockup */
@@ -789,4 +789,15 @@
   .auth-nav-menu {
     display: none;
   }
+}
+
+/* ── AUTH FOOTER CONTAINER ── */
+.auth-footer-container {
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: auto;
+}
+
+.auth-footer-container .lp-footer {
+  background: #000000 !important;
 }

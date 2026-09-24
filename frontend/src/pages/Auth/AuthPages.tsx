@@ -9,19 +9,13 @@ import {
   UserPlus, 
   User, 
   Search, 
-  ChevronRight, 
-  LayoutDashboard, 
-  FolderSearch, 
-  Users, 
-  Globe, 
-  HelpCircle, 
-  Settings,
   ArrowLeft
 } from 'lucide-react';
 import '../../styles/AuthPages.css';
 import { signIn, signUp } from '../../firebase/auth';
 import { createUserProfileInDb } from '../../firebase/firestore';
 import appLogo from '../../assets/images/icon.png';
+import { Footer } from '../../landing/components/Footer';
 
 interface AuthPageProps {
   onLoginSuccess: (user: any) => void;
@@ -109,61 +103,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
 
       {/* Main Split Layout */}
       <div className="auth-layout">
-        {/* Left Side - Realistic OSINT Dashboard Mockup */}
+        {/* Left Side - OSINT Dashboard Content Mockup (No Sidebar) */}
         <div className="auth-preview-panel">
           <div className="preview-mini-dashboard">
-            {/* Sidebar Mockup */}
-            <div className="mini-sidebar">
-              <div className="mini-brand">
-                <img src={appLogo} alt="OSINT Logo" className="mini-logo-img" />
-                <div className="mini-brand-text">
-                  <div className="mini-title">OSINT</div>
-                  <div className="mini-sub">INVESTIGATION PLATFORM</div>
-                </div>
-              </div>
-
-              <div className="mini-nav-list">
-                <div className="mini-nav-item active">
-                  <LayoutDashboard size={12} />
-                  <span>Dashboard</span>
-                </div>
-                <div className="mini-nav-item">
-                  <Search size={12} />
-                  <span>New Search</span>
-                </div>
-                <div className="mini-nav-item">
-                  <FolderSearch size={12} />
-                  <span>Investigations</span>
-                </div>
-                <div className="mini-nav-item">
-                  <Users size={12} />
-                  <span>People</span>
-                </div>
-                <div className="mini-nav-item">
-                  <Globe size={12} />
-                  <span>Sources</span>
-                </div>
-                <div className="mini-nav-item">
-                  <HelpCircle size={12} />
-                  <span>Help & Docs</span>
-                </div>
-                <div className="mini-nav-item">
-                  <Settings size={12} />
-                  <span>Settings</span>
-                </div>
-              </div>
-
-              <div className="mini-user-badge">
-                <div className="mini-avatar">GI</div>
-                <div className="mini-user-info">
-                  <div className="mini-user-name">Guest Investigator</div>
-                  <div className="mini-user-role">Investigator</div>
-                </div>
-                <ChevronRight size={12} />
-              </div>
-            </div>
-
-            {/* Content Area Mockup */}
+            {/* Main Content Area Mockup */}
             <div className="mini-main-content">
               {/* Header Hero */}
               <div className="mini-hero-row">
@@ -376,6 +319,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Footer Navigation Bar Under Login Form */}
+      <div className="auth-footer-container">
+        <Footer />
       </div>
     </div>
   );
