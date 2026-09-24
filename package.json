@@ -13,6 +13,10 @@
     "build:landing": "cd landing-page && npm run build",
     "build": "npm run build:backend && npm run build:frontend && npm run build:landing"
   },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "devDependencies": {
     "concurrently": "^8.2.2"
   }
