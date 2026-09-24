@@ -308,14 +308,19 @@ export class DeepSearchEngine {
     let directUsernameResults: NormalizedResultItem[] = [];
     if (isUsername) {
       try {
-        const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
+        // The direct platform checks take 8-20s in total. Wait up to 15s and keep every check that
+        // finished by then (reported through the progress callback) instead of discarding them all.
+        const finishedChecks: any[] = [];
+        const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 15000));
         const uDiscovery: any = await Promise.race([
-          usernameDiscovery.discoverUsernames(target, () => {}),
+          usernameDiscovery.discoverUsernames(target, item => finishedChecks.push(item)),
           timeoutPromise
         ]);
-        if (uDiscovery && uDiscovery.items) {
-          uDiscovery.items.forEach((uItem: any) => {
-            if (uItem.status === 'found' && uItem.profileUrl) {
+        const discoveredItems: any[] = uDiscovery?.items || finishedChecks;
+        if (discoveredItems.length > 0) {
+          discoveredItems.forEach((uItem: any) => {
+            // Variation hits (e.g. "name123") are a different username, not an exact match.
+            if (uItem.status === 'found' && uItem.profileUrl && !uItem.isVariation) {
               const canonical = UrlValidator.normalizeUrl(uItem.profileUrl);
               if (!seenUrls.has(canonical)) {
                 seenUrls.add(canonical);

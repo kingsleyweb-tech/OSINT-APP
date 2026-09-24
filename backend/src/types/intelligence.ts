@@ -50,6 +50,8 @@ export interface IntelligenceActivity {
   location?: string;
   sourceName: string;
   sourceUrl: string;
+  /** When the result was discovered (not when the activity happened). */
+  foundAt?: string;
 }
 
 export interface IntelligenceAssociation {

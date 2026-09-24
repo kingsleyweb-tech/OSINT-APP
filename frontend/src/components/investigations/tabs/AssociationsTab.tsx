@@ -1,146 +1,156 @@
 import React, { useState } from 'react';
-import type { Investigation, IntelligenceAssociation, AssociationCategory } from '../../../types/investigation';
-import { 
-  Building2, 
-  ShieldCheck, 
-  ExternalLink, 
-  GraduationCap, 
-  Landmark, 
-  Users, 
-  Award, 
-  FileCheck 
-} from 'lucide-react';
-import { PlatformIcon } from '../../ui/PlatformIcon';
-import '../../../styles/AssociationsTab.css';
+import { Briefcase, Building2, GraduationCap, Landmark, Users } from 'lucide-react';
+import type { IntelligenceAssociation } from '../../../types/investigation';
+import { assocKey, levelOf, newAuditEvent, openUrl, shortUrl, urlKey } from '../../../lib/workspace';
+import { useWorkspace } from '../workspace/WorkspaceContext';
+import { Empty, LevelBadge, LevelPicker, SectionHead, SidChip } from '../workspace/ui';
 
-interface AssociationsTabProps {
-  investigation: Investigation;
+const DOCUMENTED = new Set(['Documented', 'Strong evidence']);
+
+function CategoryIcon({ category }: { category: string }) {
+  const size = 18;
+  if (category === 'Education') return <GraduationCap size={size} />;
+  if (category === 'Companies' || category === 'Professional') return <Briefcase size={size} />;
+  if (category === 'Political' || category === 'Government') return <Landmark size={size} />;
+  if (category === 'Organizations' || category === 'Nonprofit') return <Building2 size={size} />;
+  return <Users size={size} />;
 }
 
-export const AssociationsTab: React.FC<AssociationsTabProps> = ({ investigation }) => {
-  const [selectedCat, setSelectedCat] = useState<string>('ALL');
+export const AssociationsTab: React.FC = () => {
+  const { inv, d, focus, commit, setLevel, openRecordFinding, newNote, goTab } = useWorkspace();
+  const associations = inv.associations || [];
+  const documented = associations.filter(a => DOCUMENTED.has(a.evidenceState));
+  const candidates = associations.filter(a => !DOCUMENTED.has(a.evidenceState));
+  const [selectedKey, setSelectedKey] = useState<string | null>(focus);
+  const selected = associations.find(a => assocKey(a) === selectedKey) || documented[0] || candidates[0] || null;
 
-  const associations: IntelligenceAssociation[] = investigation.associations || (investigation.associationsList as any) || [];
+  const document = (a: IntelligenceAssociation) => commit(
+    inv => ({ ...inv, associations: (inv.associations || []).map(x => (x.id === a.id ? { ...x, evidenceState: 'Documented' } : x)) }),
+    [newAuditEvent({ action: 'Association documented', object: a.name, detail: `${a.evidenceState} → Documented`, group: 'Results', kind: 'investigator' })]
+  );
+  const dismiss = (a: IntelligenceAssociation) => commit(
+    inv => ({ ...inv, associations: (inv.associations || []).filter(x => x.id !== a.id) }),
+    [newAuditEvent({ action: 'Association dismissed', object: a.name, detail: `${a.category} · ${a.evidenceCitation}`, group: 'Results', kind: 'removal' })]
+  );
 
-  const categories: AssociationCategory[] = [
-    'Political',
-    'Education',
-    'Companies',
-    'Organizations',
-    'Professional',
-    'Government',
-    'Nonprofit',
-    'Community'
-  ];
+  if (associations.length === 0) {
+    return <Empty title="No associations were found">No organization, school or company was named alongside the subject in the kept results.</Empty>;
+  }
 
-  const filtered = associations.filter(a => {
-    if (selectedCat === 'ALL') return true;
-    return String(a.category || '').toLowerCase() === selectedCat.toLowerCase();
-  });
-
-  const getCategoryIcon = (cat: AssociationCategory) => {
-    switch (cat) {
-      case 'Political':
-      case 'Government':
-        return <Landmark size={18} style={{ color: '#00e5ff' }} />;
-      case 'Education':
-        return <GraduationCap size={18} style={{ color: '#10b981' }} />;
-      case 'Companies':
-        return <Building2 size={18} style={{ color: '#f59e0b' }} />;
-      case 'Organizations':
-      case 'Nonprofit':
-      case 'Community':
-        return <Users size={18} style={{ color: '#8b5cf6' }} />;
-      default:
-        return <Award size={18} style={{ color: '#00e5ff' }} />;
-    }
-  };
-
-  const getEvidenceBadgeClass = (state?: string) => {
-    const s = (state || 'Verified').toLowerCase();
-    if (s.includes('documented') || s.includes('strong')) return 'badge-strong';
-    if (s.includes('possible')) return 'badge-possible';
-    return 'badge-mention';
-  };
+  const sidFor = (a: IntelligenceAssociation) => (a.sourceUrl ? d.sourceByKey.get(urlKey(a.sourceUrl)) : undefined);
 
   return (
-    <div className="associations-tab-pane">
-      <div className="tab-pane-header">
-        <div>
-          <h3 className="pane-title">Documented Organizations & Affiliations</h3>
-          <p className="pane-sub">Public evidence-based tracking of institutional, political, educational, and corporate associations.</p>
+    <div className="ws-with-rail wide-rail">
+      <div>
+        <div className="ws-section">
+          <SectionHead title="Documented associations" count={documented.length} noRule right={<span className="ws-sub">Named on a profile or in a kept result</span>} />
+          {documented.length === 0 ? <Empty title="None documented yet">Review the candidates below and document the ones the sources support.</Empty> : (
+            <div className="ws-table-wrap">
+              <table className="ws-table">
+                <thead><tr><th colSpan={2}>Organization · role</th><th>Evidence</th><th>Status</th></tr></thead>
+                <tbody>
+                  {documented.map(a => {
+                    const src = sidFor(a);
+                    return (
+                      <tr key={a.id} className={`row${selected?.id === a.id ? ' selected' : ''}`} onClick={() => setSelectedKey(assocKey(a))}>
+                        <td style={{ width: 60 }}><span className="ws-glyph square lg"><CategoryIcon category={a.category} /></span></td>
+                        <td>
+                          <div className="ws-row-cat">{a.category}</div>
+                          <div className="ws-cell-title" style={{ fontSize: 15.5 }}>{a.name}</div>
+                          <div className="ws-cell-muted">{a.relationship}</div>
+                        </td>
+                        <td>
+                          {src && <SidChip sid={src.sid} onClick={() => goTab('sources', src.key)} />}
+                          <div className="ws-cell-muted" style={{ marginTop: 4 }}>{a.sourceName || 'Search result'}</div>
+                        </td>
+                        <td><LevelBadge level={levelOf(inv, assocKey(a))} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        <div className="category-filter-bar">
-          <button 
-            type="button" 
-            className={`cat-filter-btn ${selectedCat === 'ALL' ? 'active' : ''}`}
-            onClick={() => setSelectedCat('ALL')}
-          >
-            All ({associations.length})
-          </button>
-          {categories.map(c => (
-            <button 
-              key={c}
-              type="button" 
-              className={`cat-filter-btn ${selectedCat === c ? 'active' : ''}`}
-              onClick={() => setSelectedCat(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+        {candidates.length > 0 && (
+          <div className="ws-section">
+            <SectionHead title="Appears in results, not documented" count={candidates.length} noRule right={<span className="ws-sub">Not counted as documented until you confirm it</span>} />
+            <div className="ws-table-wrap" style={{ borderStyle: 'dashed' }}>
+              <table className="ws-table">
+                <tbody>
+                  {candidates.map(a => (
+                    <tr key={a.id} className={`row${selected?.id === a.id ? ' selected' : ''}`} onClick={() => setSelectedKey(assocKey(a))}>
+                      <td>
+                        <div className="ws-cell-title">{a.name}</div>
+                        <div className="ws-cell-muted">{a.category} · {a.evidenceState}</div>
+                      </td>
+                      <td className="ws-cell-muted" style={{ maxWidth: 320 }}>
+                        {a.evidenceCitation}
+                        {a.sourceUrl && <div><button type="button" className="ws-url" onClick={e => { e.stopPropagation(); openUrl(a.sourceUrl); }}>{shortUrl(a.sourceUrl)}</button></div>}
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <button type="button" className="ws-btn ws-btn-sm" onClick={e => { e.stopPropagation(); document(a); }}>Document</button>{' '}
+                        <button type="button" className="ws-btn ws-btn-sm ws-btn-ghost" onClick={e => { e.stopPropagation(); dismiss(a); }}>Dismiss</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="empty-pane-box">
-          No public organizational or institutional associations documented for this category.
-        </div>
-      ) : (
-        <div className="associations-cards-grid">
-          {filtered.map((assoc) => (
-            <div key={assoc.id} className="assoc-evidence-card">
-              <div className="card-top-row">
-                <div className="icon-title-wrap">
-                  {getCategoryIcon(assoc.category)}
-                  <span className="assoc-cat-label">{assoc.category}</span>
-                </div>
-                <div className={`evidence-status-pill ${getEvidenceBadgeClass(assoc.evidenceState)}`}>
-                  <ShieldCheck size={12} /> {assoc.evidenceState}
-                </div>
-              </div>
-
-              <h4 className="assoc-entity-name">{assoc.name}</h4>
-              <div className="assoc-relationship-text">
-                Relationship: <strong>{assoc.relationship}</strong>
-              </div>
-
-              <div className="evidence-citation-box">
-                <div className="citation-header">
-                  <FileCheck size={13} /> <strong>Evidence Record:</strong>
-                </div>
-                <p className="citation-text">{assoc.evidenceCitation}</p>
-              </div>
-
-              <div className="assoc-card-footer">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <PlatformIcon platform={assoc.sourceName || 'Web'} domain={assoc.sourceUrl || ''} size={15} />
-                  <span className="source-label">Source: {assoc.sourceName || 'Public Index'}</span>
-                </div>
-                {assoc.sourceUrl && (
-                  <a 
-                    href={assoc.sourceUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="view-evidence-link"
-                  >
-                    View Evidence <ExternalLink size={12} />
-                  </a>
-                )}
+      {selected && (
+        <aside className="ws-rail-plain">
+          <div className="ws-panel">
+            <div className="ws-panel-sec">
+              <div className="ws-label">Evidence · {selected.category}</div>
+              <div className="ws-h2">{selected.name}</div>
+              <div className="ws-sub" style={{ marginTop: 4 }}>{selected.relationship}</div>
+            </div>
+            <div className="ws-panel-sec">
+              {(() => {
+                const src = sidFor(selected);
+                const web = selected.sourceUrl ? d.webByKey.get(urlKey(selected.sourceUrl)) : undefined;
+                return (
+                  <>
+                    <div className="ws-panel-head" style={{ marginBottom: 6 }}>
+                      {src ? <SidChip sid={src.sid} onClick={() => goTab('sources', src.key)} /> : <span className="ws-sub">No saved source</span>}
+                      <span className="ws-sub">{selected.sourceName || ''}</span>
+                    </div>
+                    <div className="ws-quote">{selected.evidenceCitation}</div>
+                    {web?.description && <div className="ws-quote">“{web.description}”</div>}
+                    {selected.sourceUrl && <button type="button" className="ws-url" onClick={() => openUrl(selected.sourceUrl)}>{shortUrl(selected.sourceUrl)}</button>}
+                  </>
+                );
+              })()}
+            </div>
+            <div className="ws-panel-sec">
+              <div className="ws-label">Evidence level</div>
+              <LevelPicker value={levelOf(inv, assocKey(selected))} onChange={l => setLevel(assocKey(selected), l, selected.name, selected.name)} />
+              <div className="ws-panel-actions" style={{ marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="ws-btn ws-btn-primary"
+                  onClick={() => openRecordFinding({ title: `${selected.relationship} — ${selected.name}`, sourceKeys: selected.sourceUrl ? [urlKey(selected.sourceUrl)] : [] })}
+                >
+                  Record finding
+                </button>
+                <button type="button" className="ws-btn" onClick={() => newNote(selected.sourceUrl ? [urlKey(selected.sourceUrl)] : [])}>Add note</button>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="ws-panel-sec">
+              <div className="ws-label">Documented when</div>
+              <p className="ws-sub" style={{ fontSize: 14, lineHeight: 1.6 }}>
+                Associations are extracted automatically from profile details (experience, education) and from institution names
+                that appear in a kept result. Read the source before relying on one, and mark it Validated only when the source
+                clearly ties it to the subject.
+              </p>
+            </div>
+          </div>
+        </aside>
       )}
     </div>
   );

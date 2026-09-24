@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Globe, Mail, Phone } from 'lucide-react';
+import { User } from 'lucide-react';
 import '../../styles/People.css';
 
 export const PeoplePage: React.FC = () => {

@@ -1,127 +1,81 @@
 import { Request, Response } from 'express';
-import { SerpApiProvider } from '../services/search/serpApiProvider';
-import { GithubProvider } from '../services/search/githubProvider';
-import { SocialProvider } from '../services/search/socialProvider';
-import { UsernameProvider } from '../services/search/usernameProvider';
-import { RssWebFeedProvider } from '../services/search/rssWebFeedProvider';
-import { WikipediaProvider } from '../services/search/wikipediaProvider';
 import { EntityAnalyzer } from '../services/intelligence/entityAnalyzer';
-import { RelevanceEngine } from '../services/intelligence/relevanceEngine';
-import { UrlValidator } from '../services/intelligence/urlValidator';
 import { TrackingEngine } from '../services/intelligence/trackingEngine';
 import { DeepSearchEngine } from '../services/search/deepSearchEngine';
 import { NormalizedResultItem, OSINTQuery } from '../types/search';
+import { NameSearchEngine } from '../services/nameSearch/nameSearchEngine';
+import { buildIdentityPayload, buildNameInvestigation, rescanNameInvestigation } from '../services/nameSearch/nameInvestigationBuilder';
 
-export interface SearchCoverageItem {
-  provider: string;
-  status: 'checked' | 'unavailable' | 'error';
-  count: number;
+const UNSUPPORTED_TYPE_ERROR = 'Only name and username searches are supported.';
+
+/**
+ * Accepts `{ query, type }` (what the frontend sends) or a raw OSINTQuery. Only name and
+ * username searches exist; anything else returns null so the caller can reject it.
+ */
+function parseSearchRequest(rawBody: any): OSINTQuery | null {
+  if (typeof rawBody === 'string' || rawBody?.query) {
+    const q = String(rawBody.query || rawBody).trim();
+    const requestedType = rawBody.type ? String(rawBody.type).toLowerCase() : 'name';
+    if (requestedType === 'username') return { searchType: 'username', username: q.replace(/^@/, '') };
+    if (requestedType === 'name') return { searchType: 'name', name: q };
+    return null;
+  }
+
+  const query: OSINTQuery = { ...rawBody };
+  if (!query.searchType) query.searchType = query.name ? 'name' : query.username ? 'username' : undefined;
+  return query.searchType === 'name' || query.searchType === 'username' ? query : null;
+}
+
+/** Web & news items shown in the Web & News tab of a username investigation. */
+function isWebItem(r: NormalizedResultItem): boolean {
+  return r.sourceType === 'Websites & News' || r.sourceType === 'Knowledge & Wikipedia' || !r.sourceType;
 }
 
 export const handleOSINTSearch = async (req: Request, res: Response): Promise<void> => {
   try {
-    const rawBody = req.body;
-    let query: OSINTQuery = {};
-    const searchDepth = rawBody.searchDepth || 'deep';
+    const searchDepth = req.body?.searchDepth || 'deep';
+    const query = parseSearchRequest(req.body);
 
-    if (typeof rawBody === 'string' || rawBody.query) {
-      const q = (rawBody.query || rawBody).trim();
-      const requestedType = rawBody.type ? rawBody.type.toLowerCase() : undefined;
-
-      if (requestedType === 'username') {
-        query.searchType = 'username';
-        query.username = q.replace(/^@/, '');
-      } else {
-        // Default: treat everything as a name search
-        query.searchType = 'name';
-        query.name = q;
-        if (!requestedType || requestedType === 'name') {
-          query.username = q.replace(/\s+/g, '');
-        }
-      }
-    } else {
-      query = rawBody;
+    if (!query) {
+      res.status(400).json({ error: UNSUPPORTED_TYPE_ERROR });
+      return;
     }
 
-    const searchTargetStr = query.domain || query.name || query.username || query.email || query.website || query.phone;
-
+    const searchTargetStr = query.searchType === 'name' ? query.name : query.username;
     if (!searchTargetStr) {
       res.status(400).json({ error: 'Please enter a valid search term.' });
       return;
     }
 
-    console.log(`[OSINT Engine] Search requested [Type: ${query.searchType || 'Auto'}, Depth: ${searchDepth}]: "${searchTargetStr}"`);
+    console.log(`[OSINT Engine] Search requested [Type: ${query.searchType}, Depth: ${searchDepth}]: "${searchTargetStr}"`);
 
-    let allResults: NormalizedResultItem[] = [];
-    let searchCoverage: SearchCoverageItem[] = [];
-    let deepStats: any = null;
-    let sourcesCheckedList: string[] = [];
+    if (query.searchType === 'name') {
+      const nameOutput = await NameSearchEngine.execute(query, { searchDepth });
+      const identities = nameOutput.identities.map(identity => buildIdentityPayload(query, identity, nameOutput, searchDepth));
+      const primary = identities[0];
+      const investigation = buildNameInvestigation(query, nameOutput.identities[0], nameOutput, searchDepth, (req as any).user?.uid);
 
-    if (query.searchType === 'name' || query.searchType === 'username') {
-      // 🚀 USE DEEP SEARCH ENGINE FOR NAME AND USERNAME SEARCHES
-      const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth });
-      allResults = deepOutput.allResults;
-      searchCoverage = deepOutput.searchCoverage;
-      deepStats = deepOutput.stats;
-      sourcesCheckedList = searchCoverage.map(c => c.provider);
-    } else {
-      // FALLBACK PIPELINE: General search via available providers
-      const providers = [
-        new SerpApiProvider(),
-        new WikipediaProvider(),
-        new GithubProvider(),
-        new SocialProvider(),
-        new UsernameProvider(),
-        new RssWebFeedProvider()
-      ];
-
-      sourcesCheckedList = providers.map(p => p.name);
-      const providerResultsPromises = providers.map(p => p.search(query));
-      const settledResults = await Promise.allSettled(providerResultsPromises);
-      const seenUrls = new Set<string>();
-
-      providers.forEach((provider, index) => {
-        const resultState = settledResults[index];
-        if (resultState.status === 'fulfilled') {
-          const providerItems = resultState.value;
-          let addedCount = 0;
-
-          providerItems.forEach(item => {
-            const canonicalUrl = item.url ? UrlValidator.normalizeUrl(item.url) : '';
-            if (!canonicalUrl || seenUrls.has(canonicalUrl)) return;
-
-            const assessment = RelevanceEngine.evaluateItem(query, item);
-            if (assessment.accepted) {
-              seenUrls.add(canonicalUrl);
-              allResults.push({
-                ...item,
-                url: canonicalUrl,
-                confidence: assessment.score,
-                metadata: {
-                  ...item.metadata,
-                  itemType: assessment.itemType,
-                  isVerifiedProfileUrl: assessment.isVerifiedProfileUrl,
-                  confidenceLabel: assessment.confidenceLabel
-                }
-              });
-              addedCount++;
-            }
-          });
-
-          searchCoverage.push({
-            provider: provider.name,
-            status: 'checked',
-            count: addedCount
-          });
-        } else {
-          searchCoverage.push({
-            provider: provider.name,
-            status: 'unavailable',
-            count: 0
-          });
-        }
+      res.status(200).json({
+        success: true,
+        query,
+        possibleIdentities: identities,
+        investigation: primary ? investigation : null,
+        results: [...nameOutput.webItems],
+        profiles: nameOutput.profiles,
+        searchCoverage: nameOutput.searchCoverage,
+        deepStats: nameOutput.stats,
+        auditTrail: nameOutput.auditTrail,
+        sourcesChecked: nameOutput.searchCoverage.map(c => c.provider)
       });
+      return;
     }
+
+    // Username search
+    const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth });
+    const allResults = deepOutput.allResults;
+    const searchCoverage = deepOutput.searchCoverage;
+    const deepStats = deepOutput.stats;
+    const sourcesCheckedList = searchCoverage.map(c => c.provider);
 
     console.log(`[OSINT Engine] Search finished. Retained ${allResults.length} clean relevant findings.`);
 
@@ -134,6 +88,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
 
     const nowIso = new Date().toISOString();
     const investigationId = `inv-${Date.now()}`;
+    const webAndNews = allResults.filter(isWebItem);
 
     const formattedInvestigation = {
       id: investigationId,
@@ -149,6 +104,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       sourcesChecked: sourcesCheckedList,
       searchCoverage,
       deepStats,
+      auditTrail: deepOutput.auditTrail,
       targetProfile: {
         initials: targetInitials,
         fullName: targetName,
@@ -162,15 +118,13 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       },
       resultsCount: {
         profiles: analyzedProfile.socialProfiles.length,
-        emails: query.email ? 1 : 0,
-        phones: query.phone ? 1 : 0,
-        websites: allResults.filter(r => r.sourceType === 'Websites & News' || r.sourceType === 'Knowledge & Wikipedia' || !r.sourceType).length,
+        websites: webAndNews.length,
         other: 0,
         sources: analyzedProfile.sources.length,
         activities: analyzedProfile.activities.length,
         associations: analyzedProfile.associations.length
       },
-      webAndNews: allResults.filter(r => r.sourceType === 'Websites & News' || r.sourceType === 'Knowledge & Wikipedia' || !r.sourceType),
+      webAndNews,
       socialProfiles: analyzedProfile.socialProfiles,
       recentActivities: analyzedProfile.activities.map(a => ({
         type: a.category.toLowerCase(),
@@ -189,8 +143,8 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       notes: [
         {
           id: 'note-1',
-          text: allResults.length > 0 
-            ? `Deep OSINT scan completed. Discovered ${allResults.length} verified public findings across platforms, web knowledge, and profiles.` 
+          text: allResults.length > 0
+            ? `Deep OSINT scan completed. Discovered ${allResults.length} verified public findings across platforms, web knowledge, and profiles.`
             : `No publicly available result found for "${searchTargetStr}". Checked ${searchCoverage.length} connected public OSINT providers.`,
           author: 'OSINT Intelligence Engine',
           createdAt: nowIso
@@ -221,6 +175,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       results: allResults,
       searchCoverage,
       deepStats,
+      auditTrail: deepOutput.auditTrail,
       sourcesChecked: sourcesCheckedList
     });
 
@@ -239,42 +194,36 @@ export const handleRescanInvestigation = async (req: Request, res: Response): Pr
     }
 
     const query: OSINTQuery = investigation.searchInputs;
-    let allResults: NormalizedResultItem[] = [];
 
-    if (query.searchType === 'name' || query.searchType === 'username') {
-      const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth: searchDepth || 'deep' });
-      allResults = deepOutput.allResults;
-    } else {
-      const providers = [
-        new SerpApiProvider(),
-        new WikipediaProvider(),
-        new GithubProvider(),
-        new SocialProvider(),
-        new UsernameProvider(),
-        new RssWebFeedProvider()
-      ];
-
-      const providerResultsPromises = providers.map(p => p.search(query));
-      const settledResults = await Promise.allSettled(providerResultsPromises);
-      const seenUrls = new Set<string>();
-
-      providers.forEach((_, index) => {
-        const resultState = settledResults[index];
-        if (resultState.status === 'fulfilled') {
-          resultState.value.forEach(item => {
-            if (!seenUrls.has(item.url)) {
-              seenUrls.add(item.url);
-              allResults.push(item);
-            }
-          });
-        }
-      });
+    if (query.searchType === 'name') {
+      const nameOutput = await NameSearchEngine.execute(query, { searchDepth: searchDepth || 'deep' });
+      // No SerpApi call returned data (quota exhausted, missing key, network error): keep the saved results untouched.
+      if (nameOutput.stats.pagesReviewed === 0) {
+        res.status(503).json({
+          error: nameOutput.stats.quotaExhausted
+            ? 'The SerpApi monthly search quota is exhausted. The saved investigation was not changed.'
+            : `No search could be completed (${nameOutput.stats.errors[0] || 'unknown error'}). The saved investigation was not changed.`
+        });
+        return;
+      }
+      const updated = rescanNameInvestigation(query, investigation, nameOutput, searchDepth || 'deep');
+      res.json(updated);
+      return;
     }
+
+    if (query.searchType !== 'username') {
+      res.status(400).json({ error: UNSUPPORTED_TYPE_ERROR });
+      return;
+    }
+
+    const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth: searchDepth || 'deep' });
+    const allResults = deepOutput.allResults;
 
     const previousUrls = (investigation.sources || []).map((s: any) => s.url);
     const { newItemsCount, changesSummary, scanHistoryItem } = TrackingEngine.compareScans(previousUrls, allResults);
 
     const analyzedProfile = EntityAnalyzer.analyze(query, allResults);
+    const webAndNews = allResults.filter(isWebItem);
     const nowIso = new Date().toISOString();
 
     const updatedInvestigation = {
@@ -282,6 +231,9 @@ export const handleRescanInvestigation = async (req: Request, res: Response): Pr
       quickSummary: analyzedProfile.personSummary,
       overallConfidence: analyzedProfile.overallConfidence,
       confidenceLevel: analyzedProfile.confidenceLevel,
+      searchCoverage: deepOutput.searchCoverage,
+      deepStats: deepOutput.stats,
+      auditTrail: deepOutput.auditTrail,
       targetProfile: {
         ...investigation.targetProfile,
         occupation: analyzedProfile.publicRole,
@@ -290,14 +242,27 @@ export const handleRescanInvestigation = async (req: Request, res: Response): Pr
       resultsCount: {
         ...investigation.resultsCount,
         profiles: analyzedProfile.socialProfiles.length,
+        websites: webAndNews.length,
         sources: analyzedProfile.sources.length,
         activities: analyzedProfile.activities.length,
         associations: analyzedProfile.associations.length
       },
+      webAndNews,
       socialProfiles: analyzedProfile.socialProfiles,
       activities: analyzedProfile.activities,
+      recentActivities: analyzedProfile.activities.map(a => ({
+        type: a.category.toLowerCase(),
+        title: a.title,
+        platform: a.sourceName,
+        timestamp: a.date,
+        url: a.sourceUrl
+      })),
       associations: analyzedProfile.associations,
       sources: analyzedProfile.sources,
+      sourceLinks: analyzedProfile.sources.map(s => ({
+        title: `${s.sourceName}: ${s.title}`,
+        url: s.url
+      })),
       scanHistory: [scanHistoryItem, ...(investigation.scanHistory || [])],
       lastSearched: nowIso,
       lastUpdated: nowIso,

@@ -1,8 +1,6 @@
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 
-export type SearchType = 'name' | 'username' | 'email' | 'domain';
-
-export type TargetType = 'name' | 'username' | 'email' | 'domain' | 'phone';
+export type SearchType = 'name' | 'username';
 
 export type ResultCategory = 
   | 'Social Media'
@@ -11,8 +9,6 @@ export type ResultCategory =
   | 'Communities'
   | 'Websites & News'
   | 'Knowledge & Wikipedia'
-  | 'Domain Intelligence'
-  | 'Email Intelligence'
   | 'Organizations'
   | 'Public Activity'
   | 'Other';
@@ -94,6 +90,8 @@ export interface IntelligenceActivity {
   location?: string;
   sourceName: string;
   sourceUrl: string;
+  /** When the result was discovered (not when the activity happened). */
+  foundAt?: string;
 }
 
 export interface IntelligenceAssociation {
@@ -140,12 +138,8 @@ export interface SearchInput {
   queryValue?: string;
   name?: string;
   username?: string;
-  email?: string;
-  phone?: string;
   location?: string;
   organization?: string;
-  website?: string;
-  domain?: string;
 }
 
 export interface SocialProfile {
@@ -164,6 +158,33 @@ export interface SocialProfile {
   bio?: string;
   category?: 'Social' | 'Professional' | 'Developer' | 'Video & Streaming';
   isVerified?: boolean;
+  // Name-search profile evidence (absent on older records and username-search results)
+  id?: string;
+  platformId?: string;
+  pageKind?: string;
+  pageKindLabel?: string;
+  profileName?: string;
+  /** Exact destination returned by the search engine; what "View Profile" opens. */
+  profileUrl?: string;
+  title?: string;
+  snippet?: string;
+  thumbnail?: string;
+  favicon?: string;
+  sourceQuery?: string;
+  attributes?: {
+    headline?: string;
+    organization?: string;
+    education?: string;
+    location?: string;
+    details?: string[];
+  };
+  evidence?: { code: string; text: string }[];
+  personId?: string;
+  discoveredAt?: string;
+  lastCheckedAt?: string;
+  linkStatus?: 'unchecked' | 'reachable' | 'unavailable' | 'unverifiable';
+  linkStatusReason?: string;
+  status?: 'active' | 'previously_discovered';
 }
 
 export interface PublicActivity {
@@ -180,11 +201,76 @@ export interface Association {
   details?: string;
 }
 
+export type NoteType = 'Observation' | 'Question' | 'Comment' | 'Method';
+
+export interface NoteComment {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface InvestigationNote {
   id: string;
   text: string;
   author: string;
   createdAt: string;
+  type?: NoteType;
+  title?: string;
+  /** Linked items: source URL keys (see lib/workspace urlKey) or finding ids such as "F-01". */
+  links?: string[];
+  comments?: NoteComment[];
+  updatedAt?: string;
+}
+
+/** Investigator review level of a kept result. Results the search engine kept start as "relevant". */
+export type EvidenceLevel = 'raw' | 'relevant' | 'validated';
+
+export type FindingConfidence = 'High' | 'Medium' | 'Low';
+export type FindingStatus = 'Confirmed' | 'Needs corroboration';
+
+/** A conclusion recorded by an investigator after reviewing evidence. Never created automatically. */
+export interface Finding {
+  id: string;
+  title: string;
+  category: string;
+  statement: string;
+  confidence: FindingConfidence;
+  status: FindingStatus;
+  /** Supporting evidence, as source URL keys. */
+  sourceKeys: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export type AuditGroup = 'Searches' | 'Results' | 'Findings' | 'Notes' | 'Investigation';
+export type AuditKind = 'system' | 'investigator' | 'finding' | 'removal';
+
+export interface AuditEvent {
+  id: string;
+  at: string;
+  action: string;
+  object: string;
+  by: string;
+  detail: string;
+  group: AuditGroup;
+  kind: AuditKind;
+}
+
+/** One SerpApi query of one search run. */
+export interface SearchLogEntry {
+  /** Sequential query number across every search of this investigation. */
+  run: number;
+  /** Which search (initial search = 1, each re-run adds one). */
+  batch: number;
+  at: string;
+  purpose: string;
+  query: string;
+  returned: number;
+  kept: number | null;
+  status: 'Completed' | 'Cached' | 'Failed' | 'No results';
+  error?: string;
 }
 
 export interface Investigation {
@@ -212,8 +298,6 @@ export interface Investigation {
   };
   resultsCount: {
     profiles: number;
-    emails: number;
-    phones: number;
     websites: number;
     other: number;
     sources: number;
@@ -230,6 +314,7 @@ export interface Investigation {
     url: string;
     discoveredAt?: string;
     confidence?: number;
+    metadata?: Record<string, any>;
   }[];
   recentActivities: PublicActivity[];
   activities?: IntelligenceActivity[];
@@ -241,6 +326,15 @@ export interface Investigation {
     url: string;
   }[];
   notes: InvestigationNote[];
+  findings?: Finding[];
+  /** Investigator review level per result, keyed by URL key. Missing = "relevant". */
+  review?: Record<string, EvidenceLevel>;
+  auditLog?: AuditEvent[];
+  searchLog?: SearchLogEntry[];
+  /** Per-query log returned by the most recent search (raw backend shape). */
+  auditTrail?: any[];
+  deepStats?: Record<string, any>;
+  searchDepth?: string;
   scanHistory?: ScanHistoryItem[];
   lastSearched?: string;
   lastUpdated?: string;

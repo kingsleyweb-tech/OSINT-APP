@@ -177,7 +177,7 @@ export class EntityAnalyzer {
    * Primary entry point to analyze search items and extract structured intelligence
    */
   public static analyze(query: OSINTQuery, items: NormalizedResultItem[]): AnalyzedPersonProfile {
-    const targetName = (query.name || query.queryValue || query.username || query.email || query.domain || 'Discovered Target').trim();
+    const targetName = (query.name || query.queryValue || query.username || 'Discovered Target').trim();
 
     if (!items || items.length === 0) {
       return {
@@ -308,12 +308,9 @@ export class EntityAnalyzer {
       else if (text.includes('repo') || text.includes('commit') || text.includes('project') || text.includes('developer')) category = 'Professional';
       else if (text.includes('paper') || text.includes('article') || text.includes('journal') || text.includes('publication')) category = 'Publication';
 
-      let dateStr = 'Recently Documented';
-      if (item.metadata?.date) {
-        dateStr = item.metadata.date;
-      } else if (item.discoveredAt) {
-        dateStr = new Date(item.discoveredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
+      // Only the date the search result states; when it gives none the activity is undated
+      // (the discovery time is kept separately as foundAt).
+      const dateStr = item.metadata?.date || 'Date not stated';
 
       const briefReport = item.description || `Public activity or publication for ${targetName} documented on ${item.source}.`;
 
@@ -325,7 +322,8 @@ export class EntityAnalyzer {
         category,
         location: item.location,
         sourceName: item.source,
-        sourceUrl: item.url
+        sourceUrl: item.url,
+        foundAt: item.discoveredAt
       });
     });
 

@@ -201,7 +201,7 @@ export const HelpPage: React.FC = () => {
         lead: 'The search backend leverages SerpApi for real-time web indexing and structured extraction.',
         content: {
           title: 'SerpApi Query Batching',
-          desc: 'Instead of making hundreds of uncoordinated queries, the TieredQueryEngine generates a deduplicated query batch (typically 8 to 10 queries per search) to maximize platform discovery while conserving API quota.',
+          desc: 'Name searches run a fixed plan of 8 exact-phrase SerpApi searches (plus one per location or organization hint and up to 2 profile confirmations). Username searches run a larger multi-stage sweep capped at 35 queries. Identical requests are cached for 12 hours so they do not use quota twice.',
           sponsorLabel: 'Powered by',
           url: 'https://serpapi.com/'
         }
@@ -212,7 +212,7 @@ export const HelpPage: React.FC = () => {
         title: 'Legal Compliance & Data Governance',
         lead: 'Guidelines for conducting lawful, ethical open source intelligence collection.',
         principles: [
-          { title: 'Public Domain Compliance', desc: 'All data collected is strictly from publicly indexed search engines and domain lookup protocols. No private data breaches or non-public databases are accessed.' },
+          { title: 'Public Domain Compliance', desc: 'All data comes from publicly indexed search engine results and public platform APIs. No private data breaches or non-public databases are accessed.' },
           { title: 'Chain of Custody', desc: 'Audit metrics preserve original source URLs, domain timestamps, and execution parameters to support legal evidentiary standards.' }
         ]
       },
@@ -224,7 +224,7 @@ export const HelpPage: React.FC = () => {
         faqs: [
           { q: 'Why did some results appear after opening an investigation?', a: 'In previous versions, secondary queries were executed dynamically when opening sub-tabs. We refactored the search flow so that 100% of available provider searches complete up-front during initial search execution.' },
           { q: 'Does the platform create fake verification labels?', a: 'No. We follow a strict rule: zero synthetic data. Profile links and match signals are derived exclusively from actual public web pages indexed by SerpApi.' },
-          { q: 'How are API quotas managed?', a: 'The TieredQueryEngine generates a targeted, deduplicated query batch (typically 8 to 10 queries per search) to ensure maximum platform discovery while preventing unnecessary API consumption.' }
+          { q: 'How are API quotas managed?', a: 'Each search uses a small, fixed set of targeted queries (8 to 11 SerpApi requests for a name search, up to about 71 for a username search), and identical requests are served from a 12-hour cache instead of being billed again.' }
         ]
       }
     ];

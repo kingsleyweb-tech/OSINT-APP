@@ -1,5 +1,3 @@
-import { OSINTQuery } from '../../types/search';
-
 export type PlatformCategory = 
   | 'social'
   | 'professional'
@@ -547,3 +545,33 @@ export const PLATFORM_REGISTRY: PlatformEntry[] = [
     usernameSearchPattern: (u) => `"${u}" filetype:pdf`
   }
 ];
+
+// Hosts that belong to a registry platform but are not listed in its `domains`.
+const HOST_ALIASES: Record<string, string> = {
+  'twitter.com': 'soc-x',
+  'threads.com': 'soc-threads',
+  'youtu.be': 'vid-youtube',
+  'fb.com': 'soc-facebook',
+  'bsky.app': 'soc-bluesky'
+};
+
+const HOST_INDEX: Array<{ host: string; entry: PlatformEntry }> = (() => {
+  const list: Array<{ host: string; entry: PlatformEntry }> = [];
+  const add = (host: string, entry: PlatformEntry) => {
+    if (host && !list.some(h => h.host === host)) list.push({ host, entry });
+  };
+  PLATFORM_REGISTRY.forEach(entry => entry.domains.forEach(d => add(d.split('/')[0].toLowerCase(), entry)));
+  Object.entries(HOST_ALIASES).forEach(([host, id]) => {
+    const entry = PLATFORM_REGISTRY.find(p => p.id === id);
+    if (entry) add(host, entry);
+  });
+  // Longest host first so scholar.google.com wins over any shorter suffix.
+  return list.sort((a, b) => b.host.length - a.host.length);
+})();
+
+/** Registry platform for a hostname. Exact host or sub-domain match only — `netflix.com` is never `x.com`. */
+export function detectPlatform(hostname: string): PlatformEntry | null {
+  const host = hostname.toLowerCase().replace(/^www\./, '');
+  const hit = HOST_INDEX.find(h => host === h.host || host.endsWith(`.${h.host}`));
+  return hit ? hit.entry : null;
+}

@@ -1,16 +1,12 @@
-export type SearchType = 'name' | 'username' | 'email' | 'domain' | 'phone';
+export type SearchType = 'name' | 'username';
 
 export interface OSINTQuery {
   searchType?: SearchType;
   queryValue?: string;
   name?: string;
   username?: string;
-  email?: string;
-  phone?: string;
   location?: string;
   organization?: string;
-  website?: string;
-  domain?: string;
 }
 
 export type ResultCategory = 
@@ -20,8 +16,6 @@ export type ResultCategory =
   | 'Communities'
   | 'Websites & News'
   | 'Knowledge & Wikipedia'
-  | 'Domain Intelligence'
-  | 'Email Intelligence'
   | 'Organizations'
   | 'Public Activity'
   | 'Other';
@@ -42,9 +36,4 @@ export interface NormalizedResultItem {
   confidence: number; // 0 - 100
   confidenceLevel: ConfidenceLevel;
   metadata?: Record<string, any>;
-}
-
-export interface ISearchProvider {
-  name: string;
-  search(query: OSINTQuery): Promise<NormalizedResultItem[]>;
 }

@@ -139,7 +139,7 @@ export const InvestigationsListPage: React.FC<InvestigationsListPageProps> = ({ 
                     </span>
                   </td>
                   <td><span className="conf-text">{inv.overallConfidence ?? 85}%</span></td>
-                  <td>{inv.resultsCount?.sources ?? inv.sources?.length ?? 0}</td>
+                  <td>{inv.sources?.length ?? 0}</td>
                   <td>{inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                   <td>
                     <div className="actions-cell">
