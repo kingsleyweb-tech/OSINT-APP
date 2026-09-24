@@ -28,9 +28,13 @@ app.get('/api/health', (req, res) => {
 // OSINT Search Routes
 app.use('/api', searchRoutes);
 
-app.listen(PORT, () => {
-  console.log(`=================================`);
-  console.log(`OSINT Server active on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`=================================`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`=================================`);
+    console.log(`OSINT Server active on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`=================================`);
+  });
+}
+
+export default app;
