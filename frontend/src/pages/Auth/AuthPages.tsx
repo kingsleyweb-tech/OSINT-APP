@@ -11,12 +11,17 @@ import {
   Search, 
   ArrowLeft,
   Sun,
-  Moon
+  Moon,
+  Zap,
+  Globe,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import '../../styles/AuthPages.css';
 import { signIn, signUp } from '../../firebase/auth';
 import { createUserProfileInDb } from '../../firebase/firestore';
 import appLogo from '../../assets/images/icon.png';
+import proImg from '../../assets/images/pro.png';
 import { Footer } from '../../landing/components/Footer';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -121,103 +126,41 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
 
       {/* Main Split Layout */}
       <div className="auth-layout">
-        {/* Left Side - OSINT Dashboard Content Mockup (No Sidebar) */}
+        {/* Left Side - Dashboard Showcase & Information using pro.png */}
         <div className="auth-preview-panel">
-          <div className="preview-mini-dashboard">
-            {/* Main Content Area Mockup */}
-            <div className="mini-main-content">
-              {/* Header Hero */}
-              <div className="mini-hero-row">
-                <div className="mini-welcome-box">
-                  <h3>Welcome back, Guest</h3>
-                  <p>Search and discover intelligence across multiple platforms.</p>
-                  
-                  <div className="mini-search-widget">
-                    <div className="mini-tabs">
-                      <div 
-                        className="mini-tab-pill-slider" 
-                        style={{ transform: previewSearchMode === 'username' ? 'translateX(100%)' : 'translateX(0%)' }} 
-                      />
-                      <span 
-                        className={`mini-tab ${previewSearchMode === 'name' ? 'active' : ''}`}
-                        onClick={() => setPreviewSearchMode('name')}
-                      >
-                        Name
-                      </span>
-                      <span 
-                        className={`mini-tab ${previewSearchMode === 'username' ? 'active' : ''}`}
-                        onClick={() => setPreviewSearchMode('username')}
-                      >
-                        Username
-                      </span>
-                    </div>
-                    <div className="mini-search-input-box">
-                      <Search size={11} className="mini-search-icon" />
-                      <span className="mini-search-text">e.g. Kwame Mensah, John Mahama</span>
-                      <span className="mini-search-btn">Search</span>
-                    </div>
-                  </div>
-                </div>
+          <div className="auth-showcase-header">
+            <div className="auth-showcase-badge">
+              <Zap size={13} className="badge-icon" />
+              <span>ENTERPRISE OSINT WORKSPACE</span>
+            </div>
+            <h2 className="auth-showcase-title">Public Intelligence & Entity Investigation Suite</h2>
+            <p className="auth-showcase-sub">
+              Automate public digital footprint research, aggregate multi-source index signals, and organize structured subject investigation records into clear, actionable intelligence.
+            </p>
+          </div>
 
-                <div className="mini-spotlight-card">
-                  <div className="spotlight-icon-circle">
-                    <Search size={14} className="spotlight-icon" />
-                  </div>
-                  <h4>More than just search.</h4>
-                  <p>Find connections. Uncover associations. See the bigger picture.</p>
-                </div>
-              </div>
+          {/* Pro Dashboard Screenshot Showcase */}
+          <div className="auth-pro-img-wrapper">
+            <img src={proImg} alt="OSINT Platform Pro Dashboard Workspace" className="auth-pro-image" />
+            <div className="auth-img-overlay-badge">
+              <span className="live-dot" />
+              <span>Live Workspace Preview</span>
+            </div>
+          </div>
 
-              {/* Bottom Cards: Recent Investigations & Search Activity */}
-              <div className="mini-bottom-grid">
-                <div className="mini-card-box">
-                  <div className="card-box-header">
-                    <span>Recent Investigations</span>
-                    <span className="view-all-link">View all ↗</span>
-                  </div>
-
-                  <div className="mini-investigation-item">
-                    <div className="item-avatar">CA</div>
-                    <div className="item-details">
-                      <div className="item-name">Christiana Abaah</div>
-                      <div className="item-sub">Political Figure / Public Official</div>
-                    </div>
-                    <div className="item-meta">
-                      <span className="item-date">Sep 23</span>
-                      <span className="mini-status-badge">Completed</span>
-                    </div>
-                  </div>
-
-                  <div className="mini-investigation-item">
-                    <div className="item-avatar">CA</div>
-                    <div className="item-details">
-                      <div className="item-name">Christiana Abaah</div>
-                      <div className="item-sub">Political Figure / Public Official</div>
-                    </div>
-                    <div className="item-meta">
-                      <span className="item-date">Sep 23</span>
-                      <span className="mini-status-badge">Completed</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mini-card-box">
-                  <div className="card-box-header">
-                    <span>Search Activity</span>
-                    <span className="range-sub">Last 7 days</span>
-                  </div>
-
-                  <div className="mini-chart-bars">
-                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '30%' }} /><span>Sep 18</span></div>
-                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '20%' }} /><span>Sep 19</span></div>
-                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '25%' }} /><span>Sep 20</span></div>
-                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '35%' }} /><span>Sep 21</span></div>
-                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '15%' }} /><span>Sep 22</span></div>
-                    <div className="chart-bar-col"><div className="bar-fill active" style={{ height: '90%' }} /><span>Sep 23</span></div>
-                    <div className="chart-bar-col"><div className="bar-fill" style={{ height: '40%' }} /><span>Sep 24</span></div>
-                  </div>
-                </div>
-              </div>
+          {/* Feature Highlights */}
+          <div className="auth-feature-pills-row">
+            <div className="auth-feature-pill">
+              <CheckCircle2 size={14} className="pill-icon" />
+              <span>Cross-Platform Profile Discovery</span>
+            </div>
+            <div className="auth-feature-pill">
+              <Globe size={14} className="pill-icon" />
+              <span>Multi-Source Index Aggregation</span>
+            </div>
+            <div className="auth-feature-pill">
+              <ShieldCheck size={14} className="pill-icon" />
+              <span>Private & Encrypted Workspaces</span>
             </div>
           </div>
         </div>
