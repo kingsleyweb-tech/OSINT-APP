@@ -152,10 +152,18 @@ export interface SocialProfile {
   platform: string;
   username: string;
   url: string;
+  canonicalUrl?: string;
+  originalUrl?: string;
+  sourceUrl?: string;
+  source?: string;
   confidence: number;
   confidenceLevel: ConfidenceLevel;
+  confidenceLabel?: 'Verified Match' | 'Likely Match' | 'Possible Match';
+  matchReason?: string[];
   avatarUrl?: string;
   bio?: string;
+  category?: 'Social' | 'Professional' | 'Developer' | 'Video & Streaming';
+  isVerified?: boolean;
 }
 
 export interface PublicActivity {

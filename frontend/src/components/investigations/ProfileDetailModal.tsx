@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ExternalLink, Code, Globe, Calendar, MapPin, Building, ShieldCheck, User } from 'lucide-react';
+import { X, ExternalLink, Code, Globe, Calendar, MapPin, Building, ShieldCheck, User, CheckCircle2 } from 'lucide-react';
 import type { SocialProfile } from '../../types/investigation';
 import '../../styles/ProfileDetailModal.css';
 
@@ -12,6 +12,20 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
   if (!profile) return null;
 
   const metadata = (profile as any).metadata || {};
+  const matchReasons = profile.matchReason || [`Verified profile match on ${profile.platform}`];
+  const handle = profile.username ? profile.username.replace(/^@+/, '') : '';
+  const canonicalUrl = profile.canonicalUrl || profile.url || '';
+
+  const openUrl = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canonicalUrl) return;
+    const targetUrl = canonicalUrl.startsWith('http') ? canonicalUrl : `https://${canonicalUrl}`;
+    if (targetUrl.includes('google.com/url') || targetUrl.includes('serpapi.com')) {
+      alert('This profile URL could not be resolved to a direct external profile.');
+      return;
+    }
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -25,7 +39,7 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
           {profile.avatarUrl || metadata.avatarUrl || metadata.profileImage ? (
             <img 
               src={profile.avatarUrl || metadata.avatarUrl || metadata.profileImage} 
-              alt={profile.username} 
+              alt={handle} 
               className="hero-avatar-img"
             />
           ) : (
@@ -35,10 +49,10 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
           )}
 
           <div className="hero-meta">
-            <h2 className="hero-username">@{profile.username ? profile.username.replace(/^@+/, '') : ''}</h2>
-            <div className="confidence-chip high">
+            <h2 className="hero-username">@{handle}</h2>
+            <div className={`confidence-chip ${profile.confidenceLevel ? profile.confidenceLevel.toLowerCase() : 'high'}`}>
               <ShieldCheck size={14} />
-              <span>{profile.confidenceLevel} Match ({profile.confidence}%)</span>
+              <span>{profile.confidenceLabel || `${profile.confidence}% Match`}</span>
             </div>
           </div>
         </div>
@@ -50,6 +64,19 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
               <p className="detail-text">{metadata.bio || profile.bio}</p>
             </div>
           ) : null}
+
+          {/* Evidence Signals / Why This Result */}
+          <div className="detail-section">
+            <h4 className="detail-label">Evidence Signals & Verification</h4>
+            <ul className="modal-evidence-list" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0 0' }}>
+              {matchReasons.map((reason, idx) => (
+                <li key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', marginBottom: '4px' }}>
+                  <CheckCircle2 size={13} style={{ color: '#10b981', flexShrink: 0 }} />
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <div className="stats-grid">
             {metadata.publicRepos !== undefined && (
@@ -78,6 +105,13 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
           </div>
 
           <div className="info-list-group">
+            {profile.source && (
+              <div className="info-item">
+                <Globe size={14} className="item-icon" />
+                <span>Discovery Source: <strong>{profile.source}</strong></span>
+              </div>
+            )}
+
             {metadata.company && (
               <div className="info-item">
                 <Building size={14} className="item-icon" />
@@ -104,13 +138,7 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
         <div className="profile-modal-footer">
           <button 
             className="open-source-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              const targetUrl = profile.url ? (profile.url.startsWith('http') ? profile.url : `https://${profile.url}`) : '';
-              if (targetUrl) {
-                window.open(targetUrl, '_blank', 'noopener,noreferrer');
-              }
-            }}
+            onClick={openUrl}
           >
             <span>Open Verified Source Profile</span>
             <ExternalLink size={14} />

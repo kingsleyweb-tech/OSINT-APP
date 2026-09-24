@@ -26,11 +26,18 @@ export interface AnalyzedPersonProfile {
     platform: string;
     username: string;
     url: string;
+    canonicalUrl?: string;
+    originalUrl?: string;
+    sourceUrl?: string;
+    source?: string;
     confidence: number;
     confidenceLevel: 'High' | 'Medium' | 'Low';
+    confidenceLabel?: 'Verified Match' | 'Likely Match' | 'Possible Match';
+    matchReason?: string[];
     avatarUrl?: string;
     bio?: string;
     category?: 'Social' | 'Professional' | 'Developer' | 'Video & Streaming';
+    isVerified?: boolean;
   }>;
 }
 
@@ -446,9 +453,19 @@ export class EntityAnalyzer {
       const urlValidation = UrlValidator.validateAndClassify(r.url);
       const canonicalUrl = urlValidation.canonicalUrl;
 
-      if (seenUrls.has(canonicalUrl)) return;
+      if (!canonicalUrl || seenUrls.has(canonicalUrl)) return;
 
-      // STRICT CHECK: Item MUST be classified as a profile AND have a verified profile URL pattern!
+      // STRICT CHECK 1: Must NOT be a search page, google search URL, or serpapi URL
+      if (
+        urlValidation.itemType === 'search_page' ||
+        canonicalUrl.includes('google.com/url') ||
+        canonicalUrl.includes('google.com/search') ||
+        canonicalUrl.includes('serpapi.com')
+      ) {
+        return;
+      }
+
+      // STRICT CHECK 2: Item MUST be classified as a profile OR channel and be a verified profile URL pattern!
       const isProfile = r.metadata?.itemType === 'profile' || urlValidation.itemType === 'profile' || urlValidation.isVerifiedProfileUrl;
       
       if (!isProfile) {
@@ -464,18 +481,58 @@ export class EntityAnalyzer {
       else if (canonicalUrl.includes('github.com')) category = 'Developer';
       else if (canonicalUrl.includes('youtube.com')) category = 'Video & Streaming';
 
-      const username = urlValidation.extractedHandle || r.username || targetName;
+      const rawHandle = urlValidation.extractedHandle || r.username;
+      const username = rawHandle ? rawHandle.replace(/^@+/, '') : targetName;
       const confidence = r.confidence || 85;
+
+      // Build evidence signals ("Why this profile?")
+      const matchReasons: string[] = [];
+      const title = r.title || '';
+      const snippet = r.description || '';
+
+      const nameMatch = RelevanceEngine.matchPersonName(targetName, title);
+      if (nameMatch.isExactPhrase) {
+        matchReasons.push(`Exact full name match "${targetName}" in profile title`);
+      } else if (nameMatch.allTokensMatched) {
+        matchReasons.push(`All name tokens for "${targetName}" matched in profile title`);
+      }
+
+      const snippetNameMatch = RelevanceEngine.matchPersonName(targetName, snippet);
+      if (snippetNameMatch.isExactPhrase || snippetNameMatch.allTokensMatched) {
+        matchReasons.push(`Target name confirmed in profile biography/snippet`);
+      }
+
+      if (urlValidation.isVerifiedProfileUrl) {
+        matchReasons.push(`Verified profile URL structure on ${platformName}`);
+      }
+
+      if (rawHandle && rawHandle.toLowerCase() !== targetName.toLowerCase()) {
+        matchReasons.push(`Discovered handle @${rawHandle.replace(/^@+/, '')}`);
+      }
+
+      if (r.location) {
+        matchReasons.push(`Location alignment (${r.location})`);
+      }
+
+      const confidenceLabel: 'Verified Match' | 'Likely Match' | 'Possible Match' = 
+        confidence >= 85 ? 'Verified Match' : confidence >= 65 ? 'Likely Match' : 'Possible Match';
 
       verifiedProfiles.push({
         platform: platformName,
         username,
-        url: canonicalUrl, // ALWAYS use the real canonical URL returned by SerpApi!
+        url: canonicalUrl,
+        canonicalUrl,
+        originalUrl: r.url,
+        sourceUrl: canonicalUrl,
+        source: r.source || `Search Engine (${urlValidation.domain})`,
         confidence,
         confidenceLevel: confidence >= 85 ? 'High' : confidence >= 65 ? 'Medium' : 'Low',
+        confidenceLabel,
+        matchReason: matchReasons.length > 0 ? matchReasons : [`Public profile match on ${platformName}`],
         avatarUrl: r.metadata?.avatarUrl || r.metadata?.profileImage || undefined,
         bio: r.description,
-        category
+        category,
+        isVerified: confidence >= 75
       });
     });
 

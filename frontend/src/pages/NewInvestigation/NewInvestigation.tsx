@@ -122,27 +122,12 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
             interests: ['LinkedIn', 'Twitter', 'GitHub', 'Web Index'],
             lastActive: 'Active recently'
           },
-          resultsCount: { profiles: 4, emails: 1, phones: 0, websites: 8, other: 0, sources: 8, activities: 5, associations: 3 },
-          webAndNews: [
-            { title: `${cleanName} - Executive & Digital Profile Overview`, url: `https://linkedin.com/in/${cleanName.toLowerCase().replace(/\s+/g, '')}`, snippet: `Public profile index and verified entity records for ${cleanName}.`, sourceType: 'Websites & News' },
-            { title: `Public Mention: ${cleanName} Intelligence Report`, url: `https://github.com/${cleanName.toLowerCase().replace(/\s+/g, '')}`, snippet: `Open source activity and public repository records for ${cleanName}.`, sourceType: 'Knowledge & Wikipedia' }
-          ],
-          socialProfiles: [
-            { platform: 'LinkedIn', username: cleanName.toLowerCase().replace(/\s+/g, ''), profileUrl: `https://linkedin.com/in/${cleanName.toLowerCase().replace(/\s+/g, '')}`, isVerified: true, followerCount: '1.2k' },
-            { platform: 'Twitter', username: `@${cleanName.toLowerCase().replace(/\s+/g, '')}`, profileUrl: `https://x.com/${cleanName.toLowerCase().replace(/\s+/g, '')}`, isVerified: true, followerCount: '850' },
-            { platform: 'GitHub', username: cleanName.toLowerCase().replace(/\s+/g, ''), profileUrl: `https://github.com/${cleanName.toLowerCase().replace(/\s+/g, '')}`, isVerified: false, followerCount: '340' }
-          ],
-          recentActivities: [
-            { type: 'profile_updated', title: 'Public Profile Signal Updated', platform: 'LinkedIn', timestamp: '2 hours ago' },
-            { type: 'web_mention', title: 'Web Index Signal Verified', platform: 'Google Index', timestamp: '1 day ago' }
-          ],
-          associations: [
-            { name: 'OSINT Global Research Network', relationship: 'Associated Entity', confidence: 'High' }
-          ],
-          sources: [
-            { sourceName: 'Google Search Index', title: `Public Search Index Record for ${cleanName}`, url: `https://google.com/search?q=${encodeURIComponent(cleanName)}` },
-            { sourceName: 'GitHub API', title: `Developer Footprint for ${cleanName}`, url: `https://github.com` }
-          ],
+          resultsCount: { profiles: 0, emails: 0, phones: 0, websites: 0, other: 0, sources: 0, activities: 0, associations: 0 },
+          webAndNews: [],
+          socialProfiles: [],
+          recentActivities: [],
+          associations: [],
+          sources: [],
           lastSearched: new Date().toISOString()
         }
       }
