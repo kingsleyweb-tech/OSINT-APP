@@ -93,20 +93,23 @@ export const ProfilesTab: React.FC<ProfilesTabProps> = ({ investigation }) => {
               </div>
 
               <div className="box-card-middle">
-                <div className="handle-name">@{p.username}</div>
+                <div className="handle-name">@{p.username ? p.username.replace(/^@+/, '') : ''}</div>
                 {p.bio && <p className="bio-snippet">{p.bio}</p>}
               </div>
 
               <div className="box-card-bottom">
-                <a 
-                  href={p.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <button 
                   className="view-link-btn"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const targetUrl = p.url ? (p.url.startsWith('http') ? p.url : `https://${p.url}`) : '';
+                    if (targetUrl) {
+                      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
                 >
                   Visit Profile <ExternalLink size={12} />
-                </a>
+                </button>
                 <button className="inspect-btn" onClick={() => setSelectedProfile(p)}>
                   <Eye size={14} /> Inspect
                 </button>
@@ -145,7 +148,7 @@ export const ProfilesTab: React.FC<ProfilesTabProps> = ({ investigation }) => {
                       </div>
 
                       <div className="box-card-middle">
-                        <div className="handle-name">@{p.username}</div>
+                        <div className="handle-name">@{p.username ? p.username.replace(/^@+/, '') : ''}</div>
                         {p.bio && <p className="bio-snippet">{p.bio}</p>}
                       </div>
 

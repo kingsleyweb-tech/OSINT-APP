@@ -6,13 +6,17 @@ import { UrlValidator } from '../intelligence/urlValidator';
 import { PlatformEntry } from './platformRegistry';
 
 export class SerpApiProvider extends BaseSearchProvider {
-  name = 'SerpApi Google Search Engine';
+  name = 'SerpApi Multi-Engine Intelligence Provider';
+
+  private getApiKey(): string | null {
+    return process.env.SERPAPI_KEY || process.env.SERP_API_KEY || null;
+  }
 
   /**
-   * Directly fetch a single SerpApi Google Search page with pagination (start index)
+   * Fetch a Google Search page via SerpApi
    */
   public async fetchSerpPage(queryStr: string, start: number = 0): Promise<any> {
-    const apiKey = process.env.SERPAPI_KEY || process.env.SERP_API_KEY;
+    const apiKey = this.getApiKey();
     if (!apiKey) return null;
 
     try {
@@ -24,7 +28,120 @@ export class SerpApiProvider extends BaseSearchProvider {
         return await res.json();
       }
     } catch (e) {
-      console.warn(`[SerpApiProvider] Fetch page error for "${queryStr}" (start=${start}):`, e);
+      console.warn(`[SerpApiProvider] Google Search fetch error for "${queryStr}" (start=${start}):`, e);
+    }
+    return null;
+  }
+
+  /**
+   * Fetch a Bing Search page via SerpApi
+   */
+  public async fetchBingPage(queryStr: string, first: number = 1): Promise<any> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const serpUrl = `https://serpapi.com/search.json?engine=bing&q=${encodeURIComponent(queryStr)}&first=${first}&api_key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(serpUrl, {
+        headers: { 'User-Agent': 'OSINT-Platform-Bot/1.0' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Normalize Bing organic results format so it matches processOrganicItems
+        return data;
+      }
+    } catch (e) {
+      console.warn(`[SerpApiProvider] Bing Search fetch error for "${queryStr}":`, e);
+    }
+    return null;
+  }
+
+  /**
+   * Fetch YouTube Search results via SerpApi YouTube API
+   */
+  public async fetchYouTubeSearch(queryStr: string): Promise<any> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const serpUrl = `https://serpapi.com/search.json?engine=youtube&search_query=${encodeURIComponent(queryStr)}&api_key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(serpUrl, {
+        headers: { 'User-Agent': 'OSINT-Platform-Bot/1.0' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const organicItems: any[] = [];
+
+        // Convert channel results into organic-like items
+        if (data.channel_results) {
+          data.channel_results.forEach((c: any) => {
+            organicItems.push({
+              title: c.title || c.channel_name,
+              link: c.link || c.url,
+              snippet: c.description || `YouTube Channel for ${c.title || c.channel_name}`,
+              thumbnail: c.thumbnail
+            });
+          });
+        }
+
+        // Convert video results into organic-like items
+        if (data.video_results) {
+          data.video_results.forEach((v: any) => {
+            organicItems.push({
+              title: v.title,
+              link: v.link,
+              snippet: v.description || `YouTube Video: ${v.title}`,
+              publication_date: v.published_date
+            });
+          });
+        }
+
+        return { organic_results: organicItems };
+      }
+    } catch (e) {
+      console.warn(`[SerpApiProvider] YouTube Search fetch error for "${queryStr}":`, e);
+    }
+    return null;
+  }
+
+  /**
+   * Fetch Facebook Profile details via SerpApi Facebook Profile API
+   */
+  public async fetchFacebookProfile(profileId: string): Promise<any> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const serpUrl = `https://serpapi.com/search.json?engine=facebook_profile&profile_id=${encodeURIComponent(profileId)}&api_key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(serpUrl, {
+        headers: { 'User-Agent': 'OSINT-Platform-Bot/1.0' }
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn(`[SerpApiProvider] Facebook Profile fetch error for "${profileId}":`, e);
+    }
+    return null;
+  }
+
+  /**
+   * Fetch Instagram Profile details via SerpApi Instagram Profile API
+   */
+  public async fetchInstagramProfile(profileId: string): Promise<any> {
+    const apiKey = this.getApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const serpUrl = `https://serpapi.com/search.json?engine=instagram_profile&profile_id=${encodeURIComponent(profileId)}&api_key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(serpUrl, {
+        headers: { 'User-Agent': 'OSINT-Platform-Bot/1.0' }
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn(`[SerpApiProvider] Instagram Profile fetch error for "${profileId}":`, e);
     }
     return null;
   }
@@ -35,7 +152,7 @@ export class SerpApiProvider extends BaseSearchProvider {
 
     if (!targetName) return results;
 
-    const apiKey = process.env.SERPAPI_KEY || process.env.SERP_API_KEY;
+    const apiKey = this.getApiKey();
     if (!apiKey) {
       console.log('[SerpApiProvider] SERPAPI_KEY environment variable not set. Skipping SerpApi direct call.');
       return results;
@@ -43,22 +160,29 @@ export class SerpApiProvider extends BaseSearchProvider {
 
     try {
       const queryBatches: GeneratedQueryBatch[] = TieredQueryEngine.generateQueries(query, 8);
-      console.log(`[SerpApiProvider] Executing ${queryBatches.length} exact-match queries for "${targetName}"`);
+      console.log(`[SerpApiProvider] Executing ${queryBatches.length} exact-match queries across Google & Bing for "${targetName}"`);
 
+      // Run Google & Bing in parallel for high coverage
       const fetchPromises = queryBatches.map(async (batch) => {
-        const data = await this.fetchSerpPage(batch.query, 0);
-        return data ? { data, platform: batch.platform } : null;
+        const [gData, bData] = await Promise.all([
+          this.fetchSerpPage(batch.query, 0),
+          this.fetchBingPage(batch.query, 1)
+        ]);
+        
+        const combinedOrganic = [
+          ...(gData?.organic_results || []),
+          ...(bData?.organic_results || [])
+        ];
+
+        return { organic: combinedOrganic, platform: batch.platform };
       });
 
       const responses = await Promise.all(fetchPromises);
       const seenCanonicalUrls = new Set<string>();
 
       responses.forEach((resItem) => {
-        if (!resItem || !resItem.data) return;
-        const { data, platform } = resItem;
-
-        // Process Organic Search Results
-        const organic = data.organic_results || [];
+        if (!resItem) return;
+        const { organic, platform } = resItem;
 
         organic.forEach((item: any) => {
           const rawLink = item.link || item.url;

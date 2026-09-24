@@ -35,7 +35,7 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
           )}
 
           <div className="hero-meta">
-            <h2 className="hero-username">@{profile.username}</h2>
+            <h2 className="hero-username">@{profile.username ? profile.username.replace(/^@+/, '') : ''}</h2>
             <div className="confidence-chip high">
               <ShieldCheck size={14} />
               <span>{profile.confidenceLevel} Match ({profile.confidence}%)</span>
@@ -102,15 +102,19 @@ export const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ profile,
         </div>
 
         <div className="profile-modal-footer">
-          <a 
-            href={profile.url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <button 
             className="open-source-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              const targetUrl = profile.url ? (profile.url.startsWith('http') ? profile.url : `https://${profile.url}`) : '';
+              if (targetUrl) {
+                window.open(targetUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
           >
             <span>Open Verified Source Profile</span>
             <ExternalLink size={14} />
-          </a>
+          </button>
         </div>
       </div>
     </div>

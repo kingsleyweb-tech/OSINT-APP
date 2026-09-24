@@ -216,6 +216,8 @@ export class DeepSearchEngine {
         const genPlatform = getPlatform('gen-broad');
         stage1Queries.push({ queryStr: qStr, platform: genPlatform });
         stage1Queries.push({ queryStr: `"${v.username}" profile OR "${v.username}" account`, platform: genPlatform });
+        stage1Queries.push({ queryStr: `site:facebook.com "${v.username}"`, platform: getPlatform('soc-facebook') });
+        stage1Queries.push({ queryStr: `site:instagram.com "${v.username}"`, platform: getPlatform('soc-instagram') });
       });
     } else {
       // ── NAME SEARCH: Rich multi-strategy Stage 1 ──
@@ -226,9 +228,11 @@ export class DeepSearchEngine {
       stage1Queries.push({ queryStr: `"${target}" profile OR biography`, platform: getPlatform('gen-profile') });
       stage1Queries.push({ queryStr: `"${target}" site:linkedin.com/in/`, platform: getPlatform('prof-linkedin') });
 
-      // 2. Key social platforms — searched directly in Stage 1 (not deferred to Stage 2)
+      // 2. Key social platforms — searched directly in Stage 1 (site search + platform keyword search)
       stage1Queries.push({ queryStr: `site:facebook.com "${target}"`, platform: getPlatform('soc-facebook') });
+      stage1Queries.push({ queryStr: `"${target}" facebook`, platform: getPlatform('soc-facebook') });
       stage1Queries.push({ queryStr: `site:instagram.com "${target}"`, platform: getPlatform('soc-instagram') });
+      stage1Queries.push({ queryStr: `"${target}" instagram`, platform: getPlatform('soc-instagram') });
       stage1Queries.push({ queryStr: `site:youtube.com "${target}"`, platform: getPlatform('vid-youtube') });
       stage1Queries.push({ queryStr: `site:x.com "${target}" OR site:twitter.com "${target}"`, platform: getPlatform('soc-x') });
       stage1Queries.push({ queryStr: `site:tiktok.com "${target}"`, platform: getPlatform('soc-tiktok') });
@@ -259,12 +263,22 @@ export class DeepSearchEngine {
       totalQueriesExecuted++;
       platformsCheckedSet.add(qObj.platform.name);
 
-      const serpData = await serpApi.fetchSerpPage(qObj.queryStr, 0);
-      totalPagesReviewed++;
+      const [gData, bData, ytData] = await Promise.all([
+        serpApi.fetchSerpPage(qObj.queryStr, 0),
+        serpApi.fetchBingPage(qObj.queryStr, 1),
+        qObj.queryStr.includes('youtube') ? serpApi.fetchYouTubeSearch(qObj.queryStr) : Promise.resolve(null)
+      ]);
+      totalPagesReviewed += 2;
+
+      const organicResults = [
+        ...(gData?.organic_results || []),
+        ...(bData?.organic_results || []),
+        ...(ytData?.organic_results || [])
+      ];
 
       let newCount = 0;
-      if (serpData && serpData.organic_results) {
-        newCount = processOrganicItems(serpData.organic_results, qObj.platform.name, qObj.platform.category, 1, qObj.queryStr);
+      if (organicResults.length > 0) {
+        newCount = processOrganicItems(organicResults, qObj.platform.name, qObj.platform.category, 1, qObj.queryStr);
       }
 
       auditTrail.push({
@@ -272,7 +286,7 @@ export class DeepSearchEngine {
         stageName: 'Exact Identity Discovery',
         query: qObj.queryStr,
         platformName: qObj.platform.name,
-        resultsFound: serpData?.organic_results?.length || 0,
+        resultsFound: organicResults.length,
         newRelevantAccepted: newCount
       });
 
@@ -358,12 +372,22 @@ export class DeepSearchEngine {
       totalQueriesExecuted++;
       platformsCheckedSet.add(p.name);
 
-      const serpData = await serpApi.fetchSerpPage(qStr, 0);
-      totalPagesReviewed++;
+      const [gData, bData, ytData] = await Promise.all([
+        serpApi.fetchSerpPage(qStr, 0),
+        serpApi.fetchBingPage(qStr, 1),
+        p.id === 'vid-youtube' ? serpApi.fetchYouTubeSearch(qStr) : Promise.resolve(null)
+      ]);
+      totalPagesReviewed += 2;
+
+      const organicResults = [
+        ...(gData?.organic_results || []),
+        ...(bData?.organic_results || []),
+        ...(ytData?.organic_results || [])
+      ];
 
       let newCount = 0;
-      if (serpData && serpData.organic_results) {
-        newCount = processOrganicItems(serpData.organic_results, p.name, p.category, 2, qStr);
+      if (organicResults.length > 0) {
+        newCount = processOrganicItems(organicResults, p.name, p.category, 2, qStr);
       }
 
       auditTrail.push({
@@ -371,7 +395,7 @@ export class DeepSearchEngine {
         stageName: 'Platform Discovery',
         query: qStr,
         platformName: p.name,
-        resultsFound: serpData?.organic_results?.length || 0,
+        resultsFound: organicResults.length,
         newRelevantAccepted: newCount
       });
 

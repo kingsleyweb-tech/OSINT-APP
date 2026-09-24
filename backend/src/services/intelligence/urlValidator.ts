@@ -100,11 +100,17 @@ export class UrlValidator {
       } else if (lowerUrl.includes('/explore/') || lowerUrl.includes('/tags/') || lowerUrl.includes('/accounts/')) {
         itemType = 'search_page';
       } else {
-        const igMatch = canonicalUrl.match(/instagram\.com\/([a-zA-Z0-9_\.]+)\/?$/i);
+        let cleanPath = '';
+        try {
+          cleanPath = new URL(canonicalUrl).pathname;
+        } catch (e) {
+          cleanPath = canonicalUrl;
+        }
+        const igMatch = cleanPath.match(/^\/([a-zA-Z0-9_\.]+)\/?$/i);
         if (igMatch && igMatch[1] && !nonProfilePaths.has(igMatch[1].toLowerCase())) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = igMatch[1];
+          extractedHandle = igMatch[1].replace(/^@+/, '');
         } else {
           itemType = 'website';
         }
@@ -121,11 +127,11 @@ export class UrlValidator {
       } else if (lowerUrl.includes('/playlist') || lowerUrl.includes('/results')) {
         itemType = 'search_page';
       } else {
-        const ytMatch = canonicalUrl.match(/youtube\.com\/(?:@([a-zA-Z0-9_\-\.]+)|channel\/([a-zA-Z0-9_\-]+)|c\/([a-zA-Z0-9_\-\.]+)|user\/([a-zA-Z0-9_\-\.]+))\/?$/i);
+        const ytMatch = canonicalUrl.match(/youtube\.com\/(?:@([a-zA-Z0-9_\-\.]+)|channel\/([a-zA-Z0-9_\-]+)|c\/([a-zA-Z0-9_\-\.]+)|user\/([a-zA-Z0-9_\-\.]+))/i);
         if (ytMatch) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = ytMatch[1] || ytMatch[2] || ytMatch[3] || ytMatch[4];
+          extractedHandle = (ytMatch[1] || ytMatch[2] || ytMatch[3] || ytMatch[4] || '').replace(/^@+/, '');
         } else {
           itemType = 'video';
         }
@@ -140,11 +146,11 @@ export class UrlValidator {
       } else if (lowerUrl.includes('/tag/') || lowerUrl.includes('/music/') || lowerUrl.includes('/discover')) {
         itemType = 'search_page';
       } else {
-        const ttMatch = canonicalUrl.match(/tiktok\.com\/@([a-zA-Z0-9_\-\.]+)\/?$/i);
+        const ttMatch = canonicalUrl.match(/tiktok\.com\/@([a-zA-Z0-9_\-\.]+)/i);
         if (ttMatch && ttMatch[1]) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = ttMatch[1];
+          extractedHandle = ttMatch[1].replace(/^@+/, '');
         } else {
           itemType = 'reel';
         }
@@ -159,11 +165,17 @@ export class UrlValidator {
       } else if (lowerUrl.includes('/hashtag/') || lowerUrl.includes('/search') || lowerUrl.includes('/explore') || lowerUrl.includes('/i/')) {
         itemType = 'search_page';
       } else {
-        const xMatch = canonicalUrl.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/?$/i);
+        let cleanPath = '';
+        try {
+          cleanPath = new URL(canonicalUrl).pathname;
+        } catch (e) {
+          cleanPath = canonicalUrl;
+        }
+        const xMatch = cleanPath.match(/^\/([a-zA-Z0-9_]+)\/?$/i);
         if (xMatch && xMatch[1] && !nonProfilePaths.has(xMatch[1].toLowerCase())) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = xMatch[1];
+          extractedHandle = xMatch[1].replace(/^@+/, '');
         } else {
           itemType = 'post';
         }
@@ -180,11 +192,11 @@ export class UrlValidator {
       } else if (lowerUrl.includes('linkedin.com/company/')) {
         itemType = 'organization';
       } else {
-        const liMatch = canonicalUrl.match(/linkedin\.com\/in\/([a-zA-Z0-9_\-\%]+)\/?$/i);
+        const liMatch = canonicalUrl.match(/linkedin\.com\/(?:in|pub|profile)\/([a-zA-Z0-9_\-\%]+)/i);
         if (liMatch && liMatch[1]) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = decodeURIComponent(liMatch[1]);
+          extractedHandle = decodeURIComponent(liMatch[1]).replace(/^@+/, '');
         } else {
           itemType = 'website';
         }
@@ -206,11 +218,17 @@ export class UrlValidator {
       } else if (lowerUrl.includes('/search')) {
         itemType = 'search_page';
       } else {
-        const ghUserMatch = canonicalUrl.match(/github\.com\/([a-zA-Z0-9\-_]+)\/?$/i);
+        let cleanPath = '';
+        try {
+          cleanPath = new URL(canonicalUrl).pathname;
+        } catch (e) {
+          cleanPath = canonicalUrl;
+        }
+        const ghUserMatch = cleanPath.match(/^\/([a-zA-Z0-9\-_]+)\/?$/i);
         if (ghUserMatch && ghUserMatch[1] && !nonProfilePaths.has(ghUserMatch[1].toLowerCase())) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = ghUserMatch[1];
+          extractedHandle = ghUserMatch[1].replace(/^@+/, '');
         } else if (canonicalUrl.match(/github\.com\/[a-zA-Z0-9\-_]+\/[a-zA-Z0-9\-_.]+/i)) {
           itemType = 'document';
         } else {
@@ -227,11 +245,11 @@ export class UrlValidator {
       } else if (lowerUrl.includes('/r/')) {
         itemType = 'organization';
       } else {
-        const redMatch = canonicalUrl.match(/reddit\.com\/user\/([a-zA-Z0-9_\-]+)\/?$/i);
+        const redMatch = canonicalUrl.match(/reddit\.com\/user\/([a-zA-Z0-9_\-]+)/i);
         if (redMatch && redMatch[1]) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = redMatch[1];
+          extractedHandle = redMatch[1].replace(/^@+/, '');
         } else {
           itemType = 'post';
         }
@@ -241,21 +259,46 @@ export class UrlValidator {
     // 8. FACEBOOK
     else if (domain.includes('facebook.com')) {
       platformName = 'Facebook';
-      if (lowerUrl.includes('/groups/') || lowerUrl.includes('/pages/')) {
+      if (lowerUrl.includes('/groups/') || lowerUrl.includes('/pages/') || lowerUrl.includes('/events/')) {
         itemType = 'organization';
-      } else if (lowerUrl.includes('/watch/') || lowerUrl.includes('/videos/') || lowerUrl.includes('/reel/')) {
+      } else if (lowerUrl.includes('/watch/') || lowerUrl.includes('/videos/') || lowerUrl.includes('/reel/') || lowerUrl.includes('/reels/')) {
         itemType = 'video';
-      } else if (lowerUrl.includes('/posts/') || lowerUrl.includes('/permalink.php') || lowerUrl.includes('/story.php')) {
+      } else if (lowerUrl.includes('/posts/') || lowerUrl.includes('/permalink.php') || lowerUrl.includes('/story.php') || lowerUrl.includes('/photos/')) {
         itemType = 'post';
+      } else if (lowerUrl.includes('profile.php')) {
+        itemType = 'profile';
+        isVerifiedProfileUrl = true;
+        const idMatch = canonicalUrl.match(/id=([0-9]+)/);
+        extractedHandle = idMatch ? `profile-${idMatch[1]}` : undefined;
       } else {
-        const fbMatch = canonicalUrl.match(/facebook\.com\/([a-zA-Z0-9\.]+)\/?$/i);
-        if (fbMatch && fbMatch[1] && !nonProfilePaths.has(fbMatch[1].toLowerCase())) {
+        let cleanPath = '';
+        try {
+          cleanPath = new URL(canonicalUrl).pathname;
+        } catch (e) {
+          cleanPath = canonicalUrl;
+        }
+
+        const peopleMatch = cleanPath.match(/\/people\/([^\/]+)/i);
+        const publicMatch = cleanPath.match(/\/public\/([^\/]+)/i);
+        const pMatch = cleanPath.match(/\/p\/([^\/]+)/i);
+        const directMatch = cleanPath.match(/^\/([a-zA-Z0-9_\-\.]+)\/?$/i);
+
+        if (peopleMatch && peopleMatch[1]) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
-          extractedHandle = fbMatch[1];
-        } else if (lowerUrl.includes('profile.php?id=')) {
+          extractedHandle = decodeURIComponent(peopleMatch[1]).replace(/[\-_]/g, ' ').replace(/^@+/, '');
+        } else if (publicMatch && publicMatch[1]) {
           itemType = 'profile';
           isVerifiedProfileUrl = true;
+          extractedHandle = decodeURIComponent(publicMatch[1]).replace(/[\-_]/g, ' ').replace(/^@+/, '');
+        } else if (pMatch && pMatch[1]) {
+          itemType = 'profile';
+          isVerifiedProfileUrl = true;
+          extractedHandle = decodeURIComponent(pMatch[1]).replace(/[\-_]/g, ' ').replace(/^@+/, '');
+        } else if (directMatch && directMatch[1] && !nonProfilePaths.has(directMatch[1].toLowerCase())) {
+          itemType = 'profile';
+          isVerifiedProfileUrl = true;
+          extractedHandle = directMatch[1].replace(/^@+/, '');
         } else {
           itemType = 'website';
         }

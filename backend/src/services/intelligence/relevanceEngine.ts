@@ -95,7 +95,7 @@ export class RelevanceEngine {
 
     let matchedCount = 0;
     targetTokens.forEach(tToken => {
-      if (textTokens.has(tToken)) {
+      if (textTokens.has(tToken) || normText.includes(tToken)) {
         matchedCount++;
       }
     });
@@ -240,11 +240,10 @@ export class RelevanceEngine {
       isExactNameMatch = titleMatch.isExactPhrase || titleMatch.allTokensMatched || snippetMatch.isExactPhrase;
       tokenCoverage = Math.max(titleMatch.tokenCoveragePercent, snippetMatch.tokenCoveragePercent);
 
-      // Verified profile URL bonus: if the URL is a real profile page and the title contains the
-      // full name (exact phrase), grant a large bonus regardless of snippet coverage.
-      // This prevents Facebook/Instagram/YouTube profiles from being incorrectly rejected.
-      if (urlValidation.isVerifiedProfileUrl && titleMatch.isExactPhrase) {
-        urlMatchScore = Math.max(urlMatchScore, 22);
+      // Verified profile URL bonus: if the URL is a real profile page and the title or handle matches the target,
+      // boost score so it passes the acceptance threshold without fail.
+      if (urlValidation.isVerifiedProfileUrl && (titleMatch.isExactPhrase || titleMatch.allTokensMatched || titleMatchScore > 0)) {
+        urlMatchScore = Math.max(urlMatchScore, 35);
       }
     }
 
@@ -260,8 +259,8 @@ export class RelevanceEngine {
     let score = titleMatchScore + snippetMatchScore + urlMatchScore + contextMatchScore;
 
     // Direct bonus for verified profile URLs matching the target
-    if (urlValidation.isVerifiedProfileUrl && (isExactNameMatch || isExactUsernameMatch)) {
-      score += 15;
+    if (urlValidation.isVerifiedProfileUrl && (isExactNameMatch || isExactUsernameMatch || titleMatchScore > 0)) {
+      score += 20;
     }
 
     // Penalty for partial word collisions or missing tokens.
