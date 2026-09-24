@@ -277,4 +277,3 @@ export const PlatformIcon: React.FC<PlatformIconProps> = ({
     </svg>
   );
 };
-

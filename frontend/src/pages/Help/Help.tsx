@@ -74,8 +74,8 @@ export const HelpPage: React.FC = () => {
         items: [
           {
             title: 'Zero Synthetic Data',
-            desc: 'All discovered profiles, handles, web snippets, and metadata originate directly from live public web index queries (SerpApi, WHOIS, DNS, public APIs). No fake verifications or simulated accounts are generated.',
-            tags: ['SerpApi', 'WHOIS', 'DNS', 'Live Web']
+            desc: 'All discovered profiles, handles, web snippets, and metadata originate directly from live public web index queries (SerpApi and public APIs). No fake verifications or simulated accounts are generated.',
+            tags: ['SerpApi', 'Live Web', 'Public APIs']
           },
           {
             title: 'Up-Front Provider Execution',
@@ -114,16 +114,6 @@ export const HelpPage: React.FC = () => {
             list: [
               'Searches GitHub, X, Instagram, TikTok, Reddit, Medium, Spotify, and Stack Overflow.',
               'Correlates identical handles to reveal cross-platform digital footprints.'
-            ]
-          },
-          {
-            badge: 'SEARCH MODALITY 3',
-            title: 'Email & Domain Infrastructure Reconnaissance',
-            desc: 'Performs WHOIS domain lookups, DNS record resolution, mail exchanger (MX) verification, and reverse IP analysis.',
-            queryExample: 'target-domain.com or investigator@company.io',
-            list: [
-              'Extracts registrant emails, domain creation timestamps, and nameservers.',
-              'Identifies mail server configurations and active SSL certificate SAN domains.'
             ]
           }
         ]
@@ -197,7 +187,7 @@ export const HelpPage: React.FC = () => {
         id: 'workflows',
         headerPill: 'SECTION 06',
         title: 'Advanced Pivoting & Investigative Workflows',
-        lead: 'Pivoting is the core process of using discovered intelligence attributes (handles, emails, domain names) to launch secondary searches.',
+        lead: 'Pivoting is the core process of using discovered intelligence attributes (handles, linked accounts, and public mentions) to launch secondary searches.',
         practices: [
           { num: 'A', title: 'Handle Pivoting Workflow', desc: "When a target's social profile is discovered, inspect their handle (e.g. @johndoe_dev). Copy that handle and launch a Username Reconnaissance Search to uncover hidden accounts on platforms like GitHub, Reddit, or Spotify." },
           { num: 'B', title: 'Location & Affiliation Filtering', desc: 'For common names, append location or employer keywords (e.g. Kwame Mensah Accra or John Mahama Ghana) in the initial search field to narrow candidate profiles immediately.' },
@@ -212,7 +202,7 @@ export const HelpPage: React.FC = () => {
         content: {
           title: 'SerpApi Query Batching',
           desc: 'Instead of making hundreds of uncoordinated queries, the TieredQueryEngine generates a deduplicated query batch (typically 8 to 10 queries per search) to maximize platform discovery while conserving API quota.',
-          sponsorLabel: 'Search Intelligence Boldly Sponsored & Powered by',
+          sponsorLabel: 'Powered by',
           url: 'https://serpapi.com/'
         }
       },
@@ -233,7 +223,7 @@ export const HelpPage: React.FC = () => {
         lead: 'Common inquiries regarding provider updates, data accuracy, and query optimization.',
         faqs: [
           { q: 'Why did some results appear after opening an investigation?', a: 'In previous versions, secondary queries were executed dynamically when opening sub-tabs. We refactored the search flow so that 100% of available provider searches complete up-front during initial search execution.' },
-          { q: 'Does the platform create fake verification labels?', a: 'No. We follow a strict rule: zero synthetic data. Profile links and match signals are derived exclusively from actual public web pages indexed by SerpApi and registered domain records.' },
+          { q: 'Does the platform create fake verification labels?', a: 'No. We follow a strict rule: zero synthetic data. Profile links and match signals are derived exclusively from actual public web pages indexed by SerpApi.' },
           { q: 'How are API quotas managed?', a: 'The TieredQueryEngine generates a targeted, deduplicated query batch (typically 8 to 10 queries per search) to ensure maximum platform discovery while preventing unnecessary API consumption.' }
         ]
       }

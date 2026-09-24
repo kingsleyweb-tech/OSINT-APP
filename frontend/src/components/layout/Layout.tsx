@@ -28,11 +28,11 @@ export const Layout: React.FC<LayoutProps> = ({
           {children}
         </main>
 
-        {/* Global Page Footer - Sponsored by SerpApi */}
+        {/* Global Page Footer - Powered by SerpApi */}
         <footer className="global-page-footer">
           <div className="serpapi-sponsored-tag">
             <Sparkles size={14} className="sparkle-icon" />
-            <span>Search Intelligence Powered & Boldly Sponsored by</span>
+            <span>Powered by</span>
             <a 
               href="https://serpapi.com/" 
               target="_blank" 

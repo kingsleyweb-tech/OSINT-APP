@@ -9,7 +9,7 @@ import { SourcesTab } from '../../components/investigations/tabs/SourcesTab';
 import { WebNewsTab } from '../../components/investigations/tabs/WebNewsTab';
 import { NotesTab } from '../../components/investigations/tabs/NotesTab';
 import { StatsTab } from '../../components/investigations/tabs/StatsTab';
-import { DomainInvestigationView } from '../../components/investigations/DomainInvestigationView';
+
 import type { Investigation, InvestigationNote } from '../../types/investigation';
 import { getInvestigationFromDb, saveInvestigationToDb, addNoteToInvestigationInDb } from '../../firebase/firestore';
 import { 
@@ -254,18 +254,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     downloadAnchor.remove();
   };
 
-  if (investigation.searchType === 'domain' && (investigation as any).domainInvestigationData) {
-    return (
-      <div className="investigation-detail-page">
-        <DomainInvestigationView 
-          data={(investigation as any).domainInvestigationData} 
-          onSelectSuggestedDomain={(selectedDomain) => {
-            navigate('/new-investigation');
-          }}
-        />
-      </div>
-    );
-  }
+
 
   return (
     <div className="investigation-detail-page">
@@ -473,10 +462,6 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
                 <span className="insight-val">{investigation.resultsCount?.profiles || 3}</span>
               </div>
               <div className="insight-metric-row">
-                <span className="insight-label">Related domains</span>
-                <span className="insight-val">2</span>
-              </div>
-              <div className="insight-metric-row">
                 <span className="insight-label">Mentions across news</span>
                 <span className="insight-val">{investigation.resultsCount?.activities || 4}</span>
               </div>
@@ -491,7 +476,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           <div className="side-card-box tip-refine-card">
             <div className="refine-title">Try refining your search</div>
             <p className="refine-text">
-              Add a location, try a different username, or search for an email or domain.
+              Add a location or try a different username to refine your results.
             </p>
           </div>
         </div>

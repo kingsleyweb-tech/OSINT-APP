@@ -45,11 +45,8 @@ export class TieredQueryEngine {
     let tier2PriorityCategories: string[] = ['social', 'professional', 'developer'];
     if (searchType === 'username') {
       tier2PriorityCategories = ['developer', 'social', 'community', 'publishing', 'video'];
-    } else if (searchType === 'email') {
-      tier2PriorityCategories = ['social', 'developer', 'community', 'messaging'];
-    } else if (searchType === 'domain') {
-      tier2PriorityCategories = ['business', 'developer', 'publishing'];
     } else {
+      // name search (default)
       tier2PriorityCategories = ['social', 'professional', 'video', 'publishing', 'academic'];
     }
 

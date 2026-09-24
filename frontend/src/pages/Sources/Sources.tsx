@@ -7,7 +7,7 @@ interface OSINTSource {
   id: string;
   name: string;
   platformKey: string;
-  category: 'Web Search' | 'Knowledge' | 'Developer' | 'Social' | 'Video' | 'Domain' | 'News';
+  category: 'Web Search' | 'Knowledge' | 'Developer' | 'Social' | 'Video' | 'News';
   type: string;
   extractedData: string[];
   description: string;
@@ -22,7 +22,7 @@ const ALL_SOURCES: OSINTSource[] = [
     platformKey: 'Google',
     category: 'Web Search',
     type: 'SerpApi & Index Extraction',
-    extractedData: ['Indexed Profiles', 'Web Snippets', 'Email Addresses', 'Social Links'],
+    extractedData: ['Indexed Profiles', 'Web Snippets', 'Social Links'],
     description: 'Primary web query engine extracting deep web indexing, public profile mentions, and cached snippet metadata across global domains.',
     metric: 'Primary OSINT Crawler',
     status: 'Operational'
@@ -66,8 +66,8 @@ const ALL_SOURCES: OSINTSource[] = [
     platformKey: 'GitHub',
     category: 'Developer',
     type: 'GitHub REST & GraphQL API',
-    extractedData: ['Code Repositories', 'Commit Emails', 'Developer Bio', 'Activity Stream'],
-    description: 'Extracts developer profile details, public code commit email addresses, repository stars, forks, and contribution timestamps.',
+    extractedData: ['Code Repositories', 'Developer Bio', 'Activity Stream'],
+    description: 'Extracts developer profile details, public code repositories, repository stars, forks, and contribution timestamps.',
     metric: 'Developer Profile Intel',
     status: 'Operational'
   },
@@ -159,20 +159,10 @@ const ALL_SOURCES: OSINTSource[] = [
     metric: 'News & Media Syndication',
     status: 'Operational'
   },
-  {
-    id: 'domain-whois',
-    name: 'Domain & WHOIS Intel',
-    platformKey: 'Domain',
-    category: 'Domain',
-    type: 'DNS & Registrant Lookup',
-    extractedData: ['DNS Records', 'WHOIS Contact Info', 'IP Addresses', 'SSL Certificates'],
-    description: 'Resolves domain ownership WHOIS records, DNS name servers, IP geolocation data, and SSL certificate SANs.',
-    metric: 'Infrastructure Records',
-    status: 'Operational'
-  }
+
 ];
 
-const CATEGORIES = ['All', 'Web Search', 'Knowledge', 'Social', 'Developer', 'Video', 'Domain', 'News'];
+const CATEGORIES = ['All', 'Web Search', 'Knowledge', 'Social', 'Developer', 'Video', 'News'];
 
 export const SourcesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -197,7 +187,7 @@ export const SourcesPage: React.FC = () => {
         <div className="sponsor-banner-left">
           <span className="sponsor-badge-tag">OFFICIAL SEARCH PROVIDER</span>
           <h2 className="sponsor-title">
-            Boldly Sponsored & Powered by{' '}
+            Powered by{' '}
             <a 
               href="https://serpapi.com/" 
               target="_blank" 

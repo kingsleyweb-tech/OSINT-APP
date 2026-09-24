@@ -24,7 +24,7 @@ interface NewInvestigationPageProps {
   };
 }
 
-const SEARCH_TYPES = ['Name', 'Username', 'Email', 'Domain'] as const;
+const SEARCH_TYPES = ['Name', 'Username'] as const;
 type SearchType = typeof SEARCH_TYPES[number];
 
 export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ currentUser }) => {
@@ -83,7 +83,7 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     if (e) e.preventDefault();
     const query = queryInput.trim();
     if (!query) {
-      toastError('Input required', 'Please enter a target name, username, email, or domain.');
+      toastError('Input required', 'Please enter a target name or username.');
       return;
     }
 
@@ -207,8 +207,6 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
   const getPlaceholderText = () => {
     switch (searchType) {
       case 'Username': return 'e.g. user123, @developer, dev_kwame';
-      case 'Email': return 'e.g. investigator@example.com, john.doe@company.org';
-      case 'Domain': return 'e.g. example.com, company.gh, github.com';
       default: return 'e.g. Kwame Mensah, John Mahama, Amina Ibrahim, Daniel Ofori';
     }
   };

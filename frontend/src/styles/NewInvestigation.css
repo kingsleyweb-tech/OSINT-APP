@@ -80,27 +80,28 @@
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--border-color);
-  width: fit-content;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .search-type-tab {
+  flex: 1;
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  padding: 8px 18px;
+  padding: 10px 18px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  text-align: center;
 }
 
 .search-type-tab:hover {
   color: var(--text-primary);
+  background-color: rgba(140, 75, 39, 0.08);
 }
 
 .search-type-tab.active {

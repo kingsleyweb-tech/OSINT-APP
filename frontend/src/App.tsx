@@ -18,6 +18,19 @@ import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { CoilingSnakeLoader } from './components/search/CoilingSnakeLoader';
 
+// Landing Page Integration
+import { LandingLayout } from './landing/LandingLayout';
+import { HomePage } from './landing/pages/HomePage';
+import { FeaturesPage } from './landing/pages/FeaturesPage';
+import { HowItWorksPage } from './landing/pages/HowItWorksPage';
+import { AboutPage } from './landing/pages/AboutPage';
+import { DocumentationPage } from './landing/pages/DocumentationPage';
+import { PublicHelpPage } from './landing/pages/HelpPage';
+import { PrivacyPage } from './landing/pages/PrivacyPage';
+import { TermsPage } from './landing/pages/TermsPage';
+import { ResponsibleUsePage } from './landing/pages/ResponsibleUsePage';
+import { LawEnforcementPage } from './landing/pages/LawEnforcementPage';
+
 function App() {
   const [currentUser, setCurrentUser] = useState<any>(() => {
     const saved = localStorage.getItem('osint_user_session');
@@ -108,7 +121,21 @@ function App() {
         <ToastProvider>
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Public Landing Pages */}
+              <Route element={<LandingLayout currentUser={currentUser} />}>
+                <Route path="/" element={<HomePage currentUser={currentUser} />} />
+                <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/documentation" element={<DocumentationPage />} />
+                <Route path="/help-center" element={<PublicHelpPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/responsible-use" element={<ResponsibleUsePage />} />
+                <Route path="/law-enforcement" element={<LawEnforcementPage />} />
+              </Route>
+
+              {/* Auth Route */}
               <Route 
                 path="/auth" 
                 element={
@@ -116,6 +143,7 @@ function App() {
                 } 
               />
 
+              {/* Protected Application Dashboard Routes */}
               <Route
                 path="/dashboard"
                 element={
@@ -160,7 +188,6 @@ function App() {
                 }
               />
 
-              {/* Dedicated Tab Routes for Investigations */}
               <Route
                 path="/investigations/:id"
                 element={
@@ -318,7 +345,8 @@ function App() {
                 }
               />
 
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* Catch-all route to avoid 404 errors */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </ToastProvider>

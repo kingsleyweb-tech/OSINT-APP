@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Mail, Lock, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
 import '../../styles/AuthPages.css';
 import { signIn, signUp } from '../../firebase/auth';
 import { createUserProfileInDb } from '../../firebase/firestore';
+import appLogo from '../../assets/images/icon.png';
 
 interface AuthPageProps {
   onLoginSuccess: (user: any) => void;
@@ -56,8 +57,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
     <div className="auth-page-container">
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="brand-icon-wrapper">
-            <ShieldAlert className="brand-icon" />
+          <div className="brand-icon-wrapper" style={{ background: 'transparent', padding: 0 }}>
+            <img src={appLogo} alt="OSINT Logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} />
           </div>
           <span className="brand-title">OSINT</span>
           <span className="brand-subtitle">INVESTIGATION PLATFORM</span>

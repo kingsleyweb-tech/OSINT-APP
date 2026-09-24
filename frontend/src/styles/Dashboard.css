@@ -458,23 +458,28 @@
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--border-color);
-  width: max-content;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hero-search-tab {
+  flex: 1;
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  padding: 9px 20px;
+  padding: 10px 20px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .hero-search-tab:hover {
   color: var(--text-primary);
+  background-color: rgba(140, 75, 39, 0.08);
 }
 
 .hero-search-tab.active {

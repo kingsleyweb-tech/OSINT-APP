@@ -24,7 +24,7 @@ interface DashboardPageProps {
   };
 }
 
-const SEARCH_TYPES = ['Name', 'Username', 'Email', 'Domain'] as const;
+const SEARCH_TYPES = ['Name', 'Username'] as const;
 type SearchType = typeof SEARCH_TYPES[number];
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => {
@@ -113,7 +113,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   const maxDailyCount = Math.max(1, ...last7Days.map(d => d.count));
 
   // Dynamic search types distribution
-  const typeCounts: Record<string, number> = { Name: 0, Username: 0, Email: 0, Domain: 0 };
+  const typeCounts: Record<string, number> = { Name: 0, Username: 0 };
   realInvestigations.forEach(inv => {
     const t = (inv as any).searchType || 'Name';
     const capitalized = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
@@ -126,9 +126,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   const totalSearches = realInvestigations.length || 1;
   const searchTypeStats = [
     { type: 'Name', percent: realInvestigations.length ? Math.round((typeCounts['Name'] / totalSearches) * 100) : 0 },
-    { type: 'Username', percent: realInvestigations.length ? Math.round((typeCounts['Username'] / totalSearches) * 100) : 0 },
-    { type: 'Email', percent: realInvestigations.length ? Math.round((typeCounts['Email'] / totalSearches) * 100) : 0 },
-    { type: 'Domain', percent: realInvestigations.length ? Math.round((typeCounts['Domain'] / totalSearches) * 100) : 0 }
+    { type: 'Username', percent: realInvestigations.length ? Math.round((typeCounts['Username'] / totalSearches) * 100) : 0 }
   ];
 
   // Dynamic recent sources
@@ -156,8 +154,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   const getPlaceholderText = () => {
     switch (searchType) {
       case 'Username': return 'e.g. user123, @developer, dev_kwame';
-      case 'Email': return 'e.g. investigator@example.com';
-      case 'Domain': return 'e.g. example.com, company.gh';
       default: return 'e.g. Kwame Mensah, John Mahama';
     }
   };
@@ -166,7 +162,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     if (e) e.preventDefault();
     const query = queryInput.trim();
     if (!query) {
-      toastError('Input required', 'Please enter a target name, username, email, or domain.');
+      toastError('Input required', 'Please enter a target name or username.');
       return;
     }
 

@@ -4,14 +4,12 @@ import { GithubProvider } from '../services/search/githubProvider';
 import { SocialProvider } from '../services/search/socialProvider';
 import { UsernameProvider } from '../services/search/usernameProvider';
 import { RssWebFeedProvider } from '../services/search/rssWebFeedProvider';
-import { DomainProvider } from '../services/search/domainProvider';
 import { WikipediaProvider } from '../services/search/wikipediaProvider';
 import { EntityAnalyzer } from '../services/intelligence/entityAnalyzer';
 import { RelevanceEngine } from '../services/intelligence/relevanceEngine';
 import { UrlValidator } from '../services/intelligence/urlValidator';
 import { TrackingEngine } from '../services/intelligence/trackingEngine';
 import { DeepSearchEngine } from '../services/search/deepSearchEngine';
-import { DomainInvestigationService } from '../services/search/domainInvestigationService';
 import { NormalizedResultItem, OSINTQuery } from '../types/search';
 
 export interface SearchCoverageItem {
@@ -33,23 +31,13 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       if (requestedType === 'username') {
         query.searchType = 'username';
         query.username = q.replace(/^@/, '');
-      } else if (requestedType === 'name') {
-        query.searchType = 'name';
-        query.name = q;
-      } else if (q.includes('@')) {
-        query.searchType = 'email';
-        query.email = q;
-        query.username = q.split('@')[0];
-      } else if (q.startsWith('http://') || q.startsWith('https://') || q.includes('.com') || q.includes('.org') || q.includes('.dev') || q.includes('/feed')) {
-        query.searchType = 'domain';
-        query.domain = q.replace(/^https?:\/\//, '').split('/')[0];
-        query.website = q;
-      } else if (/^\+?[0-9\s-]{7,}$/.test(q)) {
-        query.phone = q;
       } else {
+        // Default: treat everything as a name search
         query.searchType = 'name';
         query.name = q;
-        query.username = q.replace(/\s+/g, '');
+        if (!requestedType || requestedType === 'name') {
+          query.username = q.replace(/\s+/g, '');
+        }
       }
     } else {
       query = rawBody;
@@ -69,84 +57,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
     let deepStats: any = null;
     let sourcesCheckedList: string[] = [];
 
-    if (query.searchType === 'domain') {
-      // 🌐 DEDICATED DOMAIN INVESTIGATION PIPELINE
-      const domainResult = await DomainInvestigationService.investigateDomain(searchTargetStr);
-      const nowIso = new Date().toISOString();
-
-      const domainInvestigationObj = {
-        id: domainResult.id,
-        name: domainResult.domain,
-        description: `Dedicated OSINT domain intelligence record for ${domainResult.domain}`,
-        searchInputs: query,
-        searchType: 'domain',
-        searchDepth,
-        status: 'Completed',
-        overallConfidence: domainResult.status === 'Online' ? 95 : 60,
-        confidenceLevel: domainResult.status === 'Online' ? 'High' : 'Medium',
-        quickSummary: domainResult.summary,
-        sourcesChecked: ['DNS Intelligence Provider', 'HTTP Web Server Audit', 'SerpApi Index Search'],
-        searchCoverage: [
-          { provider: 'DNS Intelligence Provider', status: 'checked' as const, count: domainResult.ipAddresses.length + domainResult.nameservers.length },
-          { provider: 'HTTP Web Server Audit', status: 'checked' as const, count: domainResult.technologies.length },
-          { provider: 'SerpApi Index Search', status: 'checked' as const, count: domainResult.pages.length + domainResult.newsAndMentions.length }
-        ],
-        targetProfile: {
-          initials: domainResult.domain.substring(0, 2).toUpperCase(),
-          fullName: domainResult.domain,
-          location: domainResult.ipAddresses.length > 0 ? `IP: ${domainResult.ipAddresses[0]}` : 'Global / Web',
-          gender: 'N/A',
-          age: 'N/A',
-          occupation: domainResult.websiteInfo.detectedCategory,
-          avatarUrl: domainResult.websiteInfo.faviconUrl,
-          interests: domainResult.technologies.map(t => t.name),
-          lastActive: domainResult.status === 'Online' ? 'Online / Operational' : 'Unreachable'
-        },
-        resultsCount: {
-          profiles: 0,
-          emails: 0,
-          phones: 0,
-          websites: domainResult.pages.length,
-          other: 0,
-          sources: domainResult.sources.length,
-          activities: domainResult.newsAndMentions.length,
-          associations: domainResult.technologies.length
-        },
-        domainInvestigationData: domainResult,
-        sources: domainResult.sources.map((s, idx) => ({
-          id: `src-${idx}`,
-          sourceName: s.sourceType,
-          title: s.title,
-          website: domainResult.domain,
-          domain: domainResult.domain,
-          sourceType: 'Web Document' as const,
-          discoveredDate: nowIso,
-          url: s.url,
-          usedFor: ['Domain Validation'],
-          confidenceScore: 90
-        })),
-        notes: [
-          {
-            id: 'note-domain-1',
-            text: `Domain scan completed for "${domainResult.domain}". Status: ${domainResult.status}. Discovered ${domainResult.pages.length} indexed pages and ${domainResult.technologies.length} tech stack components.`,
-            author: 'OSINT Domain Engine',
-            createdAt: nowIso
-          }
-        ],
-        createdBy: (req as any).user?.uid || 'demo-user',
-        createdAt: nowIso,
-        updatedAt: nowIso
-      };
-
-      res.status(200).json({
-        success: true,
-        query,
-        domainInvestigation: domainResult,
-        investigation: domainInvestigationObj,
-        possibleIdentities: []
-      });
-      return;
-    } else if (query.searchType === 'name' || query.searchType === 'username') {
+    if (query.searchType === 'name' || query.searchType === 'username') {
       // 🚀 USE DEEP SEARCH ENGINE FOR NAME AND USERNAME SEARCHES
       const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth });
       allResults = deepOutput.allResults;
@@ -154,32 +65,15 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       deepStats = deepOutput.stats;
       sourcesCheckedList = searchCoverage.map(c => c.provider);
     } else {
-      // KEEP EXISTING PIPELINE FOR DOMAIN AND EMAIL SEARCHES
-      let providers = [
+      // FALLBACK PIPELINE: General search via available providers
+      const providers = [
         new SerpApiProvider(),
         new WikipediaProvider(),
         new GithubProvider(),
         new SocialProvider(),
         new UsernameProvider(),
-        new RssWebFeedProvider(),
-        new DomainProvider()
+        new RssWebFeedProvider()
       ];
-
-      if ((query.searchType as string) === 'domain') {
-        providers = [
-          new DomainProvider(),
-          new SerpApiProvider(),
-          new RssWebFeedProvider(),
-          new WikipediaProvider()
-        ];
-      } else if ((query.searchType as string) === 'email') {
-        providers = [
-          new SerpApiProvider(),
-          new SocialProvider(),
-          new UsernameProvider(),
-          new GithubProvider()
-        ];
-      }
 
       sourcesCheckedList = providers.map(p => p.name);
       const providerResultsPromises = providers.map(p => p.search(query));
