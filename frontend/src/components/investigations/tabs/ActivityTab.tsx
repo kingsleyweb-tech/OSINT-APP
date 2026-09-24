@@ -48,7 +48,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ investigation }) => {
   // Filter
   const filtered = rawActivities.filter(a => {
     if (selectedCategory === 'ALL') return true;
-    return a.category.toLowerCase() === selectedCategory.toLowerCase();
+    return String(a.category || '').toLowerCase() === selectedCategory.toLowerCase();
   });
 
   // Sort

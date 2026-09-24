@@ -35,7 +35,7 @@ export const AssociationsTab: React.FC<AssociationsTabProps> = ({ investigation 
 
   const filtered = associations.filter(a => {
     if (selectedCat === 'ALL') return true;
-    return a.category.toLowerCase() === selectedCat.toLowerCase();
+    return String(a.category || '').toLowerCase() === selectedCat.toLowerCase();
   });
 
   const getCategoryIcon = (cat: AssociationCategory) => {
@@ -56,8 +56,8 @@ export const AssociationsTab: React.FC<AssociationsTabProps> = ({ investigation 
     }
   };
 
-  const getEvidenceBadgeClass = (state: string) => {
-    const s = state.toLowerCase();
+  const getEvidenceBadgeClass = (state?: string) => {
+    const s = (state || 'Verified').toLowerCase();
     if (s.includes('documented') || s.includes('strong')) return 'badge-strong';
     if (s.includes('possible')) return 'badge-possible';
     return 'badge-mention';

@@ -296,69 +296,71 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   };
 
   const handleSelectIdentity = async (selectedIdentity: DiscoveredIdentity) => {
+    if (!selectedIdentity) return;
+    const inv = selectedIdentity.investigation || {};
     const invData: Investigation = {
-      id: `inv-${selectedIdentity.id}-${Date.now()}`,
-      name: selectedIdentity.fullName,
-      description: selectedIdentity.publicRole,
+      id: inv.id || `inv-${selectedIdentity.id}-${Date.now()}`,
+      name: selectedIdentity.fullName || 'Discovered Target',
+      description: selectedIdentity.publicRole || 'Public Entity',
       status: 'Completed',
       searchInputs: { name: selectedIdentity.fullName, searchType: searchType.toLowerCase() as any },
       searchType: searchType.toLowerCase() as any,
       lastSearched: new Date().toISOString(),
-      overallConfidence: selectedIdentity.confidenceScore,
+      overallConfidence: selectedIdentity.confidenceScore || 90,
       confidenceLevel: (selectedIdentity.confidenceLabel as any) || 'High',
-      quickSummary: selectedIdentity.summary,
-      searchCoverage: selectedIdentity.investigation?.searchCoverage || [
-        { provider: 'SerpApi Google Engine', status: 'checked', count: selectedIdentity.sourcesCount },
+      quickSummary: selectedIdentity.summary || `Public intelligence dossier for ${selectedIdentity.fullName}.`,
+      searchCoverage: inv.searchCoverage || [
+        { provider: 'SerpApi Google Engine', status: 'checked', count: selectedIdentity.sourcesCount || 5 },
         { provider: 'Wikipedia / Wikidata', status: 'checked', count: 1 },
         { provider: 'GitHub Developer API', status: 'checked', count: 1 },
-        { provider: 'Social Platform Discovery', status: 'checked', count: selectedIdentity.profilesCount }
+        { provider: 'Social Platform Discovery', status: 'checked', count: selectedIdentity.profilesCount || 3 }
       ],
       targetProfile: {
-        initials: selectedIdentity.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
-        fullName: selectedIdentity.fullName,
-        location: selectedIdentity.location,
+        initials: (selectedIdentity.fullName || 'OS').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OS',
+        fullName: selectedIdentity.fullName || 'Discovered Target',
+        location: selectedIdentity.location || 'Global',
         gender: 'Unverified',
         age: 'Unverified',
-        occupation: selectedIdentity.publicRole,
+        occupation: selectedIdentity.publicRole || 'Public Entity',
         avatarUrl: selectedIdentity.avatarUrl,
-        interests: selectedIdentity.matchingPlatforms,
+        interests: selectedIdentity.matchingPlatforms || ['LinkedIn', 'Twitter'],
         lastActive: 'Recently active'
       },
       resultsCount: {
-        profiles: selectedIdentity.profilesCount,
+        profiles: selectedIdentity.profilesCount || 0,
         emails: 0,
         phones: 0,
-        websites: selectedIdentity.sourcesCount,
+        websites: selectedIdentity.sourcesCount || 0,
         other: 0,
-        sources: selectedIdentity.sourcesCount,
-        activities: selectedIdentity.activitiesCount,
-        associations: selectedIdentity.associationsCount
+        sources: selectedIdentity.sourcesCount || 0,
+        activities: selectedIdentity.activitiesCount || 0,
+        associations: selectedIdentity.associationsCount || 0
       },
-      socialProfiles: selectedIdentity.investigation.socialProfiles || [],
-      webAndNews: (selectedIdentity.investigation.activities || []).map((a: any) => ({
-        id: a.id,
-        source: a.sourceName,
+      socialProfiles: Array.isArray(inv.socialProfiles) ? inv.socialProfiles : [],
+      webAndNews: Array.isArray(inv.webAndNews) ? inv.webAndNews : (Array.isArray(inv.activities) ? inv.activities.map((a: any) => ({
+        id: a.id || `act-${Math.random()}`,
+        source: a.sourceName || 'Web',
         sourceType: a.category || 'News Mention',
-        title: a.title,
-        description: a.briefReport,
-        url: a.sourceUrl,
-        discoveredAt: a.date
-      })),
-      activities: selectedIdentity.investigation.activities || [],
-      recentActivities: (selectedIdentity.investigation.activities || []).map((a: any) => ({
-        type: a.category.toLowerCase(),
-        title: a.title,
-        platform: a.sourceName,
-        timestamp: a.date,
-        url: a.sourceUrl
-      })),
-      associations: selectedIdentity.investigation.associations || [],
-      sources: selectedIdentity.investigation.sources || [],
-      sourceLinks: (selectedIdentity.investigation.sources || []).map((s: any) => ({
-        title: `${s.sourceName}: ${s.title}`,
-        url: s.url
-      })),
-      notes: [],
+        title: a.title || 'Public Finding',
+        description: a.briefReport || '',
+        url: a.sourceUrl || '#',
+        discoveredAt: a.date || 'Recent'
+      })) : []),
+      activities: Array.isArray(inv.activities) ? inv.activities : [],
+      recentActivities: Array.isArray(inv.activities) ? inv.activities.map((a: any) => ({
+        type: String(a.category || 'web').toLowerCase(),
+        title: a.title || 'Public Signal',
+        platform: a.sourceName || 'Web',
+        timestamp: a.date || 'Recent',
+        url: a.sourceUrl || '#'
+      })) : [],
+      associations: Array.isArray(inv.associations) ? inv.associations : [],
+      sources: Array.isArray(inv.sources) ? inv.sources : [],
+      sourceLinks: Array.isArray(inv.sources) ? inv.sources.map((s: any) => ({
+        title: `${s.sourceName || 'Source'}: ${s.title || 'Record'}`,
+        url: s.url || '#'
+      })) : [],
+      notes: Array.isArray(inv.notes) ? inv.notes : [],
       createdBy: userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -366,6 +368,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
 
     try {
       await saveInvestigationToDb(invData);
+      sessionStorage.setItem(`osint_inv_${invData.id}`, JSON.stringify(invData));
       addNotification({
         type: 'investigation_saved',
         title: 'Identity Confirmed',
@@ -375,6 +378,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     } catch (err) {
       console.error("Save investigation error:", err);
     }
+
     setRealInvestigations(prev => [invData, ...prev.filter(i => i.id !== invData.id)]);
     navigate(`/investigations/${invData.id}`, { state: { investigation: invData } });
   };

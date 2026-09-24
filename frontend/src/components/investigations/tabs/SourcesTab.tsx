@@ -46,7 +46,7 @@ export const SourcesTab: React.FC<SourcesTabProps> = ({ investigation }) => {
 
   const filtered = sources.filter(s => {
     if (selectedType === 'ALL') return true;
-    return s.sourceType.toLowerCase() === selectedType.toLowerCase();
+    return String(s.sourceType || '').toLowerCase() === selectedType.toLowerCase();
   });
 
   return (

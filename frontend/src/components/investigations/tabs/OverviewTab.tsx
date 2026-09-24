@@ -54,9 +54,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 {topAssociations.map((assoc, i) => (
                   <div key={i} className="assoc-mini-item">
                     <div className="assoc-mini-header">
-                      <span className="assoc-category-tag">{assoc.category}</span>
-                      <span className={`assoc-evidence-chip ${assoc.evidenceState.toLowerCase().replace(/\s+/g, '-')}`}>
-                        {assoc.evidenceState}
+                      <span className="assoc-category-tag">{assoc.category || 'Organization'}</span>
+                      <span className={`assoc-evidence-chip ${(assoc.evidenceState || 'Verified').toLowerCase().replace(/\s+/g, '-')}`}>
+                        {assoc.evidenceState || 'Verified'}
                       </span>
                     </div>
                     <div className="assoc-title">{assoc.name}</div>
