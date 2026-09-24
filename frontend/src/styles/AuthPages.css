@@ -156,18 +156,20 @@
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 20px;
-  padding: 24px;
+  padding: 20px;
   box-shadow: var(--shadow-xl);
   position: relative;
   overflow: hidden;
-  gap: 20px;
+  gap: 14px;
+  max-height: 530px;
+  justify-content: space-between;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .auth-showcase-header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .auth-showcase-badge {
@@ -177,10 +179,10 @@
   background: var(--accent-warm-subtle);
   border: 1px solid var(--accent-warm-border);
   color: var(--accent-warm);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 20px;
   width: fit-content;
 }
@@ -190,7 +192,7 @@
 }
 
 .auth-showcase-title {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.3;
@@ -198,76 +200,78 @@
 }
 
 .auth-showcase-sub {
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 /* Pro Dashboard Image Showcase */
 .auth-pro-img-wrapper {
   position: relative;
   width: 100%;
-  border-radius: 14px;
+  height: 240px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
   overflow: hidden;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   background: var(--bg-dark);
 }
 
 .auth-pro-image {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
   object-fit: cover;
+  object-position: top center;
   transition: transform 0.35s ease;
 }
 
 .auth-pro-img-wrapper:hover .auth-pro-image {
-  transform: scale(1.02);
+  transform: scale(1.03);
 }
 
 .auth-img-overlay-badge {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  bottom: 10px;
+  left: 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.8);
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 20px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .live-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #10b981;
-  box-shadow: 0 0 10px #10b981;
+  box-shadow: 0 0 8px #10b981;
 }
 
 /* Feature Pills Row */
 .auth-feature-pills-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
 }
 
 .auth-feature-pill {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   background: var(--bg-hover);
   border: 1px solid var(--border-color);
-  padding: 7px 13px;
-  border-radius: 10px;
-  font-size: 0.76rem;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
