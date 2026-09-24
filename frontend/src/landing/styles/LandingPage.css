@@ -178,6 +178,7 @@ img { max-width: 100%; display: block; }
 
 /* Tab Switcher: Name vs Username */
 .hero-tab-container {
+  position: relative;
   display: inline-flex;
   background: var(--bg-hover);
   border: 1px solid var(--border-color);
@@ -185,26 +186,45 @@ img { max-width: 100%; display: block; }
   border-radius: 12px;
   margin-bottom: 20px;
   width: fit-content;
+  overflow: hidden;
+}
+
+.hero-tab-pill-slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  bottom: 4px;
+  width: calc(50% - 4px);
+  background: #8c4b27;
+  border-radius: 8px;
+  box-shadow: 0 3px 14px rgba(140, 75, 39, 0.5);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .hero-tab-btn {
+  position: relative;
+  z-index: 2;
   padding: 8px 24px;
   border-radius: 8px;
   border: none;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-muted);
-  background: transparent;
+  background: transparent !important;
   cursor: pointer;
   display: flex;
   align-items: center;
-  transition: all 0.25s ease;
+  transition: color 0.25s ease;
+}
+
+.hero-tab-btn:hover {
+  color: var(--text-primary);
 }
 
 .hero-tab-btn.active {
-  background: #8c4b27;
-  color: #ffffff;
-  box-shadow: 0 3px 12px rgba(140, 75, 39, 0.45);
+  color: #ffffff !important;
 }
 
 /* Input Form Wrapper */

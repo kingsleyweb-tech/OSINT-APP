@@ -220,21 +220,44 @@
 }
 
 .mini-tabs {
-  display: flex;
-  gap: 4px;
+  position: relative;
+  display: inline-flex;
+  gap: 0;
   margin-bottom: 6px;
+  background: var(--bg-hover);
+  border-radius: 6px;
+  padding: 2px;
+  overflow: hidden;
+}
+
+.mini-tab-pill-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  bottom: 2px;
+  width: calc(50% - 2px);
+  background: var(--accent-warm);
+  border-radius: 4px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .mini-tab {
+  position: relative;
+  z-index: 2;
   font-size: 0.6rem;
   font-weight: 600;
   color: var(--text-muted);
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  user-select: none;
 }
 
 .mini-tab.active {
-  background: var(--accent-warm);
+  background: transparent;
   color: #fff;
 }
 

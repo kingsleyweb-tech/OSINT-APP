@@ -94,6 +94,10 @@ export const HeroSearchWidget: React.FC<HeroSearchWidgetProps> = ({ currentUser 
 
         {/* Tab Switcher: Name vs Username */}
         <div className="hero-tab-container">
+          <div 
+            className="hero-tab-pill-slider" 
+            style={{ transform: searchMode === 'username' ? 'translateX(100%)' : 'translateX(0%)' }} 
+          />
           <button
             type="button"
             className={`hero-tab-btn ${searchMode === 'name' ? 'active' : ''}`}

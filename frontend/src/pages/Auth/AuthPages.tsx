@@ -36,6 +36,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [previewSearchMode, setPreviewSearchMode] = useState<'name' | 'username'>('name');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,8 +134,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
                   
                   <div className="mini-search-widget">
                     <div className="mini-tabs">
-                      <span className="mini-tab active">Name</span>
-                      <span className="mini-tab">Username</span>
+                      <div 
+                        className="mini-tab-pill-slider" 
+                        style={{ transform: previewSearchMode === 'username' ? 'translateX(100%)' : 'translateX(0%)' }} 
+                      />
+                      <span 
+                        className={`mini-tab ${previewSearchMode === 'name' ? 'active' : ''}`}
+                        onClick={() => setPreviewSearchMode('name')}
+                      >
+                        Name
+                      </span>
+                      <span 
+                        className={`mini-tab ${previewSearchMode === 'username' ? 'active' : ''}`}
+                        onClick={() => setPreviewSearchMode('username')}
+                      >
+                        Username
+                      </span>
                     </div>
                     <div className="mini-search-input-box">
                       <Search size={11} className="mini-search-icon" />
