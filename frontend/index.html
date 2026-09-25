@@ -1,11 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/assets/images/icon.png" />
     <link rel="apple-touch-icon" href="/assets/images/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>OSINT Intelligence Platform</title>
+    <script>
+      // Apply the theme before the first paint: light unless the user switched to dark themselves.
+      try {
+        if (localStorage.getItem('osint_theme_choice') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) { /* storage unavailable */ }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">

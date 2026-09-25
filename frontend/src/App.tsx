@@ -61,7 +61,7 @@ const AppRoutes: React.FC = () => {
   // Wait for Firebase to restore the saved session so a refresh never bounces a signed-in user.
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#090d16', color: '#94a3b8' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-dark)', color: 'var(--text-secondary)' }}>
         <CoilingSnakeLoader query="Restoring your session..." searchType="Auth" />
       </div>
     );
