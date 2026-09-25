@@ -23,7 +23,6 @@ export const PrivacyPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Continuous Editorial Document Flow (No Card Box) */}
           <div style={{ lineHeight: 1.75, color: 'var(--text-muted)', width: '100%' }}>
             
             <div style={{ borderTop: '1px solid var(--border-color)', padding: '28px 0' }}>

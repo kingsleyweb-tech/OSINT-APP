@@ -1,311 +1,237 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  LogIn, 
-  UserPlus, 
-  User, 
-  Search, 
-  ArrowLeft,
-  Sun,
-  Moon,
-  Zap,
-  Globe,
-  ShieldCheck,
-  CheckCircle2
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Globe, Loader2, Lock, Mail, Phone, ShieldCheck, User, Zap } from 'lucide-react';
+import { authErrorMessage, hasSavedGuestSession, resetPassword, signIn, signInAsGuest, signUp } from '../../firebase/auth';
+import { updateUserProfileInDb } from '../../firebase/firestore';
+import { browserTimeZone } from '../../lib/session';
+import { isValidPhone } from '../../lib/validation';
+import { DEFAULT_NOTIFICATION_PREFS, DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
 import '../../styles/AuthPages.css';
-import { signIn, signUp } from '../../firebase/auth';
-import { createUserProfileInDb } from '../../firebase/firestore';
-import appLogo from '../../assets/images/icon.png';
-import proImg from '../../assets/images/pro.png';
-import { Footer } from '../../landing/components/Footer';
-import { useTheme } from '../../context/ThemeContext';
 
-interface AuthPageProps {
-  onLoginSuccess: (user: any) => void;
-}
+type Mode = 'signin' | 'signup';
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
-  const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
-  const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+export const AuthPage: React.FC = () => {
+  const [mode, setMode] = useState<Mode>('signin');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(false);
+  const [busy, setBusy] = useState<'form' | 'guest' | 'reset' | null>(null);
   const [error, setError] = useState('');
-  const [previewSearchMode, setPreviewSearchMode] = useState<'name' | 'username'>('name');
+  const [info, setInfo] = useState('');
+  const savedGuest = hasSavedGuestSession();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const switchMode = (m: Mode) => {
+    setMode(m);
     setError('');
+    setInfo('');
+  };
 
-    if (!isLogin && password !== confirmPassword) {
-      setError('Passwords do not match.');
-      setLoading(false);
-      return;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setInfo('');
+    if (mode === 'signup') {
+      if (!name.trim()) return setError('Enter your full name.');
+      if (!isValidPhone(phone)) return setError('Enter a valid phone number, including the country code (e.g. +233 24 123 4567).');
+      if (password.length < 8) return setError('Use at least 8 characters for your password.');
+      if (password !== confirm) return setError('The passwords do not match.');
     }
-
+    setBusy('form');
     try {
-      const user = isLogin
-        ? await signIn(email, password)
-        : await signUp(email, password);
-
-      if (!isLogin && user) {
-        const defaultDisplayName = username.trim() || email.split('@')[0] || 'Investigator';
-        await createUserProfileInDb({
+      if (mode === 'signin') {
+        await signIn(email, password, keepSignedIn);
+      } else {
+        const user = await signUp(email, password, name);
+        // Profile and settings are stored in Firestore (users/{uid}); the password stays in Firebase Authentication.
+        await updateUserProfileInDb(user.uid, {
           uid: user.uid,
-          email: user.email || email,
-          displayName: defaultDisplayName,
+          email: user.email || email.trim(),
+          displayName: name.trim(),
+          phoneNumber: phone.trim(),
           role: 'Investigator',
+          isGuest: false,
+          timeZone: browserTimeZone(),
+          dateFormat: 'dmy',
+          searchDefaults: DEFAULT_SEARCH_DEFAULTS,
+          notificationPrefs: DEFAULT_NOTIFICATION_PREFS,
           createdAt: new Date().toISOString()
-        }).catch(err => console.error("Profile creation error on sign up:", err));
+        });
       }
-
-      onLoginSuccess(user);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed.');
-    } finally {
-      setLoading(false);
+      // The auth route redirects to the dashboard as soon as the session is active.
+    } catch (err) {
+      setError(authErrorMessage(err));
+      setBusy(null);
     }
   };
 
-  const handleDemo = () => {
-    onLoginSuccess({ uid: 'demo-user', displayName: 'Guest Investigator', email: 'demo@osint.io' });
-    navigate('/dashboard');
+  const continueAsGuest = async () => {
+    setError('');
+    setInfo('');
+    setBusy('guest');
+    try {
+      await signInAsGuest();
+    } catch (err) {
+      setError(authErrorMessage(err));
+      setBusy(null);
+    }
   };
+
+  const forgot = async () => {
+    setError('');
+    setInfo('');
+    if (!email.trim()) return setError('Enter your email address above, then choose "Forgot password" again.');
+    setBusy('reset');
+    try {
+      await resetPassword(email);
+      setInfo(`If an account exists for ${email.trim()}, a password reset link has been sent to it.`);
+    } catch (err) {
+      setError(authErrorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const year = new Date().getFullYear();
 
   return (
-    <div className="auth-page-wrapper">
-      {/* Top Navigation Bar on Auth Page */}
-      <header className="auth-top-navbar">
-        <div className="auth-nav-inner">
-          <Link to="/" className="auth-nav-logo">
-            <img src={appLogo} alt="OSINT Logo" className="auth-nav-logo-img" />
-            <span className="auth-nav-logo-text">OSINT <span>Platform</span></span>
-          </Link>
+    <div className="au-page">
+      <aside className="au-brand">
+        <Link to="/" className="au-logo" aria-label="OSINT Platform home">
+          <span className="au-logo-tile"><Search /></span>
+          <span className="au-logo-text">OSINT <em>Platform</em></span>
+        </Link>
+        <p className="au-tagline">Search less, discover more</p>
 
-          <nav className="auth-nav-menu">
-            <Link to="/" className="auth-nav-item">Home</Link>
-            <Link to="/features" className="auth-nav-item">Features</Link>
-            <Link to="/how-it-works" className="auth-nav-item">How It Works</Link>
-            <Link to="/documentation" className="auth-nav-item">Documentation</Link>
-            <Link to="/about" className="auth-nav-item">About</Link>
-            <Link to="/help-center" className="auth-nav-item">Help</Link>
-          </nav>
-
-          <div className="auth-nav-actions">
-            <button
-              onClick={toggleTheme}
-              className="auth-theme-toggle-btn"
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-          </div>
+        <div className="au-brand-body">
+          <span className="au-pill"><Zap size={15} /> Enterprise OSINT workspace</span>
+          <h1>Public intelligence &amp; entity investigation suite</h1>
+          <p className="au-lead">
+            Automate public digital footprint research, aggregate multi-source index signals, and organise structured
+            subject records into clear, actionable intelligence.
+          </p>
+          <ul className="au-features">
+            <li><span><CheckCircle2 size={18} /></span>Cross-platform profile discovery</li>
+            <li><span><Globe size={18} /></span>Multi-source index aggregation</li>
+            <li><span><ShieldCheck size={18} /></span>Private &amp; encrypted workspaces</li>
+          </ul>
         </div>
-      </header>
+        <footer className="au-brand-foot">
+          <span>For lawful, authorised investigations only.</span>
+          <span>© {year} OSINT Platform</span>
+        </footer>
+      </aside>
 
-      {/* Floating Back Button */}
-      <div className="auth-back-float-row">
-        <button onClick={() => navigate(-1)} className="auth-back-float-btn">
-          <ArrowLeft size={15} />
-          <span>Back</span>
-        </button>
-      </div>
+      <main className="au-main">
+        <div className="au-form-wrap">
+          <Link to="/" className="au-back"><ArrowLeft size={17} /> Back to home</Link>
+          <h2 className="au-title">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
+          <p className="au-sub">{mode === 'signin' ? 'Sign in to continue your investigations.' : 'Your investigations are saved privately to your account.'}</p>
 
-      {/* Main Split Layout */}
-      <div className="auth-layout">
-        {/* Left Side - Dashboard Showcase & Information using pro.png */}
-        <div className="auth-preview-panel">
-          <div className="auth-showcase-header">
-            <div className="auth-showcase-badge">
-              <Zap size={13} className="badge-icon" />
-              <span>ENTERPRISE OSINT WORKSPACE</span>
-            </div>
-            <h2 className="auth-showcase-title">Public Intelligence & Entity Investigation Suite</h2>
-            <p className="auth-showcase-sub">
-              Automate public digital footprint research, aggregate multi-source index signals, and organize structured subject investigation records into clear, actionable intelligence.
-            </p>
+          <div className="au-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={mode === 'signin'} className={mode === 'signin' ? 'on' : ''} onClick={() => switchMode('signin')}>Sign in</button>
+            <button type="button" role="tab" aria-selected={mode === 'signup'} className={mode === 'signup' ? 'on' : ''} onClick={() => switchMode('signup')}>Create account</button>
           </div>
 
-          {/* Pro Dashboard Screenshot Showcase */}
-          <div className="auth-pro-img-wrapper">
-            <img src={proImg} alt="OSINT Platform Pro Dashboard Workspace" className="auth-pro-image" />
-            <div className="auth-img-overlay-badge">
-              <span className="live-dot" />
-              <span>Live Workspace Preview</span>
+          <form onSubmit={submit} noValidate>
+            {mode === 'signup' && (
+              <label className="au-field">
+                <span className="au-label">Full name</span>
+                <span className="au-input"><User size={19} /><input value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" autoComplete="name" /></span>
+              </label>
+            )}
+            {mode === 'signup' && (
+              <label className="au-field">
+                <span className="au-label">Phone number</span>
+                <span className="au-input"><Phone size={18} /><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+233 24 123 4567" autoComplete="tel" inputMode="tel" /></span>
+              </label>
+            )}
+            <label className="au-field">
+              <span className="au-label">Email</span>
+              <span className="au-input"><Mail size={19} /><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@organisation.com" autoComplete="email" required /></span>
+            </label>
+            <div className="au-field">
+              <span className="au-label-row">
+                <label className="au-label" htmlFor="au-password">Password</label>
+                {mode === 'signin' && (
+                  <button type="button" className="au-link" onClick={forgot} disabled={busy === 'reset'}>
+                    {busy === 'reset' ? 'Sending…' : <><span className="au-hide-mobile">Forgot password?</span><span className="au-show-mobile">Forgot?</span></>}
+                  </button>
+                )}
+              </span>
+              <span className="au-input">
+                <Lock size={19} />
+                <input
+                  id="au-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder={mode === 'signin' ? 'Enter your password' : 'At least 8 characters'}
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  required
+                />
+                <button type="button" className="au-eye" onClick={() => setShowPassword(s => !s)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </span>
             </div>
-          </div>
-
-          {/* Feature Highlights */}
-          <div className="auth-feature-pills-row">
-            <div className="auth-feature-pill">
-              <CheckCircle2 size={14} className="pill-icon" />
-              <span>Cross-Platform Profile Discovery</span>
-            </div>
-            <div className="auth-feature-pill">
-              <Globe size={14} className="pill-icon" />
-              <span>Multi-Source Index Aggregation</span>
-            </div>
-            <div className="auth-feature-pill">
-              <ShieldCheck size={14} className="pill-icon" />
-              <span>Private & Encrypted Workspaces</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side - Form Card */}
-        <div className="auth-form-panel">
-          <div className="auth-top-branding">
-            <div className="branding-logo-row">
-              <img src={appLogo} alt="OSINT Platform" className="branding-logo" />
-              <span className="branding-title">OSINT <span>Platform</span></span>
-            </div>
-            <p className="branding-tagline">Search less, discover more.</p>
-          </div>
-
-          <div className="auth-card-box">
-            <h2 className="auth-card-title">
-              {isLogin ? 'Welcome back' : 'Create your account'}
-            </h2>
-
-            {error && (
-              <div className="auth-error-alert">
-                <AlertCircleIcon />
-                <span>{error}</span>
-              </div>
+            {mode === 'signup' && (
+              <label className="au-field">
+                <span className="au-label">Confirm password</span>
+                <span className="au-input"><Lock size={19} /><input type={showPassword ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat your password" autoComplete="new-password" /></span>
+              </label>
+            )}
+            {mode === 'signin' && (
+              <label className="au-check">
+                <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)} />
+                <span>Keep me signed in on this device</span>
+              </label>
             )}
 
-            <form className="auth-form-body" onSubmit={handleSubmit}>
-              {!isLogin && (
-                <div className="form-field-group">
-                  <label htmlFor="auth-username" className="field-label">USERNAME</label>
-                  <div className="input-icon-wrap">
-                    <User className="input-icon" size={15} />
-                    <input
-                      id="auth-username"
-                      type="text"
-                      className="auth-input"
-                      placeholder="alex_vance"
-                      value={username}
-                      onChange={e => setUsername(e.target.value)}
-                      required={!isLogin}
-                    />
-                  </div>
-                </div>
-              )}
+            {error && <p className="au-msg au-error" role="alert">{error}</p>}
+            {info && <p className="au-msg au-info" role="status">{info}</p>}
 
-              <div className="form-field-group">
-                <label htmlFor="auth-email" className="field-label">EMAIL</label>
-                <div className="input-icon-wrap">
-                  <Mail className="input-icon" size={15} />
-                  <input
-                    id="auth-email"
-                    type="email"
-                    className="auth-input"
-                    placeholder="alex.vance@cyberintel.io"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-field-group">
-                <label htmlFor="auth-password" className="field-label">PASSWORD</label>
-                <div className="input-icon-wrap">
-                  <Lock className="input-icon" size={15} />
-                  <input
-                    id="auth-password"
-                    type={showPass ? 'text' : 'password'}
-                    className="auth-input"
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                  />
-                  <button type="button" className="show-pass-btn" onClick={() => setShowPass(!showPass)}>
-                    {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-
-              {!isLogin && (
-                <div className="form-field-group">
-                  <label htmlFor="auth-confirm-password" className="field-label">CONFIRM PASSWORD</label>
-                  <div className="input-icon-wrap">
-                    <Lock className="input-icon" size={15} />
-                    <input
-                      id="auth-confirm-password"
-                      type={showConfirmPass ? 'text' : 'password'}
-                      className="auth-input"
-                      placeholder="••••••••••••"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      required={!isLogin}
-                    />
-                    <button type="button" className="show-pass-btn" onClick={() => setShowConfirmPass(!showConfirmPass)}>
-                      {showConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <button id="auth-submit" type="submit" className="auth-primary-btn" disabled={loading}>
-                {isLogin ? (
-                  <><LogIn size={16} /> {loading ? 'Signing in...' : 'Sign In'}</>
-                ) : (
-                  <><UserPlus size={16} /> {loading ? 'Creating...' : 'Create Account'}</>
-                )}
-              </button>
-            </form>
-
-            <div className="auth-divider"><span>or</span></div>
-
-            <button id="demo-btn" className="demo-btn" onClick={handleDemo}>
-              Continue with Guest Account
+            <button type="submit" className="au-submit" disabled={busy !== null}>
+              {busy === 'form' ? <Loader2 size={20} className="au-spin" /> : null}
+              {mode === 'signin' ? 'Sign in' : 'Create account'} {busy !== 'form' && <ArrowRight size={20} />}
             </button>
+          </form>
 
-            <div className="auth-toggle-row">
-              <span>{isLogin ? 'Don\'t have an account?' : 'Already registered?'}</span>
-              <button
-                className="toggle-link"
-                onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              >
-                {isLogin ? 'Sign up' : 'Log in'}
-              </button>
-            </div>
+          <div className="au-or"><span>or</span></div>
 
-            <p className="auth-legal-footer">
-              By creating an account, you agree to our{' '}
-              <Link to="/terms">Terms of Service</Link> and{' '}
-              <Link to="/privacy">Privacy Policy</Link>.
+          <button type="button" className="au-guest" onClick={continueAsGuest} disabled={busy !== null}>
+            {busy === 'guest' ? <Loader2 size={19} className="au-spin" /> : <User size={19} />} {savedGuest ? 'Resume guest session' : 'Continue with guest account'}
+          </button>
+          {savedGuest && (
+            <p className="au-guest-note">
+              Your guest session is saved on this browser. Resume it to see your previous investigations and tracked people.
+              Signing in or creating an account here ends that guest session; to keep its data, resume it and create an account in Settings → Security.
             </p>
-          </div>
-        </div>
-      </div>
+          )}
 
-      {/* Footer Navigation Bar Under Login Form */}
-      <div className="auth-footer-container">
-        <Footer />
-      </div>
+          <p className="au-switch">
+            {mode === 'signin'
+              ? <>New here? <button type="button" onClick={() => switchMode('signup')}>Create an account</button></>
+              : <>Already have an account? <button type="button" onClick={() => switchMode('signin')}>Sign in</button></>}
+          </p>
+          <p className="au-legal">
+            <span className="au-hide-mobile">Protected sign-in. </span>By continuing you agree to our <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>.
+          </p>
+        </div>
+      </main>
     </div>
   );
 };
 
-const AlertCircleIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-  </svg>
-);
+function Search() {
+  return (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#e8793e" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <circle cx="10.5" cy="10.5" r="2.2" fill="#e8793e" stroke="none" />
+      <line x1="15.5" y1="15.5" x2="20" y2="20" />
+    </svg>
+  );
+}

@@ -17,7 +17,7 @@ function CategoryIcon({ category }: { category: string }) {
 }
 
 export const AssociationsTab: React.FC = () => {
-  const { inv, d, focus, commit, setLevel, openRecordFinding, newNote, goTab } = useWorkspace();
+  const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
   const associations = inv.associations || [];
   const documented = associations.filter(a => DOCUMENTED.has(a.evidenceState));
   const candidates = associations.filter(a => !DOCUMENTED.has(a.evidenceState));
@@ -130,16 +130,6 @@ export const AssociationsTab: React.FC = () => {
             <div className="ws-panel-sec">
               <div className="ws-label">Evidence level</div>
               <LevelPicker value={levelOf(inv, assocKey(selected))} onChange={l => setLevel(assocKey(selected), l, selected.name, selected.name)} />
-              <div className="ws-panel-actions" style={{ marginTop: 16 }}>
-                <button
-                  type="button"
-                  className="ws-btn ws-btn-primary"
-                  onClick={() => openRecordFinding({ title: `${selected.relationship} — ${selected.name}`, sourceKeys: selected.sourceUrl ? [urlKey(selected.sourceUrl)] : [] })}
-                >
-                  Record finding
-                </button>
-                <button type="button" className="ws-btn" onClick={() => newNote(selected.sourceUrl ? [urlKey(selected.sourceUrl)] : [])}>Add note</button>
-              </div>
             </div>
             <div className="ws-panel-sec">
               <div className="ws-label">Documented when</div>

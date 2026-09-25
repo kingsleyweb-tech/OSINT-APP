@@ -34,7 +34,6 @@ export const MetricsTab: React.FC = () => {
         <div className="ws-stat"><b>{p.raw ?? '—'}</b><span>Raw results (last run)</span></div>
         <div className="ws-stat"><b>{p.relevant}</b><span>Kept as relevant</span></div>
         <div className="ws-stat"><b>{p.validated}</b><span>Validated</span></div>
-        <div className="ws-stat"><b>{p.findings}</b><span>Findings recorded</span></div>
         <div className="ws-stat"><b>{d.sources.length}</b><span>Sources collected</span></div>
         <div className="ws-stat"><b>{batches || '—'}</b><span>Searches run · {log.length} queries</span></div>
         <div className="ws-stat"><b>{fmtTime(inv.lastSearched || inv.createdAt) || '—'}</b><span>Last search · {fmtDate(inv.lastSearched || inv.createdAt)}</span></div>
@@ -80,7 +79,7 @@ export const MetricsTab: React.FC = () => {
             <div className="ws-conv">
               <div><b>{pct(p.relevant, p.raw)}</b><span>of raw results kept as relevant</span></div>
               <div><b>{pct(p.validated, p.relevant)}</b><span>of relevant items validated</span></div>
-              <div><b>{(inv.notes || []).length}</b><span>notes written</span></div>
+              <div><b>{d.sources.length}</b><span>sources collected</span></div>
             </div>
           </div>
         </div>

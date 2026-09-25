@@ -8,7 +8,7 @@ import {
   shortUrl, urlKey, type WebItem
 } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Chips, Empty, Glyph, LevelBadge, LevelPicker, LinkStatus, SectionHead, glyphFor } from '../workspace/ui';
+import { Chips, Empty, LevelBadge, LevelPicker, LinkStatus, SectionHead, SourceLogo } from '../workspace/ui';
 
 const RECHECK_AFTER_MS = 24 * 3600 * 1000;
 
@@ -35,7 +35,7 @@ const GROUPS: Array<{ kinds: RowKind[]; title: string }> = [
 ];
 
 export const ProfilesTab: React.FC = () => {
-  const { inv, d, focus, commit, setLevel, openRecordFinding, newNote, goTab } = useWorkspace();
+  const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
   const profiles = inv.socialProfiles || [];
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -111,7 +111,6 @@ export const ProfilesTab: React.FC = () => {
   );
 
   const selected = rows.find(r => r.key === selectedKey) || visible[0] || null;
-  const usedIn = selected ? (inv.findings || []).filter(f => f.sourceKeys.includes(selected.key)) : [];
 
   const open = (r: Row) => {
     if (r.profile) setOpenError(openProfile(r.profile));
@@ -159,7 +158,7 @@ export const ProfilesTab: React.FC = () => {
                           <tr key={r.key} className={`row${selected?.key === r.key ? ' selected' : ''}`} onClick={() => { setSelectedKey(r.key); setOpenError(null); }}>
                             <td>
                               <div className="ws-cell-flex">
-                                <Glyph text={glyphFor(r.platform)} square={!r.profile} />
+                                <SourceLogo url={r.url} platform={r.platform} square={!r.profile} />
                                 <div style={{ minWidth: 0 }}>
                                   <div className="ws-cell-title">{r.name}</div>
                                   <div className="ws-cell-sub">{r.platform}{r.handle ? ` · ${r.handle}` : ''}</div>
@@ -191,7 +190,7 @@ export const ProfilesTab: React.FC = () => {
                       <tr key={w.id}>
                         <td>
                           <div className="ws-cell-flex">
-                            <Glyph text={kindLabel(w)[0]} square />
+                            <SourceLogo url={w.url} platform={w.metadata?.platform} square />
                             <div style={{ minWidth: 0 }}>
                               <div className="ws-cell-title">{w.title}</div>
                               <div className="ws-cell-muted">{w.metadata?.platform || hostOf(w.url)}{w.source ? ` · ${w.source}` : ''}</div>
@@ -219,7 +218,7 @@ export const ProfilesTab: React.FC = () => {
                   <LevelBadge level={levelOf(inv, selected.key)} />
                 </div>
                 <div className="ws-cell-flex">
-                  <Glyph text={glyphFor(selected.platform)} lg />
+                  <SourceLogo url={selected.url} platform={selected.platform} lg />
                   <div style={{ minWidth: 0 }}>
                     <div className="ws-h3">{selected.name}</div>
                     <div className="ws-cell-sub">{selected.platform}{selected.handle ? ` · ${selected.handle}` : ''}</div>
@@ -261,14 +260,8 @@ export const ProfilesTab: React.FC = () => {
               <div className="ws-panel-sec">
                 <div className="ws-label">Evidence level</div>
                 <LevelPicker value={levelOf(inv, selected.key)} onChange={l => setLevel(selected.key, l, selected.name, d.sourceByKey.get(selected.key)?.sid || selected.platform)} />
-                <div className="ws-label" style={{ marginTop: 18 }}>Used in</div>
-                {usedIn.length === 0 ? <div className="ws-sub">Not cited by any finding yet.</div> : usedIn.map(f => (
-                  <div key={f.id}><button type="button" className="ws-link" onClick={() => goTab('findings', f.id)}>{f.id} · {f.title}</button></div>
-                ))}
                 <div className="ws-panel-actions" style={{ marginTop: 18 }}>
-                  <button type="button" className="ws-btn ws-btn-primary" onClick={() => openRecordFinding({ sourceKeys: [selected.key] })}>Record finding</button>
-                  <button type="button" className="ws-btn" onClick={() => newNote([selected.key])}>Add note</button>
-                  <button type="button" className="ws-btn" onClick={() => open(selected)}>Open</button>
+                  <button type="button" className="ws-btn ws-btn-primary" onClick={() => open(selected)}><ExternalLink size={15} /> Open {selected.profile ? 'profile' : 'page'}</button>
                 </div>
               </div>
             </div>

@@ -284,19 +284,61 @@
 
 /* Mobile Responsiveness */
 @media (max-width: 640px) {
+  /* Fill the visible screen only (dvh excludes the browser toolbars) and keep clear of the
+     status bar / notch at the top and the home indicator at the bottom. */
+  .brutalist-menu-overlay {
+    align-items: stretch;
+  }
+
   .brutalist-menu-content {
     height: 100vh;
-    max-height: 100vh;
+    height: 100dvh;
+    max-height: none;
     border-radius: 0;
-    padding: 24px 20px;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px calc(env(safe-area-inset-bottom, 0px) + 18px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brutalist-menu-header {
+    position: sticky;
+    top: calc(-1 * (env(safe-area-inset-top, 0px) + 18px));
+    padding-top: 4px;
+    background-color: inherit;
+  }
+
+  .brutalist-header-actions {
+    gap: 4px;
+  }
+
+  .brutalist-theme-btn,
+  .brutalist-close-btn {
+    min-height: 44px;
+    padding: 10px 8px;
+  }
+
+  .brutalist-menu-list {
+    flex: 1 0 auto;
+    padding: 24px 0;
   }
 
   .brutalist-menu-link {
-    font-size: 2.3rem;
+    font-size: 2rem;
   }
 
+  .brutalist-menu-footer {
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brutalist-logout-btn {
+    min-height: 44px;
+  }
+
+  /* The decorative frame marks collide with the header and footer on small screens. */
   .brutalist-corner-mark,
   .brutalist-side-mark {
-    font-size: 1.3rem;
+    display: none;
   }
 }

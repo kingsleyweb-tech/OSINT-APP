@@ -70,7 +70,6 @@ export const DocumentationPage: React.FC = () => {
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
-          {/* Header */}
           <div style={{ marginBottom: '40px' }}>
             <div className="lp-badge" style={{ marginBottom: '14px' }}>
               <BookOpen size={14} />
@@ -84,10 +83,7 @@ export const DocumentationPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Wide Editorial Layout */}
           <div className="lp-doc-grid">
-            
-            {/* Sticky Table of Contents Sidebar */}
             <div className="lp-doc-toc-sidebar">
               <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-warm-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
                 ON THIS PAGE
@@ -124,7 +120,6 @@ export const DocumentationPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Continuous Wide Document Flow */}
             <div style={{ lineHeight: 1.7, color: 'var(--text-muted)', width: '100%' }}>
               
               {activeSection === 'introduction' && (

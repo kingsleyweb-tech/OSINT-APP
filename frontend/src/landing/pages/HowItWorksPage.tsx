@@ -8,7 +8,6 @@ export const HowItWorksPage: React.FC = () => {
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
-          {/* Header */}
           <div style={{ marginBottom: '50px' }}>
             <div className="lp-badge" style={{ marginBottom: '14px' }}>
               <Cpu size={14} />
@@ -22,7 +21,6 @@ export const HowItWorksPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Numbered Editorial Flow (Horizontal Dividers, No Card Containers) */}
           <div className="lp-editorial-list" style={{ marginBottom: '60px' }}>
             
             <div className="lp-editorial-row">
@@ -84,7 +82,6 @@ export const HowItWorksPage: React.FC = () => {
 
           </div>
 
-          {/* CTA */}
           <div style={{ textAlign: 'center', paddingTop: '20px' }}>
             <Link to="/auth" className="btn-primary-warm" style={{ padding: '14px 32px', fontSize: '1.05rem' }}>
               Launch Workspace <ArrowRight size={18} />

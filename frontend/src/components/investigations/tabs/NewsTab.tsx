@@ -1,8 +1,8 @@
 import React from 'react';
-import { Image as ImageIcon, Newspaper } from 'lucide-react';
+import { Image as ImageIcon } from 'lucide-react';
 import { hostOf, levelOf, openUrl, parseLooseDate, fmtDate, shortUrl, urlKey, type WebItem } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Empty, LevelBadge, LevelPicker, SectionHead } from '../workspace/ui';
+import { Empty, LevelBadge, LevelPicker, SectionHead, SourceLogo } from '../workspace/ui';
 import { relevanceText } from './WebTab';
 
 function thumbnailOf(w: WebItem): string | undefined {
@@ -41,7 +41,7 @@ export const NewsTab: React.FC = () => {
               <div style={{ minWidth: 0 }}>
                 <div className="ws-tl-head">
                   <div className="ws-webcard-meta ws-sub">
-                    <Newspaper size={14} /><b style={{ color: 'var(--ws-text)' }}>{w.source || hostOf(w.url)}</b>
+                    <SourceLogo url={w.url} platform={w.source} /><b style={{ color: 'var(--ws-text)' }}>{w.source || hostOf(w.url)}</b>
                     {(date || w.metadata?.date) && <span>· {date ? fmtDate(date.toISOString()) : w.metadata?.date}</span>}
                     <span>· {w.metadata?.pageKindLabel || 'Article'}</span>
                   </div>
@@ -72,7 +72,7 @@ export const NewsTab: React.FC = () => {
           <div className="ws-facet" style={{ borderTop: '1px solid var(--ws-border)', paddingTop: 20 }}>
             <div className="ws-label">Publishers</div>
             {Array.from(publishers.entries()).sort((a, b) => b[1] - a[1]).map(([p, n]) => (
-              <div key={p} className="ws-cov-row" style={{ padding: '6px 0' }}><span className="name">{p}</span><span className="n">{n}</span></div>
+              <div key={p} className="ws-cov-row" style={{ padding: '6px 0' }}><SourceLogo url={items.find(w => (w.source || hostOf(w.url)) === p)?.url} platform={p} /><span className="name">{p}</span><span className="n">{n}</span></div>
             ))}
           </div>
         )}

@@ -6,12 +6,12 @@ import {
   safeFileName, shortUrl, toCsv, urlKey, type IndexedSource
 } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Empty, LevelBadge, LevelPicker, LinkStatus, Modal } from '../workspace/ui';
+import { Empty, LevelBadge, LevelPicker, LinkStatus, Modal, SourceLogo } from '../workspace/ui';
 
 const PAGE_SIZE = 10;
 
 export const SourcesTab: React.FC = () => {
-  const { inv, d, focus, commit, setLevel, openRecordFinding, newNote, goTab } = useWorkspace();
+  const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
   const [query, setQuery] = useState('');
   const [type, setType] = useState('all');
   const [level, setLevel2] = useState('all');
@@ -57,10 +57,10 @@ export const SourcesTab: React.FC = () => {
   const shown = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const exportCsv = () => {
-    const rows: Array<Array<string | number>> = [['ID', 'Title', 'URL', 'Type', 'Platform', 'Published', 'Found', 'Link status', 'Level', 'Findings']];
+    const rows: Array<Array<string | number>> = [['ID', 'Title', 'URL', 'Type', 'Platform', 'Published', 'Found', 'Link status', 'Level']];
     d.sources.forEach(s => rows.push([
       s.sid, s.source.title, s.source.url, typeOf(s), s.source.sourceName, s.source.publishedDate || '',
-      s.source.discoveredDate, linkOf(s), LEVEL_LABEL[levelOf(inv, s.key)], (d.findingsByKey.get(s.key) || []).join(' ')
+      s.source.discoveredDate, linkOf(s), LEVEL_LABEL[levelOf(inv, s.key)]
     ]));
     downloadFile(`Sources-${safeFileName(inv.name)}.csv`, toCsv(rows), 'text/csv');
   };
@@ -103,13 +103,12 @@ export const SourcesTab: React.FC = () => {
           <div className="ws-table-wrap">
             <table className="ws-table">
               <thead>
-                <tr><th>ID</th><th>Source</th><th>Type · platform</th><th>Published</th><th>Found</th><th>Link status</th><th>Level</th><th>Used</th></tr>
+                <tr><th>ID</th><th>Source</th><th>Type · platform</th><th>Published</th><th>Found</th><th>Link status</th><th>Level</th></tr>
               </thead>
               <tbody>
-                {shown.length === 0 && <tr><td colSpan={8} className="ws-cell-muted" style={{ textAlign: 'center', padding: 24 }}>No sources match these filters.</td></tr>}
+                {shown.length === 0 && <tr><td colSpan={7} className="ws-cell-muted" style={{ textAlign: 'center', padding: 24 }}>No sources match these filters.</td></tr>}
                 {shown.map(s => {
                   const isOpen = openKey === s.key;
-                  const used = d.findingsByKey.get(s.key) || [];
                   const w = d.webByKey.get(s.key);
                   const pr = profileByKey.get(s.key);
                   const excerpt = w?.description || pr?.snippet || pr?.bio || '';
@@ -118,16 +117,20 @@ export const SourcesTab: React.FC = () => {
                     <React.Fragment key={s.key}>
                       <tr className={`row${isOpen ? ' selected' : ''}`} onClick={() => setOpenKey(isOpen ? null : s.key)}>
                         <td className="ws-mono ws-cell-muted">{s.sid}</td>
-                        <td style={{ maxWidth: 360 }}>
-                          <div className="ws-cell-title">{s.source.title}</div>
-                          <div className="ws-url ws-trunc" style={{ maxWidth: 340 }}>{shortUrl(s.source.url)}</div>
+                        <td style={{ maxWidth: 400 }}>
+                          <div className="ws-cell-flex">
+                            <SourceLogo url={s.source.url} platform={s.source.sourceName} />
+                            <div style={{ minWidth: 0 }}>
+                              <div className="ws-cell-title">{s.source.title}</div>
+                              <div className="ws-url ws-trunc" style={{ maxWidth: 330 }}>{shortUrl(s.source.url)}</div>
+                            </div>
+                          </div>
                         </td>
                         <td><span className="ws-tag">{typeOf(s)}</span><div className="ws-cell-muted" style={{ marginTop: 3 }}>{s.source.sourceName || hostOf(s.source.url)}</div></td>
                         <td className="ws-mono ws-cell-muted">{s.source.publishedDate || '—'}</td>
                         <td className="ws-mono ws-cell-muted">{fmtShortDate(s.source.discoveredDate)}</td>
                         <td><LinkStatus status={linkOf(s)} /></td>
                         <td><LevelBadge level={levelOf(inv, s.key)} /></td>
-                        <td className="ws-cell-muted">{used.length ? `${used.length} finding${used.length === 1 ? '' : 's'}` : '—'}</td>
                       </tr>
                       {isOpen && (
                         <tr className="detail">
@@ -137,21 +140,15 @@ export const SourcesTab: React.FC = () => {
                             {excerpt ? <div className="ws-quote" style={{ background: 'var(--ws-bg)', border: '1px solid var(--ws-border)' }}>“{excerpt}”</div> : <div className="ws-sub">No excerpt was captured for this source.</div>}
                             <div className="ws-sub">Excerpt from the search result · full URL <button type="button" className="ws-url" onClick={() => openUrl(s.source.url)}>{s.source.url}</button></div>
                           </td>
-                          <td colSpan={3}>
+                          <td colSpan={2}>
                             <div className="ws-label" style={{ marginTop: 6 }}>Supports</div>
-                            {used.length === 0 && assocs.length === 0 && <div className="ws-sub">Not cited by any finding or association.</div>}
-                            {used.map(fid => {
-                              const f = (inv.findings || []).find(x => x.id === fid);
-                              return <div key={fid}><button type="button" className="ws-link" onClick={() => goTab('findings', fid)}>{fid} · {f?.title}</button></div>;
-                            })}
+                            {assocs.length === 0 && <div className="ws-sub">No association uses this source.</div>}
                             {assocs.map(a => <div key={a.id}><button type="button" className="ws-link" onClick={() => goTab('associations', `assoc:${a.name.toLowerCase()}`)}>Association · {a.name}</button></div>)}
                             <div style={{ margin: '14px 0 10px' }}>
                               <LevelPicker value={levelOf(inv, s.key)} onChange={l => setLevel(s.key, l, s.source.title, s.sid)} />
                             </div>
                             <div className="ws-panel-actions">
                               <button type="button" className="ws-btn ws-btn-sm" onClick={() => openUrl(s.source.url)} disabled={!isOpenableUrl(s.source.url)}>Open source</button>
-                              <button type="button" className="ws-btn ws-btn-sm" onClick={() => newNote([s.key])}>Add note</button>
-                              <button type="button" className="ws-btn ws-btn-sm" onClick={() => openRecordFinding({ sourceKeys: [s.key] })}>Record finding</button>
                             </div>
                           </td>
                         </tr>

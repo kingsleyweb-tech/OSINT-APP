@@ -4,7 +4,7 @@ import {
   ACTIVITY_TYPE_GROUPS, activityType, fmtDate, hostOf, levelOf, openUrl, parseLooseDate, shortUrl, urlKey, type ActivityType
 } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Chips, Empty, LevelBadge } from '../workspace/ui';
+import { Chips, Empty, LevelBadge, SourceLogo } from '../workspace/ui';
 
 interface Item {
   a: IntelligenceActivity;
@@ -97,6 +97,7 @@ export const ActivityTab: React.FC = () => {
         <div className="ws-tl-body">
           <div className="ws-tl-head">
             <div className="ws-tl-title">
+              <SourceLogo url={i.a.sourceUrl} platform={i.platform} />
               {i.a.title}
               <span className="ws-tag">{i.type}</span>
               <span className="ws-tl-meta">{i.platform}{i.a.category ? ` · ${i.a.category}` : ''}</span>

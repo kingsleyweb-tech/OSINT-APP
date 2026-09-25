@@ -140,16 +140,6 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
         title: `${s.sourceName}: ${s.title}`,
         url: s.url
       })),
-      notes: [
-        {
-          id: 'note-1',
-          text: allResults.length > 0
-            ? `Deep OSINT scan completed. Discovered ${allResults.length} verified public findings across platforms, web knowledge, and profiles.`
-            : `No publicly available result found for "${searchTargetStr}". Checked ${searchCoverage.length} connected public OSINT providers.`,
-          author: 'OSINT Intelligence Engine',
-          createdAt: nowIso
-        }
-      ],
       scanHistory: [
         {
           scanId: `scan-${Date.now()}`,

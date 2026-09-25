@@ -6,6 +6,7 @@ import {
   AlertTriangle, HelpCircle, ExternalLink, Database, Cpu
 } from 'lucide-react';
 import appLogo from '../../assets/images/icon.png';
+import entityGraphImg from '../../assets/images/entity-graph.png';
 import { HeroSearchWidget } from '../components/HeroSearchWidget';
 import { TypewriterTitle } from '../components/TypewriterTitle';
 import { SourceEcosystem } from '../components/SourceEcosystem';
@@ -27,7 +28,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
 
   return (
     <div className="lp-route-container">
-      {/* ── 1. HERO SECTION ── */}
       <section className="lp-section-wide" style={{ paddingTop: '50px', paddingBottom: '50px', textAlign: 'center' }}>
         <div className="lp-container-wide">
           
@@ -45,7 +45,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             Automate public digital footprint research. Aggregate search engine index signals, verify live social profiles, and organize structured subject investigation records — ethically, transparently, and securely.
           </p>
 
-          {/* Interactive Hero Search Widget */}
           <HeroSearchWidget currentUser={currentUser} />
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '32px', marginBottom: '40px' }}>
@@ -65,7 +64,31 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             )}
           </div>
 
-          {/* Key Platform Specifications Bar (Horizontal Divider Layout) */}
+          <div className="lp-showcase">
+            <ul className="lp-showcase-trust" aria-label="Principles">
+              <li><CheckCircle2 size={15} /> Public sources only</li>
+              <li><CheckCircle2 size={15} /> Every result cites its source</li>
+              <li><CheckCircle2 size={15} /> Full audit trail</li>
+            </ul>
+            <figure className="lp-showcase-frame">
+              <div className="lp-showcase-bar">
+                <span className="lp-showcase-title"><i /> Associations · subject-centred view</span>
+                <span className="lp-showcase-meta">illustration</span>
+              </div>
+              <div className="lp-showcase-screen">
+                <img
+                  src={entityGraphImg}
+                  alt="Entity graph illustration: a subject at the centre, linked to LinkedIn, Instagram, Facebook, a university, a club, an event site and a news feature, each marked validated or relevant."
+                  width={2248}
+                  height={1080}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <figcaption>How an investigation connects a subject to the public profiles, pages and organisations found about them.</figcaption>
+            </figure>
+          </div>
+
           <div style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '24px 0', marginTop: '40px' }}>
             <div className="lp-grid lp-grid-4" style={{ textAlign: 'center', gap: '20px' }}>
               <div>
@@ -90,7 +113,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
         </div>
       </section>
 
-      {/* ── 2. OSINT INTRODUCTION (FULL-WIDTH EDITORIAL SPLIT) ── */}
       <section className="lp-section-wide" style={{ background: 'var(--bg-mid)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
         <div className="lp-container-wide">
           <div className="lp-responsive-grid-split">
@@ -139,7 +161,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
         </div>
       </section>
 
-      {/* ── 3. FEATURE BREAKDOWN — EDITORIAL ROWS (NO CARD BOXES) ── */}
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
@@ -156,10 +177,8 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             </p>
           </div>
 
-          {/* Editorial List (01, 02, 03, 04, 05) */}
           <div className="lp-editorial-list">
             
-            {/* 01 Name Investigation */}
             <div className="lp-editorial-row">
               <div className="lp-editorial-num">01</div>
               <div className="lp-editorial-title-box">
@@ -189,7 +208,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
               </div>
             </div>
 
-            {/* 02 Username Investigation */}
             <div className="lp-editorial-row">
               <div className="lp-editorial-num">02</div>
               <div className="lp-editorial-title-box">
@@ -219,7 +237,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
               </div>
             </div>
 
-            {/* 03 Profile Discovery */}
             <div className="lp-editorial-row">
               <div className="lp-editorial-num">03</div>
               <div className="lp-editorial-title-box">
@@ -248,7 +265,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
               </div>
             </div>
 
-            {/* 04 Activity & Associations */}
             <div className="lp-editorial-row">
               <div className="lp-editorial-num">04</div>
               <div className="lp-editorial-title-box">
@@ -278,7 +294,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
               </div>
             </div>
 
-            {/* 05 Websites & News */}
             <div className="lp-editorial-row">
               <div className="lp-editorial-num">05</div>
               <div className="lp-editorial-title-box">
@@ -312,10 +327,8 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
         </div>
       </section>
 
-      {/* ── 4. HOMEPAGE SOURCE ECOSYSTEM SECTION (PUBLIC SOURCES & PLATFORMS) ── */}
       <SourceEcosystem />
 
-      {/* ── 5. STEP-BY-STEP WORKFLOW — HORIZONTAL ROWS (NO CARD GRID) ── */}
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
@@ -332,7 +345,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             </p>
           </div>
 
-          {/* Horizontal Step List */}
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
             {[
               { step: '01', title: 'Start Investigation', desc: 'Enter a subject full name or username handle along with optional location/role qualifiers.' },
@@ -356,7 +368,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
         </div>
       </section>
 
-      {/* ── 6. SEARCH ACCURACY & MATCHING (EDITORIAL COMPARISON) ── */}
       <section className="lp-section-wide" style={{ background: 'var(--bg-mid)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
         <div className="lp-container-wide">
           
@@ -416,7 +427,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
         </div>
       </section>
 
-      {/* ── 7. SERPAPI INFRASTRUCTURE (FULL-WIDTH SECTION) ── */}
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           <div className="lp-responsive-grid-serp">
@@ -446,7 +456,6 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
         </div>
       </section>
 
-      {/* ── 8. CALL TO ACTION ── */}
       <section className="lp-section-wide" style={{ paddingTop: '60px', paddingBottom: '80px', textAlign: 'center' }}>
         <div className="lp-container-wide" style={{ maxWidth: '960px' }}>
           <h2 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '16px' }}>

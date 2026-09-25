@@ -19,11 +19,10 @@ export const InvestigationsListPage: React.FC<InvestigationsListPageProps> = ({ 
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   
-  // Deletion state modal
   const [deleteTarget, setDeleteTarget] = useState<Investigation | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const userId = currentUser?.uid || 'demo-user';
+  const userId = currentUser?.uid || '';
 
   useEffect(() => {
     if (!userId) {
@@ -169,7 +168,6 @@ export const InvestigationsListPage: React.FC<InvestigationsListPageProps> = ({ 
         </table>
       </div>
 
-      {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="modal-overlay" onClick={() => setDeleteTarget(null)} style={{
           position: 'fixed',

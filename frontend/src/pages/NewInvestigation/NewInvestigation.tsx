@@ -15,13 +15,15 @@ import { saveInvestigationToDb, getUserInvestigationsFromDb } from '../../fireba
 import { useToast } from '../../components/ui/Toast';
 import { runSearch, identityToInvestigation, SearchError } from '../../lib/searchClient';
 import { useNotifications } from '../../context/NotificationContext';
+import { useSession } from '../../context/SessionContext';
+import { DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
 import '../../styles/NewInvestigation.css';
 
 interface NewInvestigationPageProps {
   currentUser?: {
     uid: string;
     displayName?: string;
-    email?: string;
+    email?: string | null;
   };
 }
 
@@ -32,9 +34,11 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
   const { addNotification } = useNotifications();
+  const { profile } = useSession();
+  const searchDefaults = { ...DEFAULT_SEARCH_DEFAULTS, ...(profile?.searchDefaults || {}) };
 
   const [searchType, setSearchType] = useState<SearchType>(() => {
-    return (sessionStorage.getItem('osint_new_inv_type') as SearchType) || 'Name';
+    return (sessionStorage.getItem('osint_new_inv_type') as SearchType) || searchDefaults.type;
   });
   const [queryInput, setQueryInput] = useState(() => {
     return sessionStorage.getItem('osint_new_inv_query') || '';
@@ -42,11 +46,9 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
   const [isLoading, setIsLoading] = useState(false);
   const [realInvestigations, setRealInvestigations] = useState<Investigation[]>([]);
 
-  // Multi-identity discovery state
   const [activeQuery, setActiveQuery] = useState(() => {
     return sessionStorage.getItem('osint_new_inv_active_query') || '';
   });
-  // The type the displayed results were searched with (the selector may change afterwards).
   const [activeSearchType, setActiveSearchType] = useState<SearchType>(() => {
     return (sessionStorage.getItem('osint_new_inv_active_type') as SearchType) || 'Name';
   });
@@ -61,7 +63,7 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     return null;
   });
 
-  const userId = currentUser?.uid || 'demo-user';
+  const userId = currentUser?.uid || '';
 
   useEffect(() => {
     sessionStorage.setItem('osint_new_inv_type', searchType);
@@ -101,12 +103,11 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     setDiscoveredIdentities(null);
 
     try {
-      const identities = await runSearch(query, searchType);
+      const identities = await runSearch(query, searchType, searchDefaults.depth);
       setDiscoveredIdentities(identities);
       const profileCount = identities.reduce((n, i) => n + (i.investigation?.socialProfiles?.length || 0), 0);
       success('Search complete', `${identities.length} possible ${identities.length === 1 ? 'person' : 'people'} and ${profileCount} profile${profileCount === 1 ? '' : 's'} for "${query}".`);
     } catch (err: any) {
-      // Never substitute generated results for a failed search.
       toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
     } finally {
       setIsLoading(false);
@@ -118,7 +119,8 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     const invData: Investigation = identityToInvestigation(selectedIdentity, {
       activeQuery,
       searchType: activeSearchType,
-      userId
+      userId,
+      searchDepth: searchDefaults.depth
     });
 
     try {
@@ -164,13 +166,11 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
   return (
     <div className="new-investigation-page">
       {isLoading && <CoilingSnakeLoader query={activeQuery || queryInput} searchType={searchType} />}
-      {/* Top Back Nav Button */}
       <button className="back-to-dash-btn" onClick={() => navigate('/dashboard')}>
         <ArrowLeft size={16} />
         <span>Back to Dashboard</span>
       </button>
 
-      {/* Page Title Header */}
       <div className="new-inv-header">
         <h1 className="new-inv-title">New Investigation</h1>
         <p className="new-inv-subtitle">
@@ -178,11 +178,8 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
         </p>
       </div>
 
-      {/* Main 2-Column Search Section */}
       <div className="new-inv-main-grid">
-        {/* Left Column: Search Form Card */}
         <div className="search-form-card">
-          {/* Selector Tabs */}
           <div className="search-type-tabs">
             {SEARCH_TYPES.map((t) => (
               <button
@@ -195,7 +192,6 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
             ))}
           </div>
 
-          {/* Search Input Form */}
           <form className="search-input-form" onSubmit={handleSearchSubmit}>
             <div className="search-input-wrapper">
               <SearchIcon size={18} className="search-input-icon" />
@@ -227,7 +223,6 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
 
         </div>
 
-        {/* Right Column: Feature Promo Card */}
         <div className="feature-promo-card">
           <div className="promo-logo-container">
             <div className="promo-logo-circle">
@@ -241,7 +236,6 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
         </div>
       </div>
 
-      {/* Bottom Horizontal Recent Investigations Section */}
       <div className="recent-inv-bottom-section">
         <div className="section-header-row">
           <h3 className="section-title">Recent Investigations</h3>

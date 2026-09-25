@@ -5,6 +5,8 @@ interface PlatformIconProps {
   domain?: string;
   size?: number;
   className?: string;
+  /** Called when the favicon image cannot be loaded (default: the image is hidden). */
+  onImageError?: () => void;
 }
 
 const getDomainForPlatform = (p: string, domainProp?: string): string => {
@@ -62,7 +64,8 @@ export const PlatformIcon: React.FC<PlatformIconProps> = ({
   platform = '', 
   domain = '', 
   size = 18, 
-  className = '' 
+  className = '',
+  onImageError
 }) => {
   const p = platform.toLowerCase().trim();
 
@@ -251,7 +254,8 @@ export const PlatformIcon: React.FC<PlatformIconProps> = ({
         className={`platform-favicon-img ${className}`} 
         style={{ width: size, height: size, objectFit: 'contain', borderRadius: '3px' }}
         onError={(e) => {
-          (e.target as HTMLElement).style.display = 'none';
+          if (onImageError) onImageError();
+          else (e.target as HTMLElement).style.display = 'none';
         }}
       />
     );

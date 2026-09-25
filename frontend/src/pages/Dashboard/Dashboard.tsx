@@ -14,6 +14,8 @@ import { subscribeToUserInvestigations, saveInvestigationToDb } from '../../fire
 import { useToast } from '../../components/ui/Toast';
 import { runSearch, identityToInvestigation, SearchError } from '../../lib/searchClient';
 import { useNotifications } from '../../context/NotificationContext';
+import { useSession } from '../../context/SessionContext';
+import { DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
 import appLogo from '../../assets/images/icon.png';
 import '../../styles/Dashboard.css';
 
@@ -21,7 +23,7 @@ interface DashboardPageProps {
   currentUser?: {
     uid: string;
     displayName?: string;
-    email?: string;
+    email?: string | null;
   };
 }
 
@@ -32,11 +34,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   const navigate = useNavigate();
   const { error: toastError } = useToast();
   const { addNotification } = useNotifications();
+  const { profile } = useSession();
+  const searchDefaults = { ...DEFAULT_SEARCH_DEFAULTS, ...(profile?.searchDefaults || {}) };
   const [realInvestigations, setRealInvestigations] = useState<Investigation[]>([]);
 
-  // Search state
   const [searchType, setSearchType] = useState<SearchType>(() => {
-    return (sessionStorage.getItem('osint_dash_inv_type') as SearchType) || 'Name';
+    return (sessionStorage.getItem('osint_dash_inv_type') as SearchType) || searchDefaults.type;
   });
   const [queryInput, setQueryInput] = useState(() => {
     return sessionStorage.getItem('osint_dash_inv_query') || '';
@@ -45,7 +48,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   const [activeQuery, setActiveQuery] = useState(() => {
     return sessionStorage.getItem('osint_dash_inv_active_query') || '';
   });
-  // The type the displayed results were searched with (the selector may change afterwards).
   const [activeSearchType, setActiveSearchType] = useState<SearchType>(() => {
     return (sessionStorage.getItem('osint_dash_inv_active_type') as SearchType) || 'Name';
   });
@@ -61,7 +63,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   });
   const [invLoading, setInvLoading] = useState(true);
 
-  const userId = currentUser?.uid || 'demo-user';
+  const userId = currentUser?.uid || '';
   const userName = currentUser?.displayName?.split(' ')[0] || 'Investigator';
 
   useEffect(() => {
@@ -106,7 +108,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
 
   const displayList = realInvestigations.slice(0, 5);
 
-  // Dynamic 7-day search activity
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -120,7 +121,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   });
   const maxDailyCount = Math.max(1, ...last7Days.map(d => d.count));
 
-  // Dynamic search types distribution
   const typeCounts: Record<string, number> = { Name: 0, Username: 0 };
   realInvestigations.forEach(inv => {
     const t = (inv as any).searchType || 'Name';
@@ -137,7 +137,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     { type: 'Username', percent: realInvestigations.length ? Math.round((typeCounts['Username'] / totalSearches) * 100) : 0 }
   ];
 
-  // Dynamic recent sources
   const platformCounts: Record<string, number> = {};
   realInvestigations.forEach(inv => {
     (inv.socialProfiles || []).forEach(p => {
@@ -158,7 +157,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
       count
     }));
 
-  // Search handlers
   const getPlaceholderText = () => {
     switch (searchType) {
       case 'Username': return 'e.g. user123, @developer, dev_kwame';
@@ -180,10 +178,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     setDiscoveredIdentities(null);
 
     try {
-      const identities = await runSearch(query, searchType);
+      const identities = await runSearch(query, searchType, searchDefaults.depth);
       setDiscoveredIdentities(identities);
     } catch (err: any) {
-      // Never substitute generated results for a failed search.
       toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
     } finally {
       setIsLoading(false);
@@ -195,7 +192,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     const invData: Investigation = identityToInvestigation(selectedIdentity, {
       activeQuery,
       searchType: activeSearchType,
-      userId
+      userId,
+      searchDepth: searchDefaults.depth
     });
 
     try {
@@ -215,7 +213,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     navigate(`/investigations/${invData.id}`, { state: { investigation: invData } });
   };
 
-  // If identities discovered, show the results view
   if (discoveredIdentities) {
     return (
       <div className="dashboard-command-center">
@@ -234,17 +231,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     <div className="dashboard-command-center">
       {isLoading && <CoilingSnakeLoader query={activeQuery || queryInput} searchType={searchType} />}
 
-      {/* Hero Search Section - Joined search + promo */}
       <div className="dash-hero-search-section">
         <div className="dash-hero-search-card">
-          {/* Left: Search Form */}
           <div className="dash-hero-left">
             <div className="hero-greeting">
               <h1 className="dash-greeting">Welcome back, {userName}</h1>
               <p className="dash-subgreeting">Search and discover intelligence across multiple platforms.</p>
             </div>
 
-            {/* Search Type Tabs */}
             <div className="hero-search-type-tabs">
               {SEARCH_TYPES.map((t) => (
                 <button
@@ -257,7 +251,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
               ))}
             </div>
 
-            {/* Search Input */}
             <form className="hero-search-form" onSubmit={handleSearchSubmit}>
               <div className="hero-search-input-wrapper">
                 <SearchIcon size={18} className="hero-search-icon" />
@@ -286,7 +279,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
             </form>
           </div>
 
-          {/* Right: Promo Visual */}
           <div className="dash-hero-right">
             <div className="hero-promo-glow" />
             <div className="hero-promo-logo-circle">
@@ -300,9 +292,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
         </div>
       </div>
 
-      {/* Main Dashboard Layout: Left Column & Right Column */}
       <div className="dash-main-grid">
-        {/* Left Column: Recent Investigations */}
         <div className="dash-card recent-inv-card">
           <div className="dash-card-header">
             <h3 className="dash-card-title">Recent Investigations</h3>
@@ -350,9 +340,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
           </div>
         </div>
 
-        {/* Right Column: Search Activity, Top Search Types, Recent Sources */}
         <div className="dash-right-column">
-          {/* Card: Search Activity Chart */}
           <div className="dash-card search-activity-card">
             <div className="dash-card-header">
               <h3 className="dash-card-title">Search Activity</h3>
@@ -374,9 +362,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
             </div>
           </div>
 
-          {/* Card: Top Search Types & Recent Sources Split */}
           <div className="dash-bottom-split-grid">
-            {/* Top Search Types */}
             <div className="dash-card search-types-card">
               <h3 className="dash-card-title">Top Search Types</h3>
               <div className="search-types-list">
@@ -394,7 +380,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
               </div>
             </div>
 
-            {/* Recent Sources */}
             <div className="dash-card recent-sources-card">
               <h3 className="dash-card-title">Recent Sources</h3>
               <div className="recent-sources-list">

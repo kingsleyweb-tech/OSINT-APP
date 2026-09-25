@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Search, 
@@ -11,36 +11,28 @@ import {
   LogOut
 } from 'lucide-react';
 import appLogo from '../../assets/images/icon.png';
-import { signOut as firebaseSignOut } from '../../firebase/auth';
 import '../../styles/Sidebar.css';
 
 interface SidebarProps {
   userName?: string;
   userRole?: string;
-  onSignOut?: () => void;
+  photoURL?: string;
+  onSignOut?: () => void | Promise<void>;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
-  userName = "Kingsley Anaab", 
-  userRole = "Investigator",
+  userName = 'Investigator',
+  userRole = 'Investigator',
+  photoURL,
   onSignOut
 }) => {
   const location = useLocation();
-  const navigate = useNavigate();
 
   const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try {
-      await firebaseSignOut();
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
-    localStorage.removeItem('osint_user_session');
-    if (onSignOut) {
-      onSignOut();
-    }
-    navigate('/');
+    // Opens the "Are you sure?" dialog; the dialog signs out and returns to the homepage.
+    onSignOut?.();
   };
 
   const navItems = [
@@ -88,7 +80,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="sidebar-user-wrapper">
         <div className="sidebar-user">
           <div className="user-avatar">
-            {userName ? userName.split(' ').map(n => n[0]).join('').substring(0, 2) : 'GI'}
+            {photoURL
+              ? <img src={photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+              : userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'IN'}
           </div>
           <div className="user-info">
             <div className="user-name">{userName}</div>

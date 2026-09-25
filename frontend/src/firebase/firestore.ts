@@ -1,190 +1,273 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  onSnapshot, 
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  runTransaction,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch,
+  type DocumentReference,
   type Unsubscribe
 } from 'firebase/firestore';
 import { db, auth } from './config';
-import type { Investigation, InvestigationNote } from '../types/investigation';
+import type { Investigation } from '../types/investigation';
 import type { UserProfile } from '../types/user';
 
-const INVESTIGATIONS_COLLECTION = 'investigations';
-const USERS_COLLECTION = 'users';
-
 /**
- * Strips JS `undefined` fields recursively so Firestore SDK does not reject documents.
+ * Firestore layout (every document belongs to exactly one user):
+ *   users/{uid}                          profile and settings
+ *   users/{uid}/notifications/{id}       that user's notifications
+ *   investigations/{id}                  createdBy = owner uid
+ *   trackedPeople/{uid}_{investigationId} userId = owner uid
+ * The security rules in /firestore.rules enforce the same ownership on the server.
  */
-const cleanForFirestore = <T>(obj: T): T => {
-  if (obj === null || obj === undefined) return obj;
-  return JSON.parse(JSON.stringify(obj));
-};
 
-// User Profile Firestore functions
-export const createUserProfileInDb = async (profile: UserProfile): Promise<void> => {
-  try {
-    const docRef = doc(db, USERS_COLLECTION, profile.uid);
-    const existing = await getDoc(docRef);
-    if (!existing.exists()) {
-      const cleaned = cleanForFirestore({
-        ...profile,
-        updatedAt: new Date().toISOString()
-      });
-      await setDoc(docRef, cleaned);
-      console.log("Successfully created user profile in Firestore:", profile.uid);
-    }
-  } catch (error) {
-    console.error("Error creating user profile in Firestore:", error);
-    throw error;
+const INVESTIGATIONS = 'investigations';
+const USERS = 'users';
+const TRACKED = 'trackedPeople';
+const NOTIFICATIONS = 'notifications';
+
+/** Strips `undefined` fields recursively so the Firestore SDK does not reject documents. */
+const clean = <T>(obj: T): T => (obj === null || obj === undefined ? obj : JSON.parse(JSON.stringify(obj)));
+
+function currentUid(): string {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('You must be signed in to save data.');
+  return uid;
+}
+
+async function deleteRefsInBatches(refs: DocumentReference[]): Promise<void> {
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + 400).forEach(r => batch.delete(r));
+    await batch.commit();
   }
-};
+}
 
-export const getUserProfileFromDb = async (uid: string): Promise<UserProfile | null> => {
-  try {
-    const docRef = doc(db, USERS_COLLECTION, uid);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return snap.data() as UserProfile;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error getting user profile from Firestore:", error);
-    return null;
-  }
-};
+// ─── User profiles ───────────────────────────────────────────────────────────
 
-export const updateUserProfileInDb = async (uid: string, updates: Partial<UserProfile>): Promise<void> => {
-  try {
-    const docRef = doc(db, USERS_COLLECTION, uid);
-    const cleaned = cleanForFirestore({
-      ...updates,
-      updatedAt: new Date().toISOString()
-    });
-    await setDoc(docRef, cleaned, { merge: true });
-    console.log("Successfully updated user profile in Firestore:", uid);
-  } catch (error) {
-    console.error("Error updating user profile in Firestore:", error);
-    throw error;
-  }
-};
+export async function getUserProfileFromDb(uid: string): Promise<UserProfile | null> {
+  const snap = await getDoc(doc(db, USERS, uid));
+  return snap.exists() ? (snap.data() as UserProfile) : null;
+}
 
-// Investigation Firestore functions
-export const saveInvestigationToDb = async (investigation: Investigation): Promise<void> => {
-  try {
-    const currentUid = auth.currentUser?.uid;
-    const invToSave: Investigation = {
-      ...investigation,
-      createdBy: investigation.createdBy || currentUid || 'demo-user',
-      updatedAt: new Date().toISOString()
-    };
-    const docRef = doc(db, INVESTIGATIONS_COLLECTION, invToSave.id);
-    const cleaned = cleanForFirestore(invToSave);
-    await setDoc(docRef, cleaned, { merge: true });
-    console.log("Successfully saved investigation to Firestore:", invToSave.id);
-  } catch (error) {
-    console.error("Error saving investigation to Firestore:", error);
-    throw error;
-  }
-};
+/** Creates the profile if it does not exist yet; never overwrites an existing one (atomic, so it cannot race sign-up). */
+export async function createUserProfileInDb(profile: UserProfile): Promise<void> {
+  const ref = doc(db, USERS, profile.uid);
+  await runTransaction(db, async tx => {
+    const existing = await tx.get(ref);
+    if (!existing.exists()) tx.set(ref, clean({ ...profile, updatedAt: new Date().toISOString() }));
+  });
+}
 
-export const getInvestigationFromDb = async (id: string): Promise<Investigation | null> => {
+export async function updateUserProfileInDb(uid: string, updates: Partial<UserProfile>): Promise<void> {
+  await setDoc(doc(db, USERS, uid), clean({ ...updates, updatedAt: new Date().toISOString() }), { merge: true });
+}
+
+export function subscribeToUserProfile(uid: string, onUpdate: (p: UserProfile | null) => void, onError?: (e: Error) => void): Unsubscribe {
+  return onSnapshot(doc(db, USERS, uid), snap => onUpdate(snap.exists() ? (snap.data() as UserProfile) : null), err => onError?.(err));
+}
+
+// ─── Investigations ──────────────────────────────────────────────────────────
+
+/** Saves an investigation owned by the signed-in user. */
+export async function saveInvestigationToDb(investigation: Investigation): Promise<void> {
+  const uid = currentUid();
+  const toSave: Investigation = { ...investigation, createdBy: uid, updatedAt: new Date().toISOString() };
+  await setDoc(doc(db, INVESTIGATIONS, toSave.id), clean(toSave), { merge: true });
+  if (toSave.isTracked) await trackPersonInDb(toSave);
+}
+
+/** Returns the investigation only if it belongs to the signed-in user. */
+export async function getInvestigationFromDb(id: string): Promise<Investigation | null> {
   try {
-    const docRef = doc(db, INVESTIGATIONS_COLLECTION, id);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return snap.data() as Investigation;
-    }
-    return null;
+    const snap = await getDoc(doc(db, INVESTIGATIONS, id));
+    if (!snap.exists()) return null;
+    const inv = snap.data() as Investigation;
+    return inv.createdBy === auth.currentUser?.uid ? inv : null;
   } catch (error) {
-    console.error("Error getting investigation from Firestore:", error);
+    console.error('Error getting investigation from Firestore:', error);
     return null;
   }
-};
+}
 
-export const getUserInvestigationsFromDb = async (userId: string): Promise<Investigation[]> => {
+const byNewest = (a: Investigation, b: Investigation) =>
+  (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0);
+
+export async function getUserInvestigationsFromDb(userId: string): Promise<Investigation[]> {
   try {
-    const q = query(
-      collection(db, INVESTIGATIONS_COLLECTION),
-      where('createdBy', '==', userId)
-    );
-    const querySnapshot = await getDocs(q);
-    const list: Investigation[] = [];
-    querySnapshot.forEach((docSnap) => {
-      list.push(docSnap.data() as Investigation);
-    });
-    // In-memory sort by createdAt descending to avoid composite index errors in Firestore
-    list.sort((a, b) => {
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return timeB - timeA;
-    });
-    return list;
+    const snap = await getDocs(query(collection(db, INVESTIGATIONS), where('createdBy', '==', userId)));
+    return snap.docs.map(d => d.data() as Investigation).sort(byNewest);
   } catch (error) {
-    console.error("Error fetching user investigations from Firestore:", error);
+    console.error('Error fetching user investigations from Firestore:', error);
     return [];
   }
-};
+}
 
-export const subscribeToUserInvestigations = (
+export function subscribeToUserInvestigations(
   userId: string,
   onUpdate: (investigations: Investigation[]) => void,
   onError?: (error: Error) => void
-): Unsubscribe => {
-  const q = query(
-    collection(db, INVESTIGATIONS_COLLECTION),
-    where('createdBy', '==', userId)
-  );
-
+): Unsubscribe {
   return onSnapshot(
-    q,
-    (querySnapshot) => {
-      const list: Investigation[] = [];
-      querySnapshot.forEach((docSnap) => {
-        list.push(docSnap.data() as Investigation);
-      });
-      // In-memory sort by createdAt descending
-      list.sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return timeB - timeA;
-      });
-      onUpdate(list);
-    },
-    (err) => {
-      console.error("Firestore realtime listener error:", err);
-      if (onError) onError(err);
+    query(collection(db, INVESTIGATIONS), where('createdBy', '==', userId)),
+    snap => onUpdate(snap.docs.map(d => d.data() as Investigation).sort(byNewest)),
+    err => {
+      console.error('Firestore realtime listener error:', err);
+      onError?.(err);
     }
   );
-};
+}
 
-export const addNoteToInvestigationInDb = async (investigationId: string, note: InvestigationNote): Promise<void> => {
-  try {
-    const docRef = doc(db, INVESTIGATIONS_COLLECTION, investigationId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const inv = snap.data() as Investigation;
-      const updatedNotes = [note, ...(inv.notes || [])];
-      const cleanedNotes = cleanForFirestore(updatedNotes);
-      await updateDoc(docRef, { notes: cleanedNotes, updatedAt: new Date().toISOString() });
-    }
-  } catch (error) {
-    console.error("Error adding note to investigation in Firestore:", error);
-    throw error;
-  }
-};
+export async function deleteInvestigationFromDb(id: string): Promise<void> {
+  const uid = currentUid();
+  await deleteDoc(doc(db, INVESTIGATIONS, id));
+  await deleteDoc(doc(db, TRACKED, `${uid}_${id}`)).catch(() => undefined);
+}
 
-export const deleteInvestigationFromDb = async (id: string): Promise<void> => {
-  try {
-    await deleteDoc(doc(db, INVESTIGATIONS_COLLECTION, id));
-    console.log("Successfully deleted investigation from Firestore:", id);
-  } catch (error) {
-    console.error("Error deleting investigation from Firestore:", error);
-    throw error;
-  }
-};
+// ─── Tracked people ──────────────────────────────────────────────────────────
+
+export interface TrackedPerson {
+  userId: string;
+  investigationId: string;
+  name: string;
+  searchType: 'name' | 'username';
+  location?: string;
+  occupation?: string;
+  avatarUrl?: string;
+  profilesCount: number;
+  sourcesCount: number;
+  lastSearched?: string;
+  trackedAt: string;
+  updatedAt: string;
+}
+
+function trackedFrom(inv: Investigation, uid: string, trackedAt?: string): TrackedPerson {
+  const location = inv.targetProfile?.location;
+  const occupation = inv.targetProfile?.occupation;
+  return {
+    userId: uid,
+    investigationId: inv.id,
+    name: inv.name,
+    searchType: inv.searchType === 'username' ? 'username' : 'name',
+    location: location && location !== 'Not specified' ? location : undefined,
+    occupation: occupation && !/not stated|no public role|public individual/i.test(occupation) ? occupation : undefined,
+    avatarUrl: inv.targetProfile?.avatarUrl,
+    profilesCount: (inv.socialProfiles || []).length,
+    sourcesCount: (inv.sources || []).length,
+    lastSearched: inv.lastSearched || inv.createdAt,
+    trackedAt: trackedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+/** Creates or refreshes the tracked-person record for an investigation. */
+export async function trackPersonInDb(inv: Investigation): Promise<void> {
+  const uid = currentUid();
+  const ref = doc(db, TRACKED, `${uid}_${inv.id}`);
+  const existing = await getDoc(ref);
+  const trackedAt = existing.exists() ? (existing.data() as TrackedPerson).trackedAt : undefined;
+  await setDoc(ref, clean(trackedFrom(inv, uid, trackedAt)));
+}
+
+export async function untrackPersonInDb(investigationId: string): Promise<void> {
+  const uid = currentUid();
+  await deleteDoc(doc(db, TRACKED, `${uid}_${investigationId}`));
+  await updateDoc(doc(db, INVESTIGATIONS, investigationId), { isTracked: false, updatedAt: new Date().toISOString() }).catch(() => undefined);
+}
+
+export function subscribeToTrackedPeople(userId: string, onUpdate: (people: TrackedPerson[]) => void, onError?: (e: Error) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, TRACKED), where('userId', '==', userId)),
+    snap => onUpdate(snap.docs.map(d => d.data() as TrackedPerson).sort((a, b) => Date.parse(b.trackedAt) - Date.parse(a.trackedAt))),
+    err => onError?.(err)
+  );
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export interface StoredNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  targetInvestigationId?: string;
+  platform?: string;
+}
+
+const notificationsOf = (uid: string) => collection(db, USERS, uid, NOTIFICATIONS);
+
+export function subscribeToNotifications(uid: string, onUpdate: (items: StoredNotification[]) => void, onError?: (e: Error) => void): Unsubscribe {
+  return onSnapshot(
+    query(notificationsOf(uid), orderBy('createdAt', 'desc'), limit(50)),
+    snap => onUpdate(snap.docs.map(d => d.data() as StoredNotification)),
+    err => onError?.(err)
+  );
+}
+
+export async function addNotificationToDb(uid: string, item: StoredNotification): Promise<void> {
+  await setDoc(doc(notificationsOf(uid), item.id), clean(item));
+}
+
+export async function markNotificationReadInDb(uid: string, id: string): Promise<void> {
+  await updateDoc(doc(notificationsOf(uid), id), { read: true });
+}
+
+export async function markAllNotificationsReadInDb(uid: string, ids: string[]): Promise<void> {
+  const batch = writeBatch(db);
+  ids.forEach(id => batch.update(doc(notificationsOf(uid), id), { read: true }));
+  await batch.commit();
+}
+
+export async function deleteNotificationFromDb(uid: string, id: string): Promise<void> {
+  await deleteDoc(doc(notificationsOf(uid), id));
+}
+
+export async function deleteAllNotificationsFromDb(uid: string): Promise<void> {
+  const snap = await getDocs(notificationsOf(uid));
+  await deleteRefsInBatches(snap.docs.map(d => d.ref));
+}
+
+// ─── Account data ────────────────────────────────────────────────────────────
+
+/** Everything stored for a user, for "Export my data". */
+export async function exportUserDataFromDb(uid: string): Promise<Record<string, unknown>> {
+  const [profile, investigations, tracked, notifications] = await Promise.all([
+    getUserProfileFromDb(uid),
+    getDocs(query(collection(db, INVESTIGATIONS), where('createdBy', '==', uid))),
+    getDocs(query(collection(db, TRACKED), where('userId', '==', uid))),
+    getDocs(notificationsOf(uid))
+  ]);
+  return {
+    exportedAt: new Date().toISOString(),
+    profile,
+    investigations: investigations.docs.map(d => d.data()),
+    trackedPeople: tracked.docs.map(d => d.data()),
+    notifications: notifications.docs.map(d => d.data())
+  };
+}
+
+export async function deleteAllInvestigationsFromDb(uid: string): Promise<number> {
+  const [investigations, tracked] = await Promise.all([
+    getDocs(query(collection(db, INVESTIGATIONS), where('createdBy', '==', uid))),
+    getDocs(query(collection(db, TRACKED), where('userId', '==', uid)))
+  ]);
+  await deleteRefsInBatches([...investigations.docs.map(d => d.ref), ...tracked.docs.map(d => d.ref)]);
+  return investigations.size;
+}
+
+/** Deletes every Firestore document of the user (investigations, tracked people, notifications, profile). */
+export async function deleteAllUserDataFromDb(uid: string): Promise<void> {
+  await deleteAllInvestigationsFromDb(uid);
+  await deleteAllNotificationsFromDb(uid);
+  await deleteDoc(doc(db, USERS, uid));
+}

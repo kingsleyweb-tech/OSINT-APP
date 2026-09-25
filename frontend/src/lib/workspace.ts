@@ -1,16 +1,14 @@
 import type {
   AuditEvent,
   EvidenceLevel,
-  Finding,
   IntelligenceActivity,
   IntelligenceAssociation,
   IntelligenceSource,
   Investigation,
-  InvestigationNote,
-  NoteType,
   SearchLogEntry,
   SocialProfile
 } from '../types/investigation';
+import { formatDate, formatShortDate, formatTime, getSessionUser } from './session';
 
 /**
  * Pure helpers for the investigation workspace. Everything shown in the workspace is derived
@@ -21,7 +19,7 @@ export type WebItem = NonNullable<Investigation['webAndNews']>[number];
 
 // ─── URLs ───────────────────────────────────────────────────────────────────
 
-/** Stable key for matching the same URL across profiles, web items, sources and findings. */
+/** Stable key for matching the same URL across profiles, web items and sources. */
 export function urlKey(url?: string): string {
   if (!url) return '';
   try {
@@ -238,27 +236,17 @@ export function parseLooseDate(value?: string, referenceIso?: string): Date | nu
   return d.getFullYear() >= 1990 && d.getFullYear() <= 2100 ? d : null;
 }
 
+/** Dates follow the user's date format and time zone (Settings → Profile). */
 export function fmtDate(iso?: string, withTime = false): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  return withTime ? `${date}, ${fmtTime(iso)}` : date;
+  if (Number.isNaN(new Date(iso).getTime())) return iso;
+  const date = formatDate(iso);
+  return withTime ? `${date}, ${formatTime(iso)}` : date;
 }
 
-export function fmtShortDate(iso?: string): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-}
+export const fmtShortDate = (iso?: string): string => formatShortDate(iso);
 
-export function fmtTime(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
+export const fmtTime = (iso?: string): string => formatTime(iso);
 
 // ─── Search log ─────────────────────────────────────────────────────────────
 
@@ -301,7 +289,6 @@ export interface PipelineCounts {
   raw: number | null;
   relevant: number;
   validated: number;
-  findings: number;
 }
 
 export function pipelineCounts(inv: Investigation): PipelineCounts {
@@ -316,51 +303,19 @@ export function pipelineCounts(inv: Investigation): PipelineCounts {
   return {
     raw,
     relevant: levels.filter(l => l !== 'raw').length,
-    validated: levels.filter(l => l === 'validated').length,
-    findings: (inv.findings || []).length
+    validated: levels.filter(l => l === 'validated').length
   };
 }
 
-// ─── Notes, findings, audit ─────────────────────────────────────────────────
-
-export function noteType(n: InvestigationNote): NoteType {
-  if (n.type) return n.type;
-  return /engine/i.test(n.author || '') ? 'Method' : 'Observation';
-}
-
-export function noteTitle(n: InvestigationNote): string {
-  if (n.title) return n.title;
-  const first = (n.text || '').split(/(?<=[.!?])\s/)[0];
-  return first.length > 80 ? `${first.slice(0, 77)}…` : first || 'Untitled note';
-}
-
-/** N-01, N-02 … in creation order. */
-export function noteIds(notes: InvestigationNote[]): Map<string, string> {
-  const sorted = [...notes].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
-  return new Map(sorted.map((n, i) => [n.id, `N-${String(i + 1).padStart(2, '0')}`]));
-}
-
-export function nextFindingId(findings: Finding[]): string {
-  const max = findings.reduce((m, f) => Math.max(m, Number(f.id.replace(/\D/g, '')) || 0), 0);
-  return `F-${String(max + 1).padStart(2, '0')}`;
-}
+// ─── Audit ──────────────────────────────────────────────────────────────────
 
 export function currentActor(): string {
-  try {
-    const u = JSON.parse(localStorage.getItem('osint_user_session') || 'null');
-    return u?.displayName || (u?.uid === 'demo-user' ? 'Guest Investigator' : 'Investigator');
-  } catch {
-    return 'Investigator';
-  }
+  return getSessionUser()?.displayName || 'Investigator';
 }
 
 export function ownerName(inv: Investigation): string {
-  if (inv.createdBy === 'demo-user') return 'Guest Investigator';
-  try {
-    const u = JSON.parse(localStorage.getItem('osint_user_session') || 'null');
-    if (u?.uid && u.uid === inv.createdBy) return u.displayName || 'You';
-  } catch { /* ignore */ }
-  return 'Investigator';
+  const u = getSessionUser();
+  return u && u.uid === inv.createdBy ? u.displayName : 'Investigator';
 }
 
 export function newAuditEvent(e: Omit<AuditEvent, 'id' | 'at' | 'by'> & { by?: string }): AuditEvent {

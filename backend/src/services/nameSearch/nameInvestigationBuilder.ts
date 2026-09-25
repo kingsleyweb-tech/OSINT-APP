@@ -119,14 +119,6 @@ export function buildNameInvestigation(
     associations,
     sources,
     sourceLinks: sources.map(s => ({ title: `${s.sourceName}: ${s.title}`, url: s.url })),
-    notes: [
-      {
-        id: 'note-1',
-        text: `Name search for "${name}" ran ${output.stats.queriesExecuted} SerpApi searches (${output.stats.serpApiCallsCached} served from cache), reviewed ${output.stats.rawResultsReviewed} raw results and rejected ${output.stats.resultsRejected} that were not profiles of this name or did not contain the full name.${output.stats.quotaExhausted ? ' The SerpApi monthly quota was exhausted, so some searches did not run.' : ''}`,
-        author: 'OSINT Intelligence Engine',
-        createdAt: nowIso
-      }
-    ],
     scanHistory: [
       {
         scanId: `scan-${Date.now()}`,
@@ -217,7 +209,6 @@ export function rescanNameInvestigation(query: OSINTQuery, investigation: any, o
       ...fresh,
       id: investigation.id,
       name: investigation.name,
-      notes: investigation.notes || fresh.notes,
       createdAt: investigation.createdAt,
       isTracked: investigation.isTracked,
       scanHistory: [scanHistoryItem, ...(investigation.scanHistory || [])]

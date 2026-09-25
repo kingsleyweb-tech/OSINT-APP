@@ -5,6 +5,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ScrollToTopBtn } from './components/ScrollToTop';
 import { ArrowLeft } from 'lucide-react';
+import { AuthRequiredNotice } from './components/AuthRequiredNotice';
 
 interface LandingLayoutProps {
   currentUser?: any;
@@ -28,6 +29,8 @@ export const LandingLayout: React.FC<LandingLayoutProps> = ({ currentUser }) => 
           </button>
         </div>
       )}
+
+      <AuthRequiredNotice />
 
       <main className="lp-route-container">
         <Outlet />

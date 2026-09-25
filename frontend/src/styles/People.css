@@ -120,3 +120,78 @@
     grid-template-columns: 1fr;
   }
 }
+
+.people-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.people-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-input);
+  color: var(--text-muted);
+  min-width: 260px;
+}
+
+.people-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.person-card {
+  cursor: pointer;
+}
+
+.person-avatar {
+  overflow: hidden;
+}
+
+.person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.person-untrack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.person-untrack:hover {
+  border-color: var(--accent-warm-border);
+  color: var(--accent-warm);
+}
+
+.empty-people-state p b {
+  color: var(--text-primary);
+}
+
+.spinning-people {
+  animation: people-spin 0.9s linear infinite;
+}
+
+@keyframes people-spin {
+  to { transform: rotate(360deg); }
+}

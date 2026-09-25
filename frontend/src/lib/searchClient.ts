@@ -2,7 +2,7 @@ import type { Investigation } from '../types/investigation';
 import type { DiscoveredIdentity } from '../components/search/PossibleIdentitiesView';
 import { searchLogFromTrail, urlKey } from './workspace';
 
-// Name searches run ~8-10 SerpApi calls in parallel; allow for slow upstream responses.
+
 const SEARCH_TIMEOUT_MS = 120_000;
 
 export const getApiBase = (): string => import.meta.env.VITE_API_URL || '/api';
@@ -19,7 +19,7 @@ export class SearchError extends Error {
  * Runs a search against the backend. Never fabricates results: on failure it throws a
  * SearchError describing what went wrong so the page can tell the user.
  */
-export async function runSearch(query: string, searchType: 'Name' | 'Username'): Promise<DiscoveredIdentity[]> {
+export async function runSearch(query: string, searchType: 'Name' | 'Username', searchDepth?: 'quick' | 'standard' | 'deep'): Promise<DiscoveredIdentity[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
 
@@ -28,7 +28,7 @@ export async function runSearch(query: string, searchType: 'Name' | 'Username'):
     const response = await fetch(`${getApiBase()}/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, type: searchType.toLowerCase() }),
+      body: JSON.stringify({ query, type: searchType.toLowerCase(), ...(searchDepth ? { searchDepth } : {}) }),
       signal: controller.signal
     });
     if (!response.ok) {
@@ -105,7 +105,7 @@ export async function runSearch(query: string, searchType: 'Name' | 'Username'):
  */
 export function identityToInvestigation(
   identity: DiscoveredIdentity,
-  opts: { activeQuery: string; searchType: 'Name' | 'Username'; userId: string }
+  opts: { activeQuery: string; searchType: 'Name' | 'Username'; userId: string; searchDepth?: string }
 ): Investigation {
   const inv = identity.investigation || {};
   const nowIso = new Date().toISOString();
@@ -143,6 +143,7 @@ export function identityToInvestigation(
     status: 'Completed',
     searchInputs,
     searchType: type,
+    searchDepth: opts.searchDepth || inv.searchDepth || 'deep',
     lastSearched: inv.lastSearched || nowIso,
     overallConfidence: identity.confidenceScore || 0,
     confidenceLevel: identity.confidenceScore >= 75 ? 'High' : identity.confidenceScore >= 55 ? 'Medium' : 'Low',
@@ -151,7 +152,6 @@ export function identityToInvestigation(
     deepStats: inv.deepStats || undefined,
     auditTrail: Array.isArray(inv.auditTrail) ? inv.auditTrail : [],
     searchLog: searchLogFromTrail(inv.auditTrail, { firstRun: 1, batch: 1, at: inv.lastSearched || nowIso, coverage: inv.searchCoverage }),
-    findings: [],
     review: {},
     auditLog: [],
     targetProfile: {
@@ -186,7 +186,6 @@ export function identityToInvestigation(
     associations,
     sources,
     sourceLinks: sources.map((s: any) => ({ title: `${s.sourceName || 'Source'}: ${s.title || 'Record'}`, url: s.url })),
-    notes: Array.isArray(inv.notes) ? inv.notes : [],
     scanHistory: Array.isArray(inv.scanHistory) ? inv.scanHistory : undefined,
     createdBy: opts.userId,
     createdAt: inv.createdAt || nowIso,

@@ -21,7 +21,6 @@ export const LawEnforcementPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Continuous Editorial Flow (No Card Box Container) */}
           <div style={{ lineHeight: 1.75, color: 'var(--text-muted)', width: '100%' }}>
             
             <div style={{ borderTop: '1px solid var(--border-color)', padding: '28px 0' }}>
@@ -33,7 +32,6 @@ export const LawEnforcementPage: React.FC = () => {
                 The OSINT Investigation Platform provides software interfaces for querying publicly indexed search engine records via <strong>SerpApi</strong>. The platform does not operate a proprietary private database of personal records, criminal background checks, or telecom logs.
               </p>
 
-              {/* Explicit List of What Platform DOES NOT Provide */}
               <div style={{ borderLeft: '3px solid #ef4444', paddingLeft: '20px', marginTop: '16px' }}>
                 <strong style={{ color: 'var(--text-primary)', fontSize: '1.05rem', display: 'block', marginBottom: '8px' }}>
                   What the Platform DOES NOT Provide

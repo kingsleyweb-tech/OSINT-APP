@@ -53,7 +53,7 @@ A user signs in, types a **name** (e.g. `Satya Nadella`) or a **username** (e.g.
 2. The backend builds a set of **search queries** and sends them to **SerpApi**. SerpApi runs them on Google, Bing or YouTube and returns the result pages as JSON.
 3. For username searches the backend also asks a number of **free public platform APIs** (GitHub, Mastodon, Bluesky and others) whether that exact username exists.
 4. The backend **cleans, filters, classifies, de-duplicates and groups** the results into one or more possible identities.
-5. The frontend shows the possible identities. When the user picks one, it becomes an **investigation** that is saved to **Firestore** and shown in tabs (Overview, Profiles, Activity, Associations, Sources, Web & News, Notes & Findings, Metrics & Audit).
+5. The frontend shows the possible identities. When the user picks one, it becomes an **investigation** that is saved to **Firestore** and shown in tabs (Overview, Profiles, Activity, Associations, Sources, Web, News, Metrics, Audit). Investigations can be **tracked**, which lists the person on the **People** page.
 
 No AI or LLM service is used anywhere. Every label, score and summary is produced by fixed rules in the backend code.
 
@@ -196,7 +196,7 @@ The engine first works out *what kind of page* each result is (see [§15](#15-pr
 - **Profile / channel pages** must carry the searched name *as the account's own name* (see [§14](#14-identity-matching)). Otherwise they are rejected with a reason such as *"Profile name 'Jane Smith' only partly matches 'Jane Doe'"*.
 - **Everything else** (articles, news, posts, videos, websites) is kept **only if the full name appears as a phrase** in the title or snippet. For two-word names the reversed order also counts. One shared word is never enough, so "King" does not match "Kingsley".
 
-Every rejection is recorded with its reason (`rejected[]` in the API response). The count is shown in the investigation's first note.
+Every rejection is recorded with its reason (`rejected[]` in the API response). The per-query returned/kept counts are stored in the investigation's search log and shown in the Metrics tab.
 
 ### Multiple people with the same name
 
@@ -328,10 +328,7 @@ The investigator must judge whether the accounts belong to the same person. (The
 - **From search results:** the URL is the link the search engine returned. It is normalised (redirects unwrapped, tracking removed) and classified by `UrlValidator.validateAndClassify`. That function knows the profile URL patterns of about 20 platforms (Instagram, YouTube, TikTok, X, LinkedIn, GitHub, Reddit, Facebook, Medium, Substack, Dev.to, Behance, Dribbble, Pinterest, Spotify, SoundCloud, Twitch, Quora…). Only URLs matching a profile pattern become profiles.
 - **From direct checks:** the URL returned by the platform API, or the platform's standard profile URL for a username the API confirmed exists (e.g. `https://github.com/<login>` from the GitHub API's `html_url`).
 - **Duplicates:** removed by normalised URL (see [§16](#16-deduplication)).
-- **How results reach the frontend:** the controller returns `possibleIdentities[]`. Each identity carries the analysed results for its group: profiles, activities, associations, sources and summary. When the user selects one, the frontend (`identityToInvestigation`) builds the saved investigation from it:
-  - **Web & News** is filled from that identity's activity list, i.e. every accepted item, profiles included.
-  - **Search coverage and stats** are not part of the identity, so they are missing from the saved record until the first Refresh.
-  - After a Refresh, the backend supplies Web & News (web-type items only), coverage and stats.
+- **How results reach the frontend:** the controller returns `possibleIdentities[]`. Each identity carries the analysed results for its group: profiles, activities, associations, sources and summary. When the user selects one, the frontend (`runSearch` + `identityToInvestigation`) builds the saved investigation from it and adds the search-level record: coverage, stats, the per-query search log, and the web results that belong to the identity's sources.
 
 ## 9. Query Generator
 
@@ -430,7 +427,7 @@ Three different limits apply. Keep them separate:
 | Username | quick | up to about 17 |
 | Username | standard | up to about 37 |
 | **Username** | **deep (what the UI uses)** | **up to about 71** (measured in testing: 35 queries, 70 Google/Bing requests + YouTube) |
-| Refresh / Search Deeper on an investigation | deep | same as a new search of that type |
+| Re-run searches on an investigation | deep | same as a new search of that type |
 
 **What 250 per month means in practice:** about **22–31 name searches**, *or* about **3 username searches**, *or* a mix. The application itself does **not** limit users, count usage, or warn before a search that would use up the quota.
 
@@ -533,28 +530,33 @@ A result is shown as a profile only if all applicable checks pass:
 | Final category | Name search: how it is decided | Username search: how it is decided |
 |---|---|---|
 | **Profiles** | Page kind `person_profile` or `channel` + name evidence. Category from the platform registry: Social / Professional (LinkedIn, business, academic) / Developer / Video & Streaming | `UrlValidator` profile pattern, or a direct platform-check hit |
-| **Web & News** | Every accepted non-profile page: article, news (Google Top Stories or news-style path), website, post, video, repository, group, organization page. Labelled by page kind ("Article", "News", "Post", "Mention in a post"…) | On the first save: the identity's activity list (all accepted items). After a Refresh: items whose `sourceType` is `Websites & News`, `Knowledge & Wikipedia` or empty |
+| **Web / News** | Every accepted non-profile page: article, news (Google Top Stories or news-style path), website, post, video, repository, group, organization page. Labelled by page kind ("Article", "News", "Post", "Mention in a post"…) | Items whose `sourceType` is `Websites & News`, `Knowledge & Wikipedia` or empty |
 | **Activity** | Built by `EntityAnalyzer.extractActivities` from the identity's web items (profile URLs excluded). Category from keywords in title/snippet: speech, interview, conference, political, professional, publication, else "News Mention" | Same function over **all** accepted items, profiles included |
 | **Associations** | Organization and education listed on profiles, plus `EntityAnalyzer.extractAssociations`: phrases ending in University/College/Institute/School/Academy; a fixed list of organizations (NDC, NPP, African Union, United Nations, Parliament of Ghana, ECOWAS); a `company` field if present | `EntityAnalyzer.extractAssociations` only |
 | **Sources** | One entry per unique URL among the identity's web items and profiles, with a type (News Article, Social Profile, Developer Profile, Knowledge Base, Web Document) and "used for" (Activity Report / Association Evidence / Identity Verification) | Same |
-| **Organizations** | Not a separate tab. Organization pages appear in Web & News; organizations named on profiles appear in Associations | LinkedIn/"professional" profiles get the `Organizations` source type |
+| **Organizations** | Not a separate tab. Organization pages and groups appear in Profiles; organizations named on profiles appear in Associations | LinkedIn/"professional" profiles get the `Organizations` source type |
 
-**One result can appear in several tabs.** For example, a news article is a Web & News item, an Activity entry and a Source, and it can produce an Association if it names a university. Duplicates *within* a tab are prevented as described in [§16](#16-deduplication).
+**One result can appear in several tabs.** For example, a news article is a News item, an Activity entry and a Source, and it can produce an Association if it names a university. Duplicates *within* a tab are prevented as described in [§16](#16-deduplication).
 
 ## 18. Tab Generation
 
-The investigation page (`pages/Investigation/InvestigationDetail.tsx`) renders these tabs from the saved investigation object:
+The investigation page (`pages/Investigation/InvestigationDetail.tsx`) renders these tabs from the saved investigation object. Every web result is placed in exactly one of Profiles (organization pages and groups), Activity (posts and videos), News or Web, using `bucketOf()` in `frontend/src/lib/workspace.ts`.
 
 | Tab | Data shown | Count in the tab label |
 |---|---|---|
-| Overview | `quickSummary`, key info, first 4 profiles with a username, first 4 `recentActivities`, first 4 associations | none |
-| Profiles | `socialProfiles` grouped by category | `socialProfiles.length` |
-| Activity | `activities` (category filter + date sort) | `activities.length` |
-| Associations | `associations` (category filter) | `associations.length` |
-| Sources | `sources` (type filter) | `sources.length` |
-| Web & News | `webAndNews` (category filter) | `webAndNews.length` |
-| Notes & Findings | `notes` | `notes.length` |
-| Metrics & Audit | array lengths + `scanHistory` | none |
+| Overview | `quickSummary`, key info, search inputs, top 3 profiles, recent dated activity, associations, strongest sources; side panel with the evidence levels, search coverage and timeline | none |
+| Profiles | `socialProfiles` plus organization pages / groups from `webAndNews`, in one table with a detail panel. Posts and videos returned by profile searches are listed below for reference (not counted) | profiles + pages/groups |
+| Activity | `activities` as a month-grouped timeline (undated items under "Date not stated"), with type, platform, evidence-level and date filters | `activities.length` |
+| Associations | `associations`: documented ones in a table, others under "Appears in results, not documented" with Document / Dismiss | `associations.length` |
+| Sources | `sources`, numbered S-01…, with type / level / link-status filters, CSV export and "Add source" | number of sources |
+| Web | `webAndNews` items that are web pages (not news, posts or organization pages) | web items |
+| News | `webAndNews` items from Google Top Stories or with a news-article path | news items |
+| Metrics | result counts, returned vs kept per search, kept results per tab, and the full search log | none |
+| Audit | every search run (from the search log) and every change made in the workspace, exportable as CSV | number of events |
+
+**Evidence levels.** Every source, profile and association has a level: *Raw result*, *Relevant* or *Validated*. Everything the searches kept starts as Relevant; the investigator can raise it to Validated or lower it to Raw result. Levels are stored in the investigation's `review` map and every change is written to the audit log.
+
+**Source logos.** Each row shows the logo of the site the result came from: the platform's brand mark for known platforms, otherwise the site's favicon (fetched from Google's favicon service). A letter is shown only if no logo can be loaded.
 
 **Tab counts are accurate:** each number is the length of the **same array the tab renders**, with its default "All" filter. The summary cards, key-info panel and Metrics tab also use array lengths. Identity cards use `profilesCount` etc., which the backend computes from the arrays it sends. A count is omitted when it would be 0.
 
@@ -573,32 +575,39 @@ The summary is **built by fixed rules from the search results. No AI model is us
   - otherwise *"<name> is documented in public records as a <role>…"* followed by the first two result snippets
   - The role comes from keywords (e.g. "developer" → Software Engineer), the location from a short keyword list (Ghana, Nigeria, United States, United Kingdom).
 - **Conflicting information:** not reconciled. The first stated value wins. In name search, conflicting people are kept as separate identities instead of being merged.
-- **Stored:** yes, as `quickSummary` and `description` on the Firestore investigation. The user can edit it in the investigation header.
-- **After Refresh / Search Deeper:** the summary is rebuilt from the new results and overwrites the old one, including any manual edits.
+- **Stored:** yes, as `quickSummary` and `description` on the Firestore investigation.
+- **After Re-run searches:** the summary is rebuilt from the new results and replaces the old one.
 
 ## 20. Firestore
 
-The browser writes to two collections (`frontend/src/firebase/firestore.ts`):
+The browser reads and writes Firestore directly (`frontend/src/firebase/firestore.ts`). Every document belongs to exactly one user:
 
 | Collection | Document | Contents |
 |---|---|---|
-| `users/{uid}` | one per signed-in user | `uid`, `email`, `displayName`, `role`, `createdAt`, `updatedAt` |
-| `investigations/{id}` | one per selected identity | the whole investigation (below) |
+| `users/{uid}` | one per user (account or guest) | `uid`, `email`, `displayName`, `role`, `organisation`, `photoURL` (small resized image), `isGuest`, `timeZone`, `dateFormat`, `searchDefaults`, `notificationPrefs`, `createdAt`, `updatedAt`, `lastLoginAt` |
+| `users/{uid}/notifications/{id}` | one per notification | `type`, `title`, `message`, `createdAt`, `read`, `targetInvestigationId` |
+| `investigations/{id}` | one per selected identity | the whole investigation (below); `createdBy` = owner uid |
+| `trackedPeople/{uid}_{investigationId}` | one per tracked person | `userId`, `investigationId`, `name`, `searchType`, `location`, `occupation`, `avatarUrl`, `profilesCount`, `sourcesCount`, `lastSearched`, `trackedAt` |
+
+**Passwords are never stored in Firestore.** Firebase Authentication holds credentials; Firestore only holds the profile and data.
+
+Notifications are live (`onSnapshot`): marking one read, deleting one, or "Clear all" changes Firestore immediately, so the bell shows the same list after a refresh or on another device. Tracking a person writes its `trackedPeople` record; untracking or deleting the investigation removes it.
 
 An investigation document holds:
 
 - `name`, `searchType`, `searchInputs`, `quickSummary`, `targetProfile`, `overallConfidence`
 - the arrays shown in the tabs: `socialProfiles`, `webAndNews`, `activities`, `recentActivities`, `associations`, `sources`, `sourceLinks`
-- `notes`, `scanHistory`, `searchCoverage`, `deepStats`, `resultsCount`, `isTracked`
+- `review` (evidence level per result), `auditLog` (workspace changes), `searchLog` (every SerpApi query of every run), `auditTrail`
+- `scanHistory`, `searchCoverage`, `deepStats`, `resultsCount`, `isTracked`
 - `createdBy` (the user's uid), `createdAt`, `updatedAt`
 
-Notes are stored **inside** the investigation document, not in a sub-collection. Documents are written with `setDoc(..., { merge: true })` after `undefined` values are removed.
+Everything is stored **inside** the investigation document; there are no sub-collections. Documents are written with `setDoc(..., { merge: true })` after `undefined` values are removed.
 
 Writes happen when:
 
 - an identity is selected
-- the user tracks/untracks or edits the header
-- a note is added
+- the user tracks/untracks the person
+- an evidence level is changed, an association is documented or dismissed, or a source is added
 - link-health results arrive
 - a rescan completes
 
@@ -608,30 +617,41 @@ The raw search results that were *not* selected (other identities, rejected item
 
 ## 21. Authentication
 
-- **Firebase Authentication, email + password**, used from the browser (`firebase/auth.ts`, `pages/Auth/AuthPages.tsx`). On first sign-in a `users/{uid}` profile document is created.
-- The signed-in user object is also kept in `localStorage` (`osint_user_session`) so the session survives reloads. `ProtectedRoute` only checks that this object exists.
-- **Guest/demo login:** the auth page has a demo button that signs in *without Firebase*, as uid `demo-user`. All demo investigations are shared under that id.
-- Sign-out (sidebar or mobile menu) calls Firebase `signOut` and clears the stored session.
+- **Firebase Authentication** is the only record of who is signed in (`firebase/auth.ts`, `context/SessionContext.tsx`). Nothing about the session is kept in `localStorage`; Firebase restores the session itself after a refresh.
+- **Create account** (`pages/Auth/AuthPages.tsx`): full name, phone number (validated, with country code), email and password. Firebase Authentication stores the credentials; the profile and settings are saved to `users/{uid}`. The user can sign in with the same email and password at any time.
+- **Sign in:** email and password. **Keep me signed in on this device** keeps the session after the browser closes; without it the session lasts until the tab or browser is closed (a refresh never signs the user out).
+- **Forgot password:** sends Firebase's password reset email.
+- **Continue with guest account:** Firebase *anonymous* sign-in. Each guest gets their **own** uid, so guests never see each other's data.
+  - **Guest sessions are kept on the device.** Signing out as a guest "parks" the session instead of destroying it (`firebase/auth.ts`). The app treats the guest as signed out, and **Resume guest session** on the same browser brings back the same account with all its investigations, tracked people and notifications.
+  - Guests are **not** identified by IP address: many people share one IP (home Wi-Fi, offices, mobile networks) and IPs change, so that would show one person's investigations to others and lose them for the owner.
+  - A parked guest session is lost if the browser's site data is cleared, or if someone signs in with an email account on that browser. It cannot be opened from another device; for that, create an account.
+  - A guest can turn the account into an email account in **Settings → Security**; the uid stays the same, so everything is kept.
+  - **Guest mode in Settings:** guests can view the settings pages, but every control is locked. Any click opens a "You're in guest mode" notice with **Create an account**. Only the account-creation form works.
+  - Anonymous sign-in must be enabled in the Firebase console (Authentication → Sign-in method → Anonymous). Until it is, the guest button shows "Guest access is not enabled for this workspace yet".
+- **Protected pages:** every app page (dashboard, investigations, people, settings, …) is wrapped in `ProtectedRoute`. A signed-out visitor who opens one, even by typing the URL, is sent to the homepage, which shows **"Sign in required"** with *Sign in* and *Continue as guest*. After signing in they return to the page they asked for.
+- **Separate data per user:** every query filters by the signed-in uid (`createdBy` / `userId`), an investigation that belongs to someone else is never loaded, and the Firestore security rules (below) enforce the same on the server.
+- **Sign out** (sidebar, mobile menu or Settings) signs out of Firebase and clears cached search state in the browser, so the next person on the same browser starts clean.
 - **The backend does not check authentication.** Any client that can reach `/api/*` can run searches.
 
 ## 22. Investigation Lifecycle
 
 ```
-Search ─► Possible identities ─► Select identity ─► Investigation (saved) ─► Refresh / Search Deeper ─► Updated investigation (saved)
+Search ─► Possible identities ─► Select identity ─► Investigation (saved) ─► Re-run searches ─► Updated investigation (saved)
 ```
 
 1. **Initial search:** runs the live queries and returns *possible identities* (name search: up to 5 distinct people + an unlinked group; username search: 1–3 groups). Nothing is saved yet.
 2. **Investigation:** selecting an identity turns *that identity's* profiles and results into an investigation. `identityToInvestigation` builds it, it is saved to Firestore, and the tab view opens. Other identities are discarded. For a username search split into several category groups, only the chosen group's items are kept.
-3. **Deep search / Refresh:** the investigation page has **Refresh / Rescan** and **Search Deeper** buttons. Both call `POST /api/investigations/rescan` and, as implemented, both run at depth `deep`, so they do the **same thing**. A rescan runs the **same queries again**; there are no additional "deeper" queries.
+3. **Re-run searches:** the investigation page has a **Re-run searches** button. It calls `POST /api/investigations/rescan` at depth `deep` and runs the **same queries again**; there are no additional "deeper" queries. The new queries are appended to the search log as a new run.
 4. **Merging (name investigations):**
    - The new identity with the most profile URLs in common with the saved ones is chosen, so the selected person is kept.
    - Profiles found again keep their original `discoveredAt` and link status.
    - Saved profiles **not** found again are kept and marked **"Previously discovered · not returned by the latest scan"**.
-   - Web & News, Activity, Associations and Sources are **replaced** by the new results.
-   - Notes, name, id, creation date and tracking flag are kept.
-5. **Merging (username investigations):** all result arrays are replaced by the new results; notes are kept.
-6. **New findings:** `TrackingEngine.compareScans` compares URLs with the previous scan. It adds a **scan history** entry ("+ 2 new public profile(s) discovered…") shown in Metrics & Audit and in a toast/notification. Individual new items are **not** separately labelled in the tabs.
+   - Web and news results, Activity, Associations and Sources are **replaced** by the new results.
+   - Evidence levels, audit log, name, id, creation date and tracking flag are kept.
+5. **Merging (username investigations):** all result arrays are replaced by the new results; evidence levels, audit log and tracking flag are kept.
+6. **New findings:** `TrackingEngine.compareScans` compares URLs with the previous scan. It adds a **scan history** entry ("+ 2 new public profile(s) discovered…") shown in the Audit tab and in a toast/notification. Individual new items are **not** separately labelled in the tabs.
 7. The updated investigation is saved back to Firestore.
+8. **Tracking:** **Track person** on the investigation page sets `isTracked`. The **People** page (`pages/People/People.tsx`) subscribes to the user's investigations and lists every tracked one live; **Untrack** there or on the investigation removes it.
 
 ## 23. Public Information and OSINT Scope
 
@@ -675,12 +695,15 @@ Users are responsible for lawful and ethical use. See the Responsible Use and Te
 What exists today:
 
 - **Secrets in environment files:** `SERPAPI_KEY` and `GITHUB_TOKEN` are read from `backend/.env`. That file and `frontend/.env` are git-ignored, and a check found no secret in any tracked file or in git history. The SerpApi key is only sent to serpapi.com.
-- **Firebase web config:** read from `VITE_FIREBASE_*` variables. `frontend/src/firebase/config.ts` also contains **hard-coded fallback values** for the project's web config. Firebase treats these as public client identifiers, not secrets, but they point at the real project. They are kept because removing them would break any deployment that does not set the variables.
-- **Authentication:** Firebase email/password in the browser, plus the demo login (see [§21](#21-authentication)).
-- **User data isolation:** implemented **only in the client**, by querying `createdBy == uid`.
-  - The repository's local `firestore.rules` file (git-ignored, not deployed by this repo) contains `allow read, write: if true`, which would let anyone read or change any document.
-  - The rules actually deployed in the Firebase console could not be checked from here.
-  - **Recommended:** deploy rules that require `request.auth.uid == resource.data.createdBy`.
+- **Firebase web config:** read from `VITE_FIREBASE_*` variables. `frontend/src/firebase/config.ts` also contains **hard-coded fallback values** for the project's web config. Firebase treats these as public client identifiers, not secrets; data is protected by the security rules, not by hiding this config.
+- **Credentials:** held by Firebase Authentication; never written to Firestore.
+- **User data isolation:** `firestore.rules` gives every user access to their own documents only:
+  - `users/{uid}` and `users/{uid}/notifications` — only that uid;
+  - `investigations` — only where `createdBy` is the signed-in uid, and `createdBy` cannot be changed;
+  - `trackedPeople` — only where `userId` is the signed-in uid;
+  - everything else is closed.
+  - **These rules only take effect once they are published** (Firebase console → Firestore → Rules, or `firebase deploy --only firestore:rules` using the included `firebase.json` / `.firebaserc`). Before publishing, the project's live rules allowed anyone to read the database (an unauthenticated read returned HTTP 200 during the audit).
+  - Investigations saved earlier under the old shared `demo-user` id are not owned by any real account, so after the rules are published nobody can open them.
 - **Backend API:** no authentication, no rate limiting, CORS allows all origins (`*`). Anyone who can reach the backend can spend the SerpApi quota.
 - **Link-health check:** only fetches URLs on known platform hosts (never arbitrary or internal hosts) and caps a request at 25 URLs.
 - **Public-source limitation:** see [§23](#23-public-information-and-osint-scope).
@@ -759,7 +782,7 @@ osint-app/
 | `backend/src/services/intelligence/entityAnalyzer.ts` | Activities, associations, sources, username summary |
 | `backend/src/services/intelligence/usernameDiscoveryService.ts` | Free direct platform checks |
 | `frontend/src/lib/searchClient.ts` | Frontend ↔ backend search contract, error messages, saved investigation shape |
-| `frontend/src/pages/Investigation/InvestigationDetail.tsx` | Tabs, tab counts, Refresh / Search Deeper |
+| `frontend/src/pages/Investigation/InvestigationDetail.tsx` | Workspace header, tabs, tab counts, Re-run searches, tracking |
 | `frontend/src/firebase/firestore.ts` | All Firestore reads/writes |
 
 ## 28. Data Flow
@@ -822,13 +845,12 @@ Measured during the cleanup: two live name searches at `quick` depth used **exac
 - **Username identity.** Accounts with the same username are presented as one person and labelled "Verified Match" ([§8](#same-username--same-person--current-behaviour)). The username "exact match" check is a substring check. "Identities" in username search are result-category groups, not people.
 - **Username search does not report SerpApi errors.** A missing key or exhausted quota looks like "no results" apart from the direct-check hits.
 - **Username rescan overwrites.** Refreshing a username investigation while SerpApi is unavailable replaces saved results with the reduced set.
-- **Refresh and Search Deeper are identical** (both depth `deep`, same queries).
-- **Activity in username investigations** also lists the profiles themselves. On the first save, Web & News is the same list.
-- **Username investigations have no search coverage or stats until the first Refresh**, because the selected identity does not carry them. The panels say so rather than showing numbers.
+- **Re-run searches repeats the same queries** at depth `deep`; there is no separate "deeper" search.
+- **Activity in username investigations** also lists the profiles themselves.
 - **Rule-based extraction.** Roles, locations and associations come from keyword lists (the organization list is Ghana-focused), so they can be missing or wrong.
 - **Summaries are overwritten** on rescan, including manual edits.
 - **The cache is per server instance** and not persistent unless `SERPAPI_CACHE_DIR` is set.
-- **Security gaps** listed in [§25](#25-security): open backend, client-side-only data isolation, demo login.
+- **Security gaps** listed in [§25](#25-security): open backend API; Firestore isolation depends on publishing `firestore.rules`.
 - **The static "Sources" page and the marketing/landing pages** describe the product in general terms; they are not generated from the search pipeline.
 - **No location/organization fields in the UI**, although the backend supports them.
 
@@ -843,7 +865,9 @@ Measured during the cleanup: two live name searches at `quick` depth used **exac
 | "Search timed out" | A search took more than 2 minutes, usually a slow username search. Try again. |
 | A profile shows "currently unavailable" | The link check got 404/410 or a "page not available" page. The profile was found earlier but may have been deleted or renamed. |
 | LinkedIn / Facebook profiles show no link status | Those sites block automated checks; they are reported as "unverifiable". This is expected. |
-| Investigations list is empty after login | Investigations are stored per `createdBy` uid. Items created with the demo login belong to `demo-user`. |
+| Investigations list is empty after login | Each account and each guest has its own investigations. Guest investigations stay with that guest account; searches made under the old shared demo login are not visible to any account. |
+| "Guest access is not enabled" | Enable Anonymous sign-in in the Firebase console (Authentication → Sign-in method → Anonymous). |
+| "Missing or insufficient permissions" in the console | The published Firestore rules do not match the app. Publish `firestore.rules`. |
 | Rescan says "Rescan Failed" | For name investigations this is returned when no SerpApi call succeeded (quota/key/network). The saved data was not changed. |
 | How much quota is left? | Open `https://serpapi.com/account.json?api_key=<your key>` (this call is free) or the SerpApi dashboard. |
 

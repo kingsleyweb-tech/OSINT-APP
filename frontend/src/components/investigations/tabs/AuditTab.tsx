@@ -5,7 +5,7 @@ import { allAuditEvents, downloadFile, fmtDate, fmtTime, safeFileName, toCsv } f
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { Chips, Empty } from '../workspace/ui';
 
-const GROUPS = ['Searches', 'Results', 'Findings', 'Notes', 'Investigation'] as const;
+const GROUPS = ['Searches', 'Results', 'Investigation'] as const;
 const PAGE = 25;
 
 function windowLabel(iso: string): string {
@@ -89,7 +89,6 @@ export const AuditTab: React.FC = () => {
           <div className="ws-label">Key</div>
           <div className="ws-key"><i className="ws-key-system" />Automated search event</div>
           <div className="ws-key"><i className="ws-key-investigator" />Investigator change</div>
-          <div className="ws-key"><i className="ws-key-finding" />Finding change</div>
           <div className="ws-key"><i className="ws-key-removal" />Removal or downgrade</div>
         </div>
         {times.length > 0 && (

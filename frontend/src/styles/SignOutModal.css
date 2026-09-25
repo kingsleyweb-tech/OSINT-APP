@@ -1,0 +1,68 @@
+/* Sign-out confirmation dialog (uses the app theme tokens from index.css) */
+.so-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  animation: so-fade 0.15s ease-out;
+}
+:root[data-theme="light"] .so-backdrop { background: rgba(28, 25, 23, 0.45); }
+
+.so-modal {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px;
+  border-radius: 16px;
+  background: var(--bg-card, #080808);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #fff);
+  box-shadow: var(--shadow-xl, 0 24px 80px rgba(0, 0, 0, 0.6));
+  animation: so-rise 0.18s ease-out;
+}
+.so-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  background: var(--accent-warm-subtle, rgba(140, 75, 39, 0.2));
+  color: var(--accent-warm, #8c4b27);
+}
+.so-modal h2 { margin: 0 0 8px; font-size: 1.25rem; font-weight: 700; }
+.so-modal p { margin: 0; color: var(--text-secondary, #a3a3a3); font-size: 0.92rem; line-height: 1.55; }
+.so-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.so-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--text-primary, #fff);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.so-btn:hover:not(:disabled) { background: var(--bg-hover, rgba(255, 255, 255, 0.06)); }
+.so-btn:disabled { opacity: 0.6; cursor: wait; }
+.so-danger { background: #b42318; border-color: #b42318; color: #fff; }
+.so-danger:hover:not(:disabled) { background: #912018; }
+.so-spin { animation: so-spin 0.9s linear infinite; }
+@keyframes so-spin { to { transform: rotate(360deg); } }
+@keyframes so-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes so-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 480px) {
+  .so-modal { padding: 22px 18px; }
+  .so-actions { flex-direction: column-reverse; }
+  .so-btn { justify-content: center; height: 46px; }
+}

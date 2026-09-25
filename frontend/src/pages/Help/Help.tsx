@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import './Help.css';
 
-// Highlight helper: wraps matched substrings in <mark> tags
 const Highlight: React.FC<{ text: string; query: string }> = ({ text, query }) => {
   if (!query || query.trim().length === 0) return <>{text}</>;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -63,7 +62,6 @@ export const HelpPage: React.FC = () => {
     'FAQ'
   ];
 
-  // Section Data definition for unified filtering
   const sectionData = useMemo(() => {
     return [
       {
@@ -170,17 +168,18 @@ export const HelpPage: React.FC = () => {
       {
         id: 'workspace',
         headerPill: 'SECTION 05',
-        title: 'The 8 Dedicated Workspace Tabs',
-        lead: 'Each investigation provides 8 structured, non-scattered workspace tabs to organize discovered intelligence.',
+        title: 'The 9 Investigation Tabs',
+        lead: 'Each investigation is organized into 9 tabs. Every tab count is the number of items that tab shows.',
         tabs: [
           { num: '01', title: 'Overview Tab', desc: 'Primary target summary card, top candidate profiles, verified external links, and key intelligence metrics.' },
           { num: '02', title: 'Profiles Tab', desc: 'Complete directory of all social, professional, developer, and creative profiles discovered for the selected identity.' },
           { num: '03', title: 'Activity Tab', desc: 'Chronological feed of public posts, code commits, published articles, videos, and online activities.' },
           { num: '04', title: 'Associations Tab', desc: 'Co-mentioned colleagues, business associates, linked organizations, and affiliated usernames.' },
           { num: '05', title: 'Sources Tab', desc: 'Complete list of verified domain sources, direct URLs, and source domain reputation details.' },
-          { num: '06', title: 'Web & News Tab', desc: 'Indexed web pages, news articles, press releases, and publications referencing the target.' },
-          { num: '07', title: 'Notes & Findings Tab', desc: 'Custom investigator notes, key evidence tags, and report export features (JSON / PDF).' },
-          { num: '08', title: 'Metrics & Audit Tab', desc: 'Complete search telemetry, SerpApi query logs, execution latency, and source counts for auditability.' }
+          { num: '06', title: 'Web Tab', desc: 'Public web pages that mention or belong to the subject, split into pages linked to this identity and pages that only mention the name.' },
+          { num: '07', title: 'News Tab', desc: 'News articles naming the subject, with their publishers.' },
+          { num: '08', title: 'Metrics Tab', desc: 'Result counts, returned-versus-kept figures per search, and the full SerpApi search log.' },
+          { num: '09', title: 'Audit Tab', desc: 'Time-stamped log of every search run and every change made to the investigation, exportable as CSV.' }
         ]
       },
       {
@@ -191,7 +190,7 @@ export const HelpPage: React.FC = () => {
         practices: [
           { num: 'A', title: 'Handle Pivoting Workflow', desc: "When a target's social profile is discovered, inspect their handle (e.g. @johndoe_dev). Copy that handle and launch a Username Reconnaissance Search to uncover hidden accounts on platforms like GitHub, Reddit, or Spotify." },
           { num: 'B', title: 'Location & Affiliation Filtering', desc: 'For common names, append location or employer keywords (e.g. Kwame Mensah Accra or John Mahama Ghana) in the initial search field to narrow candidate profiles immediately.' },
-          { num: 'C', title: 'Case Audit Log Maintenance', desc: 'Always maintain audit integrity. Export investigation files using the Notes & Findings tab to keep verifiable timestamped records of all source URLs for reporting.' }
+          { num: 'C', title: 'Case Audit Log Maintenance', desc: 'Always maintain audit integrity. Export the investigation (JSON) and the Sources and Audit lists (CSV) to keep verifiable timestamped records of all source URLs for reporting.' }
         ]
       },
       {
@@ -230,7 +229,6 @@ export const HelpPage: React.FC = () => {
     ];
   }, []);
 
-  // Filter calculation
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const filteredSections = useMemo(() => {
@@ -242,7 +240,6 @@ export const HelpPage: React.FC = () => {
 
       if (matchInHeader) return true;
 
-      // Check items
       if (sec.items && sec.items.some((i: any) => 
         i.title?.toLowerCase().includes(normalizedQuery) || 
         i.desc?.toLowerCase().includes(normalizedQuery) ||
@@ -250,29 +247,22 @@ export const HelpPage: React.FC = () => {
         (i.list && i.list.some((l: string) => l.toLowerCase().includes(normalizedQuery)))
       )) return true;
 
-      // Check Tiers
       if (sec.tiers && sec.tiers.some(t => 
         t.name.toLowerCase().includes(normalizedQuery) || 
         t.desc.toLowerCase().includes(normalizedQuery) ||
         t.platforms.some(p => p.toLowerCase().includes(normalizedQuery))
       )) return true;
 
-      // Check Steps
       if (sec.steps && sec.steps.some(s => s.title.toLowerCase().includes(normalizedQuery) || s.desc.toLowerCase().includes(normalizedQuery))) return true;
 
-      // Check Tabs
       if (sec.tabs && sec.tabs.some(tb => tb.title.toLowerCase().includes(normalizedQuery) || tb.desc.toLowerCase().includes(normalizedQuery))) return true;
 
-      // Check Practices
       if (sec.practices && sec.practices.some(p => p.title.toLowerCase().includes(normalizedQuery) || p.desc.toLowerCase().includes(normalizedQuery))) return true;
 
-      // Check SerpApi Content
       if (sec.content && (sec.content.title.toLowerCase().includes(normalizedQuery) || sec.content.desc.toLowerCase().includes(normalizedQuery))) return true;
 
-      // Check Principles
       if (sec.principles && sec.principles.some(pr => pr.title.toLowerCase().includes(normalizedQuery) || pr.desc.toLowerCase().includes(normalizedQuery))) return true;
 
-      // Check FAQs
       if (sec.faqs && sec.faqs.some(f => f.q.toLowerCase().includes(normalizedQuery) || f.a.toLowerCase().includes(normalizedQuery))) return true;
 
       return false;
@@ -289,7 +279,6 @@ export const HelpPage: React.FC = () => {
 
   return (
     <div className="help-page-container">
-      {/* Hero Header */}
       <div className="help-hero-banner">
         <div className="help-hero-content">
           <div className="help-badge">
@@ -321,7 +310,6 @@ export const HelpPage: React.FC = () => {
             )}
           </div>
 
-          {/* Search Status & Quick Filter Chips */}
           {searchQuery.trim() !== '' ? (
             <div className="help-search-status-bar">
               <span className="search-status-text">
@@ -349,9 +337,7 @@ export const HelpPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Layout */}
       <div className="help-layout">
-        {/* Sticky Sidebar Navigation */}
         <aside className="help-nav-sidebar">
           <div className="help-nav-title">TABLE OF CONTENTS</div>
           <nav className="help-nav-list">
@@ -375,7 +361,6 @@ export const HelpPage: React.FC = () => {
           </nav>
         </aside>
 
-        {/* Documentation Body */}
         <main className="help-doc-body">
           {filteredSections.length === 0 ? (
             <div className="help-no-results-box">
@@ -404,7 +389,6 @@ export const HelpPage: React.FC = () => {
             </div>
           ) : (
             filteredSections.map((sec) => {
-              // Section 1: Intro
               if (sec.id === 'intro') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -432,7 +416,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 2: Modalities
               if (sec.id === 'modalities') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -463,7 +446,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 3: Tiers
               if (sec.id === 'tiers') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -496,7 +478,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 4: Matching
               if (sec.id === 'matching') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -519,7 +500,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 5: Workspace
               if (sec.id === 'workspace') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -542,7 +522,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 6: Workflows
               if (sec.id === 'workflows') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -565,7 +544,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 7: SerpApi
               if (sec.id === 'serpapi') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -592,7 +570,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 8: Compliance
               if (sec.id === 'compliance') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">
@@ -615,7 +592,6 @@ export const HelpPage: React.FC = () => {
                 );
               }
 
-              // Section 9: FAQ
               if (sec.id === 'faq') {
                 return (
                   <section key={sec.id} id={sec.id} className="help-doc-section">

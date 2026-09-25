@@ -206,7 +206,6 @@ export const FeaturesPage: React.FC = () => {
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
-          {/* Header */}
           <div style={{ marginBottom: '50px' }}>
             <div className="lp-badge" style={{ marginBottom: '14px' }}>
               <Layers size={14} />
@@ -220,14 +219,12 @@ export const FeaturesPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Editorial Feature Breakdown List (No Card Boxes) */}
           <div className="lp-editorial-list" style={{ marginBottom: '60px' }}>
             {featuresList.map((feat) => (
               <EditorialFeatureRow key={feat.id} {...feat} />
             ))}
           </div>
 
-          {/* CTA */}
           <div style={{ textAlign: 'center', paddingTop: '20px' }}>
             <Link to="/auth" className="btn-primary-warm" style={{ padding: '14px 32px', fontSize: '1.05rem' }}>
               Launch Workspace & Try Features <ArrowRight size={18} />

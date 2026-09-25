@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Empty, Glyph, LevelBadge, SectionHead, glyphFor } from '../workspace/ui';
+import { LevelBadge, SectionHead, SourceLogo } from '../workspace/ui';
 import {
   assocKey, fmtDate, fmtShortDate, levelOf, parseLooseDate, profileKey, profileTypeLabel, shortUrl
 } from '../../../lib/workspace';
@@ -10,11 +10,10 @@ import type { EvidenceLevel } from '../../../types/investigation';
 const LEVEL_RANK: Record<EvidenceLevel, number> = { validated: 2, relevant: 1, raw: 0 };
 
 export const OverviewTab: React.FC = () => {
-  const { inv, d, goTab, openRecordFinding } = useWorkspace();
+  const { inv, d, goTab } = useWorkspace();
   const profiles = inv.socialProfiles || [];
   const activities = inv.activities || [];
   const associations = inv.associations || [];
-  const findings = inv.findings || [];
   const ref = inv.lastSearched || inv.createdAt;
 
   const datedActivity = useMemo(() => activities
@@ -38,8 +37,7 @@ export const OverviewTab: React.FC = () => {
   const lastSeen = datedActivity[0];
 
   const strongest = [...d.sources]
-    .sort((a, b) => (d.findingsByKey.get(b.key)?.length || 0) - (d.findingsByKey.get(a.key)?.length || 0)
-      || LEVEL_RANK[levelOf(inv, b.key)] - LEVEL_RANK[levelOf(inv, a.key)]
+    .sort((a, b) => LEVEL_RANK[levelOf(inv, b.key)] - LEVEL_RANK[levelOf(inv, a.key)]
       || (b.source.confidenceScore || 0) - (a.source.confidenceScore || 0))
     .slice(0, 3);
 
@@ -65,7 +63,7 @@ export const OverviewTab: React.FC = () => {
           <div><span className="ws-level raw">Raw</span><b>{p.raw ?? '—'}</b></div>
           <div><span className="ws-level relevant">Relevant</span><b>{p.relevant}</b></div>
           <div><span className="ws-level validated">Validated</span><b>{p.validated}</b></div>
-          <div className="ink"><span className="ws-level finding">Findings</span><b>{p.findings}</b></div>
+          <div><span className="ws-sub">Sources</span><b>{d.sources.length}</b></div>
         </div>
 
         <SectionHead title="Subject summary" right={<span className="ws-sub">Built from {d.sources.length} kept result{d.sources.length === 1 ? '' : 's'}</span>} />
@@ -88,33 +86,13 @@ export const OverviewTab: React.FC = () => {
           {inputChips.map(([k, v]) => <span key={k} className="ws-tag">{k}<b>{v}</b></span>)}
         </div>
 
-        <div className="ws-section">
-          <SectionHead title="Key findings" right={findings.length > 0 && <button type="button" className="ws-link" onClick={() => goTab('findings')}>All {findings.length} →</button>} />
-          {findings.length === 0 ? (
-            <div style={{ marginTop: 14 }}>
-              <Empty title="No findings recorded yet" action={<button type="button" className="ws-btn ws-btn-primary" onClick={() => openRecordFinding()}>Record finding</button>}>
-                Findings are conclusions you record after reviewing the evidence. Search results never appear here on their own.
-              </Empty>
-            </div>
-          ) : findings.slice(0, 3).map(f => (
-            <div key={f.id} className="ws-row clickable" onClick={() => goTab('findings', f.id)}>
-              <span className="ws-fid">{f.id}</span>
-              <div className="ws-row-main">
-                <div className="ws-row-title">{f.title}</div>
-                <div className="ws-row-sub">{f.sourceKeys.length} source{f.sourceKeys.length === 1 ? '' : 's'}{f.statement ? ` · ${f.statement}` : ''}</div>
-              </div>
-              <span className="ws-conf">{f.confidence} confidence</span>
-            </div>
-          ))}
-        </div>
-
         <div className="ws-two">
           <div className="ws-section">
             <SectionHead title="Key profiles" right={<button type="button" className="ws-link" onClick={() => goTab('profiles')}>All {d.counts.profiles} →</button>} />
             {keyProfiles.length === 0 && <p className="ws-sub" style={{ paddingTop: 12 }}>No profiles were found.</p>}
             {keyProfiles.map(pr => (
               <div key={profileKey(pr)} className="ws-row clickable" onClick={() => goTab('profiles', profileKey(pr))}>
-                <Glyph text={glyphFor(pr.platform)} />
+                <SourceLogo url={pr.profileUrl || pr.url} platform={pr.platform} />
                 <div className="ws-row-main">
                   <div className="ws-row-title" style={{ fontWeight: 500 }}><b>{pr.platform}</b> · {profileTypeLabel(pr)}</div>
                   <div className="ws-url">{shortUrl(pr.profileUrl || pr.url)}</div>
@@ -130,6 +108,7 @@ export const OverviewTab: React.FC = () => {
             {datedActivity.slice(0, 3).map(({ a, date }) => (
               <div key={a.id} className="ws-row clickable" onClick={() => goTab('activity')}>
                 <span className="ws-row-date">{fmtShortDate(date.toISOString())}</span>
+                <SourceLogo url={a.sourceUrl} platform={a.sourceName} />
                 <div className="ws-row-main">
                   <div className="ws-row-title">{a.title}</div>
                   <div className="ws-row-sub">{a.category} · {a.sourceName}</div>
@@ -157,15 +136,15 @@ export const OverviewTab: React.FC = () => {
             <SectionHead title="Strongest sources" right={<button type="button" className="ws-link" onClick={() => goTab('sources')}>All {d.sources.length} →</button>} />
             {strongest.length === 0 && <p className="ws-sub" style={{ paddingTop: 12 }}>No sources were collected.</p>}
             {strongest.map(s => {
-              const used = d.findingsByKey.get(s.key)?.length || 0;
               return (
                 <div key={s.key} className="ws-row clickable" onClick={() => goTab('sources', s.key)}>
                   <span className="ws-row-date">{s.sid}</span>
+                  <SourceLogo url={s.source.url} platform={s.source.sourceName} />
                   <div className="ws-row-main">
                     <div className="ws-row-title">{s.source.title}</div>
                     <div className="ws-url">{shortUrl(s.source.url)}</div>
                   </div>
-                  <span className="ws-sub">{used ? `${used} finding${used === 1 ? '' : 's'}` : <LevelBadge level={levelOf(inv, s.key)} />}</span>
+                  <LevelBadge level={levelOf(inv, s.key)} />
                 </div>
               );
             })}
@@ -176,7 +155,7 @@ export const OverviewTab: React.FC = () => {
       <aside className="ws-rail overview-rail">
         <div className="ws-section">
           <SectionHead title="Evidence pipeline" />
-          <p className="ws-pipe-intro">Every result moves through four levels. Only findings are conclusions.</p>
+          <p className="ws-pipe-intro">Everything the searches kept starts as Relevant. You can validate a result or mark it as a raw, unconfirmed result.</p>
           <div className="ws-pipe-step">
             <div className="ws-pipe-top"><span className="ws-level raw">Raw results</span><span className="ws-pipe-num">{p.raw ?? '—'}</span></div>
             <div className="ws-bar raw"><i style={{ width: p.raw ? '100%' : '0%' }} /></div>
@@ -188,10 +167,6 @@ export const OverviewTab: React.FC = () => {
           <div className="ws-pipe-step">
             <div className="ws-pipe-top"><span className="ws-level validated">Validated</span><span className="ws-pipe-num">{p.validated}</span></div>
             <div className="ws-bar"><i style={{ width: pct(p.validated) }} /></div>
-          </div>
-          <div className="ws-pipe-step">
-            <div className="ws-pipe-top"><span className="ws-level finding">Findings</span><span className="ws-pipe-num">{p.findings}</span></div>
-            <div className="ws-bar finding"><i style={{ width: pct(p.findings) }} /></div>
           </div>
         </div>
 

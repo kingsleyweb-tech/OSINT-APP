@@ -23,10 +23,7 @@ export const TermsPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Continuous Editorial Document Flow (No Card Container) */}
           <div style={{ lineHeight: 1.75, color: 'var(--text-muted)', width: '100%' }}>
-            
-            {/* Non-FCRA Banner */}
             <div style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '28px 0', marginBottom: '12px' }}>
               <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
                 <AlertTriangle style={{ width: '26px', height: '26px', color: 'var(--accent-warm-light)', flexShrink: 0 }} />

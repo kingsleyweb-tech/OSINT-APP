@@ -8,20 +8,24 @@ import '../../styles/LayoutFooter.css';
 interface LayoutProps {
   children: React.ReactNode;
   userName?: string;
+  userRole?: string;
+  photoURL?: string;
   onSearch?: (term: string) => void;
-  onSignOut?: () => void;
+  onSignOut?: () => void | Promise<void>;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, 
-  userName = "Kingsley",
+  userName = 'Investigator',
+  userRole = 'Investigator',
+  photoURL,
   onSignOut
 }) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   return (
     <div className="app-container">
-      <Sidebar userName={userName} userRole="Investigator" onSignOut={onSignOut} />
+      <Sidebar userName={userName} userRole={userRole} photoURL={photoURL} onSignOut={onSignOut} />
       <div className="main-content">
         <Topbar 
           onToggleMobileNav={() => setIsMobileNavOpen(prev => !prev)} 

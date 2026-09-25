@@ -182,7 +182,6 @@ export const SourcesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bold SerpApi Sponsorship Banner */}
       <div className="serpapi-hero-sponsor-banner">
         <div className="sponsor-banner-left">
           <span className="sponsor-badge-tag">OFFICIAL SEARCH PROVIDER</span>
@@ -211,7 +210,6 @@ export const SourcesPage: React.FC = () => {
         </a>
       </div>
 
-      {/* Category Filter Pills */}
       <div className="sources-filter-bar">
         <div className="filter-label">
           <Filter size={14} /> Filter Category:

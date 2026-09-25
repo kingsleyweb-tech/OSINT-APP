@@ -84,7 +84,6 @@ export const PublicHelpPage: React.FC = () => {
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
-          {/* Header */}
           <div style={{ textAlign: 'center', maxWidth: '840px', margin: '0 auto 48px' }}>
             <div className="lp-badge" style={{ margin: '0 auto 16px' }}>
               <HelpCircle size={14} />
@@ -97,7 +96,6 @@ export const PublicHelpPage: React.FC = () => {
               Find answers to common questions regarding search execution, accuracy verification, case management, and SerpApi integration.
             </p>
 
-            {/* Search Bar */}
             <div style={{ position: 'relative', marginTop: '28px' }}>
               <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', color: 'var(--text-muted)' }} />
               <input
@@ -119,7 +117,6 @@ export const PublicHelpPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Category Pills */}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '40px' }}>
             {[
               { id: 'all', label: 'All Topics' },
@@ -150,7 +147,6 @@ export const PublicHelpPage: React.FC = () => {
             ))}
           </div>
 
-          {/* FAQ Editorial List (Horizontal Divider Rows, No Card Wrappers) */}
           <div style={{ maxWidth: '960px', margin: '0 auto 60px', display: 'flex', flexDirection: 'column' }}>
             {filteredFaqs.map((faq) => {
               const isOpen = openId === faq.id;
@@ -191,7 +187,6 @@ export const PublicHelpPage: React.FC = () => {
             <div style={{ borderTop: '1px solid var(--border-color)' }} />
           </div>
 
-          {/* Quick Links Section (Wide Horizontal Separator) */}
           <div className="lp-help-links-grid">
             <div>
               <BookOpen size={24} style={{ color: 'var(--accent-warm-light)', marginBottom: '8px' }} />

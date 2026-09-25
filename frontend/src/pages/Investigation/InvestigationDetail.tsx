@@ -1,17 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, Copy, Download, FolderSearch, Loader2, Menu, MoreHorizontal, Plus, RotateCw, User, X, Bookmark } from 'lucide-react';
+import { ChevronLeft, Copy, Download, FolderSearch, Loader2, Menu, MoreHorizontal, RotateCw, User, X, Bookmark, BookmarkCheck } from 'lucide-react';
 
 import type { AuditEvent, EvidenceLevel, Investigation } from '../../types/investigation';
-import { getInvestigationFromDb, saveInvestigationToDb } from '../../firebase/firestore';
+import { getInvestigationFromDb, saveInvestigationToDb, untrackPersonInDb } from '../../firebase/firestore';
 import { useToast } from '../../components/ui/Toast';
 import { useNotifications } from '../../context/NotificationContext';
 import { getApiBase } from '../../lib/searchClient';
 import {
   downloadFile, fmtDate, fmtTime, LEVEL_LABEL, newAuditEvent, ownerName, safeFileName, searchLogFromTrail
 } from '../../lib/workspace';
-import { WorkspaceContext, derive, type RecordFindingPrefill, type TabKey, type WorkspaceApi } from '../../components/investigations/workspace/WorkspaceContext';
-import { RecordFindingModal } from '../../components/investigations/workspace/RecordFindingModal';
+import { WorkspaceContext, derive, type TabKey, type WorkspaceApi } from '../../components/investigations/workspace/WorkspaceContext';
 import { OverviewTab } from '../../components/investigations/tabs/OverviewTab';
 import { ProfilesTab } from '../../components/investigations/tabs/ProfilesTab';
 import { ActivityTab } from '../../components/investigations/tabs/ActivityTab';
@@ -19,13 +18,11 @@ import { AssociationsTab } from '../../components/investigations/tabs/Associatio
 import { SourcesTab } from '../../components/investigations/tabs/SourcesTab';
 import { WebTab } from '../../components/investigations/tabs/WebTab';
 import { NewsTab } from '../../components/investigations/tabs/NewsTab';
-import { NotesTab } from '../../components/investigations/tabs/NotesTab';
-import { FindingsTab } from '../../components/investigations/tabs/FindingsTab';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
 import '../../styles/Workspace.css';
 
-const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 'Analysis' | 'Record' }> = [
+const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 'Record' }> = [
   { key: 'overview', label: 'Overview', group: 'Summary' },
   { key: 'profiles', label: 'Profiles', group: 'Evidence' },
   { key: 'activity', label: 'Activity', group: 'Evidence' },
@@ -33,8 +30,6 @@ const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 
   { key: 'sources', label: 'Sources', group: 'Evidence' },
   { key: 'web', label: 'Web', group: 'Evidence' },
   { key: 'news', label: 'News', group: 'Evidence' },
-  { key: 'notes', label: 'Notes', group: 'Analysis' },
-  { key: 'findings', label: 'Findings', group: 'Analysis' },
   { key: 'metrics', label: 'Metrics', group: 'Record' },
   { key: 'audit', label: 'Audit', group: 'Record' }
 ];
@@ -67,15 +62,13 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
       try {
         const saved = sessionStorage.getItem(`osint_inv_${id}`);
         if (saved) return JSON.parse(saved);
-      } catch { /* ignore */ }
+      } catch {}
     }
     return null;
   });
   const [loading, setLoading] = useState(!investigation);
   const [isRescanning, setIsRescanning] = useState(false);
   const [focus, setFocus] = useState<string | null>((location.state as any)?.focus || null);
-  const [findingPrefill, setFindingPrefill] = useState<RecordFindingPrefill | null>(null);
-  const [noteDraftLinks, setNoteDraftLinks] = useState<string[] | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const invRef = useRef(investigation);
@@ -90,7 +83,6 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     } else {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -160,9 +152,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
       const summary = (data.changesSummary || []).join(' | ') || 'No new public findings';
       const next: Investigation = {
         ...fresh,
-        findings: current.findings,
         review: current.review,
-        notes: fresh.notes || current.notes,
         searchLog: [...log, ...searchLogFromTrail(fresh.auditTrail, { firstRun: log.length + 1, batch, at: now, coverage: fresh.searchCoverage })],
         auditLog: [
           newAuditEvent({ action: 'Searches re-run', object: current.id, detail: summary, group: 'Investigation', kind: 'investigator' }),
@@ -194,11 +184,6 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     goTab,
     commit,
     setLevel,
-    openRecordFinding: prefill => setFindingPrefill(prefill || {}),
-    newNote: links => {
-      setNoteDraftLinks(links || []);
-      goTab('notes');
-    },
     rerun,
     isRescanning
   } : null;
@@ -232,10 +217,14 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
 
   const toggleTrack = () => {
     setMenuOpen(false);
+    // Tracking is saved with the investigation; the trackedPeople record is written (or removed) alongside it.
+    if (investigation.isTracked) untrackPersonInDb(investigation.id).catch(() => toast.error('Not saved', 'Tracking could not be updated.'));
     commit(
       inv => ({ ...inv, isTracked: !inv.isTracked }),
       [newAuditEvent({ action: investigation.isTracked ? 'Tracking stopped' : 'Person tracked', object: investigation.id, detail: investigation.name, group: 'Investigation', kind: 'investigator' })]
     );
+    if (investigation.isTracked) toast.success('Tracking stopped', `${investigation.name} was removed from People.`);
+    else toast.success('Person tracked', `${investigation.name} now appears on the People page.`);
   };
 
   const tabButton = (t: typeof TABS[number], i: number) => {
@@ -292,7 +281,9 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
             <button type="button" className="ws-btn ws-icon-btn" onClick={() => setMenuOpen(o => !o)} aria-label="More actions" aria-expanded={menuOpen}>
               <MoreHorizontal size={18} />
             </button>
-            <button type="button" className="ws-btn ws-btn-primary hide-mobile" onClick={() => setFindingPrefill({})}><Plus size={16} /> Record finding</button>
+            <button type="button" className={`ws-btn hide-mobile${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack} aria-pressed={Boolean(investigation.isTracked)}>
+              {investigation.isTracked ? <><BookmarkCheck size={16} /> Tracked</> : <><Bookmark size={16} /> Track person</>}
+            </button>
             {menuOpen && (
               <div className="ws-menu" onMouseLeave={() => setMenuOpen(false)}>
                 <button type="button" onClick={toggleTrack}><Bookmark size={15} /> {investigation.isTracked ? 'Stop tracking' : 'Track person'}</button>
@@ -326,15 +317,13 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           {currentTab === 'sources' && <SourcesTab />}
           {currentTab === 'web' && <WebTab />}
           {currentTab === 'news' && <NewsTab />}
-          {currentTab === 'notes' && <NotesTab draftLinks={noteDraftLinks} onDraftConsumed={() => setNoteDraftLinks(null)} />}
-          {currentTab === 'findings' && <FindingsTab />}
           {currentTab === 'metrics' && <MetricsTab />}
           {currentTab === 'audit' && <AuditTab />}
         </div>
 
         <div className="ws-mobile-bar">
-          <button type="button" className="ws-btn" onClick={() => api.newNote([])}>Add note</button>
-          <button type="button" className="ws-btn ws-btn-primary" onClick={() => setFindingPrefill({})}>Record finding</button>
+          <button type="button" className="ws-btn" onClick={rerun} disabled={isRescanning}>{isRescanning ? 'Re-running…' : 'Re-run searches'}</button>
+          <button type="button" className={`ws-btn${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack}>{investigation.isTracked ? 'Tracked ✓' : 'Track person'}</button>
         </div>
 
         {sheetOpen && (
@@ -348,7 +337,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
                 </div>
                 <button type="button" className="ws-btn ws-btn-ghost ws-icon-btn" onClick={() => setSheetOpen(false)} aria-label="Close"><X size={20} /></button>
               </div>
-              {(['Summary', 'Evidence', 'Analysis', 'Record'] as const).map(group => (
+              {(['Summary', 'Evidence', 'Record'] as const).map(group => (
                 <div key={group}>
                   <div className="ws-sheet-group ws-label">{group}</div>
                   {TABS.filter(t => t.group === group).map(t => (
@@ -363,7 +352,6 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
         )}
 
-        {findingPrefill && <RecordFindingModal prefill={findingPrefill} onClose={() => setFindingPrefill(null)} />}
       </div>
     </WorkspaceContext.Provider>
   );

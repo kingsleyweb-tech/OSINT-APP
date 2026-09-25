@@ -201,51 +201,11 @@ export interface Association {
   details?: string;
 }
 
-export type NoteType = 'Observation' | 'Question' | 'Comment' | 'Method';
-
-export interface NoteComment {
-  id: string;
-  author: string;
-  text: string;
-  createdAt: string;
-}
-
-export interface InvestigationNote {
-  id: string;
-  text: string;
-  author: string;
-  createdAt: string;
-  type?: NoteType;
-  title?: string;
-  /** Linked items: source URL keys (see lib/workspace urlKey) or finding ids such as "F-01". */
-  links?: string[];
-  comments?: NoteComment[];
-  updatedAt?: string;
-}
-
 /** Investigator review level of a kept result. Results the search engine kept start as "relevant". */
 export type EvidenceLevel = 'raw' | 'relevant' | 'validated';
 
-export type FindingConfidence = 'High' | 'Medium' | 'Low';
-export type FindingStatus = 'Confirmed' | 'Needs corroboration';
-
-/** A conclusion recorded by an investigator after reviewing evidence. Never created automatically. */
-export interface Finding {
-  id: string;
-  title: string;
-  category: string;
-  statement: string;
-  confidence: FindingConfidence;
-  status: FindingStatus;
-  /** Supporting evidence, as source URL keys. */
-  sourceKeys: string[];
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-}
-
-export type AuditGroup = 'Searches' | 'Results' | 'Findings' | 'Notes' | 'Investigation';
-export type AuditKind = 'system' | 'investigator' | 'finding' | 'removal';
+export type AuditGroup = 'Searches' | 'Results' | 'Investigation';
+export type AuditKind = 'system' | 'investigator' | 'removal';
 
 export interface AuditEvent {
   id: string;
@@ -325,8 +285,6 @@ export interface Investigation {
     title: string;
     url: string;
   }[];
-  notes: InvestigationNote[];
-  findings?: Finding[];
   /** Investigator review level per result, keyed by URL key. Missing = "relevant". */
   review?: Record<string, EvidenceLevel>;
   auditLog?: AuditEvent[];

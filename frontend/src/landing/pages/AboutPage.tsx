@@ -9,7 +9,6 @@ export const AboutPage: React.FC = () => {
       <section className="lp-section-wide">
         <div className="lp-container-wide">
           
-          {/* Header */}
           <div style={{ marginBottom: '50px' }}>
             <div className="lp-badge" style={{ marginBottom: '14px' }}>
               <Shield size={14} />
@@ -23,7 +22,6 @@ export const AboutPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Mission Editorial Split (No Card Boxes) */}
           <div className="lp-about-grid">
             <div>
               <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
@@ -76,7 +74,6 @@ export const AboutPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Responsible OSINT Section */}
           <div style={{ padding: '44px 0', borderBottom: '1px solid var(--border-color)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '14px' }}>
               Role of Responsible OSINT & Limitations
@@ -92,7 +89,6 @@ export const AboutPage: React.FC = () => {
             </div>
           </div>
 
-          {/* CTA */}
           <div style={{ textAlign: 'center', paddingTop: '40px' }}>
             <Link to="/auth" className="btn-primary-warm" style={{ padding: '14px 32px', fontSize: '1.05rem' }}>
               Launch Investigation Workspace <ArrowRight size={18} />

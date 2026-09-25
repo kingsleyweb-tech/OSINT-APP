@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import type { EvidenceLevel } from '../../../types/investigation';
-import { LEVEL_LABEL } from '../../../lib/workspace';
+import { hostOf, LEVEL_LABEL } from '../../../lib/workspace';
+import { PlatformIcon } from '../../ui/PlatformIcon';
 
-export const LevelBadge: React.FC<{ level: EvidenceLevel | 'finding'; dot?: boolean }> = ({ level, dot }) => (
-  <span className={`ws-level ${level}${dot ? ' dot' : ''}`}>{level === 'finding' ? 'Findings' : LEVEL_LABEL[level]}</span>
+export const LevelBadge: React.FC<{ level: EvidenceLevel; dot?: boolean }> = ({ level, dot }) => (
+  <span className={`ws-level ${level}${dot ? ' dot' : ''}`}>{LEVEL_LABEL[level]}</span>
 );
 
 export const LevelPicker: React.FC<{ value: EvidenceLevel; onChange: (l: EvidenceLevel) => void }> = ({ value, onChange }) => (
@@ -88,9 +89,22 @@ export function glyphFor(name?: string): string {
   return clean ? clean[0].toUpperCase() : '•';
 }
 
-export const Glyph: React.FC<{ text: string; square?: boolean; lg?: boolean }> = ({ text, square, lg }) => (
-  <span className={`ws-glyph${square ? ' square' : ''}${lg ? ' lg' : ''}`} aria-hidden="true">{text}</span>
-);
+/**
+ * Logo of the site a result comes from: the platform's brand mark, otherwise the site's favicon.
+ * Falls back to a letter only when no logo can be loaded.
+ */
+export const SourceLogo: React.FC<{ url?: string; platform?: string; square?: boolean; lg?: boolean }> = ({ url, platform, square, lg }) => {
+  const host = hostOf(url);
+  const [failed, setFailed] = useState(false);
+  const name = host || platform || '';
+  return (
+    <span className={`ws-glyph logo${square ? ' square' : ''}${lg ? ' lg' : ''}`} aria-hidden="true">
+      {failed || !name
+        ? glyphFor(platform || host)
+        : <PlatformIcon platform={name} domain={host || undefined} size={lg ? 26 : 20} onImageError={() => setFailed(true)} />}
+    </span>
+  );
+};
 
 export const LinkStatus: React.FC<{ status?: string }> = ({ status }) => {
   const s = status || 'unchecked';

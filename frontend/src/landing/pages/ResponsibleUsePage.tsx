@@ -21,7 +21,6 @@ export const ResponsibleUsePage: React.FC = () => {
             </p>
           </div>
 
-          {/* Editorial Split (No Boxed Card Wrapper) */}
           <div style={{ lineHeight: 1.75, color: 'var(--text-muted)', width: '100%' }}>
             
             <div style={{ borderTop: '1px solid var(--border-color)', padding: '28px 0' }}>
@@ -33,7 +32,6 @@ export const ResponsibleUsePage: React.FC = () => {
                 Open-Source Intelligence (OSINT) grants researchers powerful analytical tools. With that capability comes the duty to operate with proportion, accuracy, and strict respect for legal and ethical boundaries.
               </p>
 
-              {/* Side-by-Side Comparison Rows */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px', marginTop: '20px' }}>
                 <div style={{ borderLeft: '3px solid #22c55e', paddingLeft: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>

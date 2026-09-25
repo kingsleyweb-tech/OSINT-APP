@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { fmtDate, hostOf, kindLabel, levelOf, openUrl, urlKey, type WebItem } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Chips, Empty, Glyph, LevelBadge, LevelPicker, SectionHead } from '../workspace/ui';
+import { Chips, Empty, LevelBadge, LevelPicker, SectionHead, SourceLogo } from '../workspace/ui';
 
 /** Why a web result was kept, from what the search engine recorded about it. */
 export function relevanceText(w: WebItem, isUsername: boolean): string {
@@ -19,7 +19,7 @@ export const WebCard: React.FC<{ w: WebItem }> = ({ w }) => {
   const host = hostOf(w.url);
   return (
     <div className="ws-webcard">
-      <Glyph text={(host[0] || '•').toUpperCase()} square lg />
+      <SourceLogo url={w.url} square lg />
       <div style={{ minWidth: 0 }}>
         <div className="ws-webcard-meta"><span className="ws-mono ws-muted">{host}</span><span className="ws-tag">{kindLabel(w)}</span></div>
         <div className="ws-webcard-title">{w.title}</div>
