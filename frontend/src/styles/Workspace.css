@@ -774,12 +774,19 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
   right: 0;
   top: calc(100% + 6px);
   min-width: 220px;
+  max-width: calc(100vw - 32px);
   background: var(--ws-bg);
   border: 1px solid var(--ws-border);
   border-radius: 12px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
   padding: 6px;
   z-index: 50;
+}
+@media (max-width: 768px) {
+  .ws-menu {
+    left: 0;
+    right: auto;
+  }
 }
 .ws-menu button {
   display: flex;
