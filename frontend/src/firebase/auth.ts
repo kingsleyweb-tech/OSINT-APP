@@ -58,12 +58,22 @@ function googleProvider(): GoogleAuthProvider {
  */
 export async function signInWithGoogle(): Promise<User | null> {
   await setPersistence(auth, browserLocalPersistence);
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    await signInWithRedirect(auth, googleProvider());
+    return null;
+  }
   try {
     const res = await signInWithPopup(auth, googleProvider());
     return res.user;
   } catch (err) {
     const code = (err as { code?: string })?.code || '';
-    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/popup-closed-by-user' ||
+      code === 'auth/cancelled-popup-request' ||
+      code === 'auth/operation-not-supported-in-this-environment'
+    ) {
       await signInWithRedirect(auth, googleProvider());
       return null;
     }
