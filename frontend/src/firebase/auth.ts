@@ -30,13 +30,13 @@ import { clearAllPageState } from '../lib/pageState';
 
 /** Signs in with email and password. "Keep me signed in" keeps the session after the browser closes. */
 export async function signIn(email: string, password: string, keepSignedIn = true): Promise<User> {
-  await setPersistence(auth, keepSignedIn ? browserLocalPersistence : browserSessionPersistence);
+  setPersistence(auth, keepSignedIn ? browserLocalPersistence : browserSessionPersistence).catch(() => undefined);
   const res = await signInWithEmailAndPassword(auth, email.trim(), password);
   return res.user;
 }
 
 export async function signUp(email: string, password: string, displayName: string): Promise<User> {
-  await setPersistence(auth, browserLocalPersistence);
+  setPersistence(auth, browserLocalPersistence).catch(() => undefined);
   const res = await createUserWithEmailAndPassword(auth, email.trim(), password);
   if (displayName.trim()) await updateProfile(res.user, { displayName: displayName.trim() });
   return res.user;
@@ -57,12 +57,7 @@ function googleProvider(): GoogleAuthProvider {
  * Resolves null when a redirect was started.
  */
 export async function signInWithGoogle(): Promise<User | null> {
-  await setPersistence(auth, browserLocalPersistence);
-  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isMobile) {
-    await signInWithRedirect(auth, googleProvider());
-    return null;
-  }
+  setPersistence(auth, browserLocalPersistence).catch(() => undefined);
   try {
     const res = await signInWithPopup(auth, googleProvider());
     return res.user;
@@ -72,7 +67,8 @@ export async function signInWithGoogle(): Promise<User | null> {
       code === 'auth/popup-blocked' ||
       code === 'auth/popup-closed-by-user' ||
       code === 'auth/cancelled-popup-request' ||
-      code === 'auth/operation-not-supported-in-this-environment'
+      code === 'auth/operation-not-supported-in-this-environment' ||
+      code === 'auth/internal-error'
     ) {
       await signInWithRedirect(auth, googleProvider());
       return null;
