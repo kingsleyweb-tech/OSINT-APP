@@ -9,10 +9,27 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+// Always allow localhost for local development.
+const DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4173'];
+const allowedOrigins = [...new Set([...ALLOWED_ORIGINS, ...DEV_ORIGINS])];
+
 app.use(cors({
-  origin: '*',
+  origin: (origin, cb) => {
+    // Allow server-to-server requests (no origin header) and all allowed origins.
+    if (!origin || allowedOrigins.some(o => origin === o || origin.endsWith('.vercel.app'))) {
+      cb(null, true);
+    } else {
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Firebase-AppCheck']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Firebase-AppCheck'],
+  credentials: true
 }));
 
 // Request size cap (a re-run sends the saved investigation, which can be large).

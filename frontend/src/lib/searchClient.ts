@@ -6,7 +6,13 @@ import { searchLogFromTrail, urlKey } from './workspace';
 
 const SEARCH_TIMEOUT_MS = 120_000;
 
-export const getApiBase = (): string => import.meta.env.VITE_API_URL || '/api';
+export const getApiBase = (): string => {
+  let url = (import.meta.env.VITE_API_URL || '/api').trim().replace(/\/+$/, '');
+  if (url.startsWith('http') && !/\/api$/i.test(url)) {
+    url = `${url}/api`;
+  }
+  return url;
+};
 
 export class SearchError extends Error {
   readonly title: string;

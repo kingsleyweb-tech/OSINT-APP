@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api"
+      "destination": "https://osint-app-86w4.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
