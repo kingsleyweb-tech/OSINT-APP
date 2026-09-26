@@ -30,13 +30,11 @@ app.get('/api/health', (req, res) => {
 // OSINT Search Routes: signed-in users only (Firebase ID token verified on every request)
 app.use('/api', requireAuth, searchRoutes);
 
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`=================================`);
-    console.log(`OSINT Server active on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`=================================`);
-  });
-}
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`=================================`);
+  console.log(`OSINT Server active on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`=================================`);
+});
 
 export default app;

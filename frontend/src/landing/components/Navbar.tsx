@@ -67,14 +67,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser }) => {
                 Dashboard <ArrowRight size={13} />
               </button>
             ) : (
-              <>
-                <Link to="/auth" className="btn-outline btn-outline-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
-                  Sign In
-                </Link>
-                <Link to="/auth" className="btn-primary-warm" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
-                  Sign Up
-                </Link>
-              </>
+              <Link to="/auth" className="btn-primary-warm" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
+                Sign Up
+              </Link>
             )}
           </div>
 
