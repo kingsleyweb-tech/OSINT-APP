@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Globe, Loader2, Lock, Mail, Phone, ShieldCheck, User, Zap } from 'lucide-react';
 import {
   AUTH_NOTICE_TEXT, authErrorMessage, clearAuthNotice, peekAuthNotice, resetPassword, signIn, signInWithGoogle, signUp
@@ -15,6 +15,10 @@ import '../../styles/AuthPages.css';
 type Mode = 'signin' | 'signup';
 
 export const AuthPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
+
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -24,8 +28,16 @@ export const AuthPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [busy, setBusy] = useState<'form' | 'google' | 'reset' | null>(null);
-  const { authError, clearAuthError } = useSession();
+  const { user, authError, clearAuthError } = useSession();
   const [ownError, setOwnError] = useState('');
+
+  // Auto-redirect if already signed in
+  useEffect(() => {
+    if (user) {
+      navigate(from && from !== '/auth' ? from : '/dashboard', { replace: true });
+    }
+  }, [user, navigate, from]);
+
   // Also shows a Google sign-in that went through a full-page redirect and failed.
   const error = ownError || authError;
   const setError = (message: string) => {
@@ -59,11 +71,11 @@ export const AuthPage: React.FC = () => {
       if (mode === 'signin') {
         await signIn(email, password, keepSignedIn);
       } else {
-        const user = await signUp(email, password, name);
+        const u = await signUp(email, password, name);
         // Profile and settings are stored in Firestore (users/{uid}); the password stays in Firebase Authentication.
-        await updateUserProfileInDb(user.uid, {
-          uid: user.uid,
-          email: user.email || email.trim(),
+        await updateUserProfileInDb(u.uid, {
+          uid: u.uid,
+          email: u.email || email.trim(),
           displayName: name.trim(),
           phoneNumber: phone.trim(),
           role: 'Investigator',
@@ -74,7 +86,7 @@ export const AuthPage: React.FC = () => {
           createdAt: new Date().toISOString()
         });
       }
-      // The auth route redirects to the dashboard as soon as the session is active.
+      navigate(from && from !== '/auth' ? from : '/dashboard', { replace: true });
     } catch (err) {
       setError(authErrorMessage(err));
       setBusy(null);
@@ -87,9 +99,10 @@ export const AuthPage: React.FC = () => {
     clearAuthNotice();
     setBusy('google');
     try {
-      // Resolves once signed in (the auth route then opens the dashboard), or when the page is
-      // being sent to Google because the pop-up was blocked.
-      await signInWithGoogle();
+      const signedInUser = await signInWithGoogle();
+      if (signedInUser) {
+        navigate(from && from !== '/auth' ? from : '/dashboard', { replace: true });
+      }
     } catch (err) {
       setError(authErrorMessage(err));
       setBusy(null);
