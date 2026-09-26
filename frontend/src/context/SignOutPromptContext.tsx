@@ -53,9 +53,7 @@ export const SignOutPromptProvider: React.FC<{ children: React.ReactNode }> = ({
             <div className="so-icon"><LogOut size={22} /></div>
             <h2 id="so-title">Sign out?</h2>
             <p id="so-text">
-              {user?.isGuest
-                ? 'Are you sure you want to sign out? Your guest session stays saved on this device. Choose "Resume guest session" on the sign-in page to get back to your investigations.'
-                : `Are you sure you want to sign out${user?.email ? ` of ${user.email}` : ''}? Your investigations stay saved to your account.`}
+              {`Are you sure you want to sign out${user?.email ? ` of ${user.email}` : ''}? Your investigations stay saved to your account.`}
             </p>
             <div className="so-actions">
               <button ref={cancelRef} type="button" className="so-btn" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>

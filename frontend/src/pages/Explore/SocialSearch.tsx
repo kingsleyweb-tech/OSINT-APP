@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Search, MessagesSquare } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Search, MessagesSquare, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { topTerms, useCases } from '../../components/explore/exploreHooks';
 import { useSearchRun } from '../../components/explore/useSearchRun';
@@ -10,7 +10,9 @@ import { useToast } from '../../components/ui/Toast';
 import { recordSearch, topFromItems } from '../../lib/history';
 import { useQueryIntel, useSearchMode } from '../../components/search/useIntelligentSearch';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
-import { intelHistoryFields } from '../../lib/queryIntelClient';
+import { intelHistoryFields, type QueryIntel } from '../../lib/queryIntelClient';
+import { clearPageState, usePageState } from '../../lib/pageState';
+import { fmtDate } from '../../lib/workspace';
 import {
   SOCIAL_PLATFORM_OPTIONS, COUNTRY_OPTIONS, LANGUAGE_OPTIONS, WHEN_OPTIONS,
   type ExploreResponse, type ExploreOptions
@@ -21,19 +23,28 @@ const DEFAULT_PLATFORMS = SOCIAL_PLATFORM_OPTIONS.filter(p => p.default).map(p =
 
 export const SocialSearchPage: React.FC = () => {
   const toast = useToast();
-  const { run, cancel, running, steps } = useSearchRun();
+  // Everything on this page is kept when you leave it (until "New search").
+  const { run, cancel, running, steps } = useSearchRun('social:run');
   const [searchMode, setSearchMode] = useSearchMode();
-  const qi = useQueryIntel();
+  const qi = useQueryIntel('social:qi');
   const { cases } = useCases();
-  const [mode, setMode] = useState<Mode>('social');
-  const [query, setQuery] = useState('');
-  const [when, setWhen] = useState<ExploreOptions['when'] | ''>('');
-  const [country, setCountry] = useState('');
-  const [language, setLanguage] = useState('');
-  const [platforms, setPlatforms] = useState<Set<string>>(() => new Set(DEFAULT_PLATFORMS));
-  const [page, setPage] = useState(0);
-  const [error, setError] = useState('');
-  const [response, setResponse] = useState<ExploreResponse | null>(null);
+  const [mode, setMode] = usePageState<Mode>('social:mode', 'social');
+  const [query, setQuery] = usePageState('social:query', '');
+  const [when, setWhen] = usePageState<ExploreOptions['when'] | ''>('social:when', '');
+  const [country, setCountry] = usePageState('social:country', '');
+  const [language, setLanguage] = usePageState('social:language', '');
+  const [platformList, setPlatformList] = usePageState<string[]>('social:platforms', DEFAULT_PLATFORMS);
+  const platforms = useMemo(() => new Set(platformList), [platformList]);
+  const [page, setPage] = usePageState('social:page', 0);
+  const [error, setError] = usePageState('social:error', '');
+  const [response, setResponse] = usePageState<ExploreResponse | null>('social:response', null);
+  const [restoredAt, setRestoredAt] = usePageState<string | null>('social:restoredAt', null);
+
+  const newSearch = () => {
+    qi.cancel();
+    cancel();
+    clearPageState('social');
+  };
 
   const search = async (opts: { q?: string; mode?: Mode; when?: string; country?: string; platforms?: string[]; page?: number; keepOriginal?: boolean; chosen?: string } = {}) => {
     const q = (opts.q ?? query).trim();
@@ -43,6 +54,7 @@ export const SocialSearchPage: React.FC = () => {
     if (q.length < 2) { setError('Enter at least 2 characters.'); return; }
     if (m === 'social' && plats.length === 0) { setError('Choose at least one platform.'); return; }
     setError('');
+    setRestoredAt(null);
     const options: ExploreOptions = {
       when: ((opts.when ?? when) || undefined) as ExploreOptions['when'],
       country: (opts.country ?? country) || undefined,
@@ -71,7 +83,7 @@ export const SocialSearchPage: React.FC = () => {
         category: m, query: q, resultCount: r.items.length, searchesUsed: r.stats.searchesUsed, topResults: topFromItems(r.items),
         detail: [COUNTRY_OPTIONS.find(c => c.code === options.country)?.label, WHEN_OPTIONS.find(w => w.code === options.when)?.label].filter(Boolean).join(' · ') || undefined,
         params: { q, mode: m, ...(options.country ? { country: options.country } : {}), ...(options.when ? { when: options.when } : {}), ...(m === 'social' ? { platforms: plats.join(',') } : {}) }
-      });
+      }, { page: 'social', payload: { response: r, query: q, mode: m, when: options.when || '', country: options.country || '', language: options.language || '', platforms: plats, intel: checked.intel } });
     }
     if (r.items.length === 0 && r.engines.some(e => e.status === 'error' || e.status === 'quota')) toast.error('Search problem', r.notices[0] || 'An engine failed. Try again.');
   };
@@ -79,8 +91,13 @@ export const SocialSearchPage: React.FC = () => {
   usePageSearch(p => {
     const m = (p.get('mode') as Mode) || 'social';
     const plats = p.get('platforms')?.split(',').filter(Boolean) || DEFAULT_PLATFORMS;
-    setQuery(p.get('q') || ''); setMode(m); setCountry(p.get('country') || ''); setWhen((p.get('when') as ExploreOptions['when']) || ''); setPlatforms(new Set(plats));
+    setQuery(p.get('q') || ''); setMode(m); setCountry(p.get('country') || ''); setWhen((p.get('when') as ExploreOptions['when']) || ''); setPlatformList(plats);
     search({ q: p.get('q') || '', mode: m, country: p.get('country') || '', when: p.get('when') || '', platforms: plats });
+  }, (payload, savedAt) => {
+    const d = payload as { response: ExploreResponse; query: string; mode: Mode; when: ExploreOptions['when'] | ''; country: string; language: string; platforms: string[]; intel: QueryIntel | null };
+    setResponse(d.response); setQuery(d.query); setMode(d.mode); setWhen(d.when); setCountry(d.country); setLanguage(d.language);
+    setPlatformList(d.platforms?.length ? d.platforms : DEFAULT_PLATFORMS); setPage(0);
+    qi.setIntel(d.intel); setError(''); setRestoredAt(savedAt);
   });
 
   const trending = useMemo(() => response ? topTerms(response.items.map(i => `${i.title} ${i.snippet || ''}`), [query], 12) : [], [response, query]);
@@ -98,14 +115,11 @@ export const SocialSearchPage: React.FC = () => {
     return Array.from(m.values()).sort((a, b) => b.count - a.count).slice(0, 8);
   }, [response]);
 
-  const togglePlatform = (id: string) => setPlatforms(prev => {
-    const n = new Set(prev);
-    if (n.has(id)) n.delete(id); else n.add(id);
-    return n;
-  });
+  const togglePlatform = (id: string) => setPlatformList(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
 
   return (
-    <ExplorePage title="Social search" subtitle="Find public posts, pages and discussions that search engines have indexed, by keyword, date, country and language. Private content is never accessed.">
+    <ExplorePage title="Social search" subtitle="Find public posts, pages and discussions that search engines have indexed, by keyword, date, country and language. Private content is never accessed."
+      actions={response || running ? <button type="button" className="ex-btn ex-btn-ghost" onClick={newSearch}><RotateCcw size={15} /> New search</button> : undefined}>
       <form className="ex-card ex-card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }} onSubmit={e => { e.preventDefault(); search(); }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <Segmented<Mode> label="Search in" value={mode} onChange={m => { setMode(m); setResponse(null); }}
@@ -152,6 +166,7 @@ export const SocialSearchPage: React.FC = () => {
           <QueryIntelBanner intel={qi.intel} cases={cases} resultCount={response?.items.length} sources={response?.engines.map(e => e.label)}
         onSearch={q2 => { setQuery(q2); search({ q: q2, chosen: qi.intel?.corrections.some(c => c.query === q2) ? q2 : undefined }); }}
         onSearchOriginal={() => { if (qi.intel) search({ q: qi.intel.original, keepOriginal: true }); }} />
+          {restoredAt && response && <div className="ex-notice">Saved results from {fmtDate(restoredAt, true)} — no searches were used. Search again for the latest results.</div>}
           <EngineStatus response={response} />
         </>
       )}

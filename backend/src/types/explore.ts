@@ -16,6 +16,7 @@ export type ExploreCapability =
   | 'trends'
   | 'trendingNow'
   | 'web'
+  | 'webBing'
   | 'placeLookup';
 
 export type ExploreItemKind =

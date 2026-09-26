@@ -61,7 +61,7 @@ const AuthRoute: React.FC = () => {
   return <AuthPage />;
 };
 
-const TAB_ROUTES = ['overview', 'profiles', 'activity', 'associations', 'sources', 'webnews', 'stats', 'news', 'images'];
+const TAB_ROUTES = ['overview', 'profiles', 'activity', 'associations', 'sources', 'webnews', 'stats', 'news', 'images', 'location'];
 
 const AppRoutes: React.FC = () => {
   const { user, loading } = useSession();

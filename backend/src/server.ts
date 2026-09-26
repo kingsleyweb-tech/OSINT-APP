@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import searchRoutes from './routes/searchRoutes';
+import { requireAuth } from './middleware/requireAuth';
 
 dotenv.config();
 
@@ -11,10 +12,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Firebase-AppCheck']
 }));
 
-app.use(express.json());
+// Request size cap (a re-run sends the saved investigation, which can be large).
+app.use(express.json({ limit: '5mb' }));
 
 // Health Check API
 app.get('/api/health', (req, res) => {
@@ -25,8 +27,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// OSINT Search Routes
-app.use('/api', searchRoutes);
+// OSINT Search Routes: signed-in users only (Firebase ID token verified on every request)
+app.use('/api', requireAuth, searchRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {

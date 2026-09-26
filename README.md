@@ -417,7 +417,7 @@ The investigator must judge whether the accounts belong to the same person. (The
 
 **Exact-match first.** Every query wraps the name or username in quotes, so the search engine must match the exact phrase.
 
-**Effect on SerpApi usage.** The query generator decides the cost of a search: one planned query = one SerpApi request (two for username searches, because Google and Bing are both asked). That is why a default name search costs about 8–11 requests and a default username search up to about 71 ([§11](#11-serpapi-request-limits)).
+**Effect on SerpApi usage.** The query generator decides the cost of a search: one planned query = one SerpApi request. A name search costs 4 (quick) or 9 (standard/deep) requests, plus 1 per location or organisation hint, up to 2 profile confirmations (deep) and 1 spelling probe in Intelligent mode. A username search costs 5 / 10 / up to 13 requests (quick / standard / deep: Google broad and per-platform searches, DuckDuckGo, Yahoo, YouTube, and Facebook/Instagram profile lookups); its direct platform checks are free ([§11](#11-serpapi-request-limits)).
 
 ## 10. SerpApi Integration
 
@@ -428,6 +428,8 @@ SerpApi is a paid API that **runs a search on a search engine for us and returns
 ### Where it is called
 
 All SerpApi traffic goes through one method: `SerpApiProvider.request(engine, params)` in `backend/src/services/search/serpApiProvider.ts`.
+
+**In-app reference.** The **Sources** page (`frontend/src/pages/Sources/Sources.tsx`) lists every data source, and its **API endpoints** tab documents the backend's own endpoints and every external API called (the 19 SerpApi engines, the free platform APIs and Firebase), each with a link to the provider's documentation. The data lives in `frontend/src/lib/sourceCatalog.ts`; update it when an engine, platform check or route is added.
 
 - **Endpoint:** `GET https://serpapi.com/search.json?engine=<engine>&…&api_key=<SERPAPI_KEY>`
 
@@ -651,7 +653,7 @@ The browser reads and writes Firestore directly (`frontend/src/firebase/firestor
 
 | Collection | Document | Contents |
 |---|---|---|
-| `users/{uid}` | one per user (account or guest) | `uid`, `email`, `displayName`, `role`, `organisation`, `photoURL` (small resized image), `isGuest`, `timeZone`, `dateFormat`, `searchDefaults`, `notificationPrefs`, `createdAt`, `updatedAt`, `lastLoginAt` |
+| `users/{uid}` | one per user | `uid`, `email`, `displayName`, `role`, `organisation`, `photoURL` (small resized image or the Google photo), `timeZone`, `dateFormat`, `searchDefaults`, `notificationPrefs`, `createdAt`, `updatedAt`, `lastLoginAt` |
 | `users/{uid}/notifications/{id}` | one per notification | `type`, `title`, `message`, `createdAt`, `read`, `targetInvestigationId` |
 | `investigations/{id}` | one per selected identity | the whole investigation (below); `createdBy` = owner uid |
 | `trackedPeople/{uid}_{investigationId}` | one per tracked person | `userId`, `investigationId`, `name`, `searchType`, `location`, `occupation`, `avatarUrl`, `profilesCount`, `sourcesCount`, `lastSearched`, `trackedAt` |
@@ -688,17 +690,19 @@ The raw search results that were *not* selected (other identities, rejected item
 - **Create account** (`pages/Auth/AuthPages.tsx`): full name, phone number (validated, with country code), email and password. Firebase Authentication stores the credentials; the profile and settings are saved to `users/{uid}`. The user can sign in with the same email and password at any time.
 - **Sign in:** email and password. **Keep me signed in on this device** keeps the session after the browser closes; without it the session lasts until the tab or browser is closed (a refresh never signs the user out).
 - **Forgot password:** sends Firebase's password reset email.
-- **Continue with guest account:** Firebase *anonymous* sign-in. Each guest gets their **own** uid, so guests never see each other's data.
-  - **Guest sessions are kept on the device.** Signing out as a guest "parks" the session instead of destroying it (`firebase/auth.ts`). The app treats the guest as signed out, and **Resume guest session** on the same browser brings back the same account with all its investigations, tracked people and notifications.
-  - Guests are **not** identified by IP address: many people share one IP (home Wi-Fi, offices, mobile networks) and IPs change, so that would show one person's investigations to others and lose them for the owner.
-  - A parked guest session is lost if the browser's site data is cleared, or if someone signs in with an email account on that browser. It cannot be opened from another device; for that, create an account.
-  - A guest can turn the account into an email account in **Settings → Security**; the uid stays the same, so everything is kept.
-  - **Guest mode in Settings:** guests can view the settings pages, but every control is locked. Any click opens a "You're in guest mode" notice with **Create an account**. Only the account-creation form works.
-  - Anonymous sign-in must be enabled in the Firebase console (Authentication → Sign-in method → Anonymous). Until it is, the guest button shows "Guest access is not enabled for this workspace yet".
-- **Protected pages:** every app page (dashboard, investigations, people, settings, …) is wrapped in `ProtectedRoute`. A signed-out visitor who opens one, even by typing the URL, is sent to the homepage, which shows **"Sign in required"** with *Sign in* and *Continue as guest*. After signing in they return to the page they asked for.
+- **Continue with Google** (login page and the homepage "Sign in required" notice): Firebase Google sign-in (`signInWithGoogle` in `firebase/auth.ts`). It opens Google's sign-in window; if the browser blocks pop-ups, the whole page goes to Google and comes back (`getRedirectResult` is handled in `SessionContext`). The session is kept on the device (local persistence) until the user signs out. Cancelling, blocked pop-ups, network problems, disabled accounts and unauthorised domains show short friendly messages; raw Firebase errors are never shown.
+  - The first Google sign-in creates the `users/{uid}` profile from the Google account (name, email, photo, account creation time, last sign-in time). Later sign-ins only update `lastLoginAt` and the email, and fill a missing name or photo; they never overwrite what the user changed in Settings.
+  - Google accounts have no password in this app. **Settings → Security** links to the Google Account security page, and **Delete account** confirms in Google's sign-in window instead of asking for a password.
+- **No guest access.** Guest (anonymous) sign-in has been removed. A guest session still saved in a browser is signed out on load with the notice "Guest access is no longer available". Data created by old guest accounts is no longer reachable.
+- **Protected pages:** every app page (dashboard, investigations, people, settings, …) is wrapped in `ProtectedRoute`. While Firebase restores the session a loading screen is shown, so a signed-in user is never bounced to the login page on refresh. A signed-out visitor who opens an app page, even by typing the URL, is sent to the homepage, which shows **"Sign in required"** with *Sign in* and *Continue with Google*. Signed-in users who open `/auth` go straight to the dashboard.
+- **Session checks:** on load the app confirms the saved sign-in is still valid. If the account was disabled or deleted, or the backend rejects the session, the user is signed out and sees "Your session has expired. Please sign in again." (or the disabled-account message).
 - **Separate data per user:** every query filters by the signed-in uid (`createdBy` / `userId`), an investigation that belongs to someone else is never loaded, and the Firestore security rules (below) enforce the same on the server.
 - **Sign out** (sidebar, mobile menu or Settings) signs out of Firebase and clears cached search state in the browser, so the next person on the same browser starts clean.
-- **The backend does not check authentication.** Any client that can reach `/api/*` can run searches.
+- **Backend protection** (`backend/src/middleware/requireAuth.ts`): every `/api/*` request except `/api/health` must send the user's Firebase ID token (`Authorization: Bearer …`, added by `frontend/src/lib/apiAuth.ts`). The backend checks the token's signature against Google's public keys, that it was issued for this Firebase project, that it has not expired, and that it is not an anonymous sign-in. Missing or invalid tokens get `401`. No service-account key is needed.
+  - **Rate limit:** each account can run at most `SEARCHES_PER_10_MIN` (default 30) name/username searches and re-runs per 10 minutes (`429` after that); the explore endpoints keep their own per-user limit.
+  - **App Check (optional bot protection):** register the web app with reCAPTCHA v3 in Firebase console → App Check, put the site key in `VITE_RECAPTCHA_SITE_KEY` (frontend), redeploy, then set `APP_CHECK_ENFORCE=true` in `backend/.env`. Without the site key, App Check stays off and nothing changes.
+  - Backend settings: `FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_NUMBER` (default to this project), `AUTH_REQUIRED=false` turns the check off for local testing only.
+- **Firebase console setup:** Authentication → Sign-in method → enable **Google** (and keep Email/Password); disable **Anonymous**. Authentication → Settings → Authorized domains → add the deployed domain (e.g. the Vercel domain). Publish `firestore.rules`, which also refuse anonymous sign-ins.
 
 ## 22. Investigation Lifecycle
 
@@ -932,8 +936,10 @@ Measured during the cleanup: two live name searches at `quick` depth used **exac
 | "Search timed out" | A search took more than 2 minutes, usually a slow username search. Try again. |
 | A profile shows "currently unavailable" | The link check got 404/410 or a "page not available" page. The profile was found earlier but may have been deleted or renamed. |
 | LinkedIn / Facebook profiles show no link status | Those sites block automated checks; they are reported as "unverifiable". This is expected. |
-| Investigations list is empty after login | Each account and each guest has its own investigations. Guest investigations stay with that guest account; searches made under the old shared demo login are not visible to any account. |
-| "Guest access is not enabled" | Enable Anonymous sign-in in the Firebase console (Authentication → Sign-in method → Anonymous). |
+| Investigations list is empty after login | Each account has its own investigations. Investigations made by old guest accounts are no longer reachable. |
+| "Google sign-in is not enabled for this web address yet" | Add the site's domain in Firebase console → Authentication → Settings → Authorized domains. |
+| "This sign-in method is not enabled" | Enable Google in Firebase console → Authentication → Sign-in method. |
+| Every search says "Please sign in to continue" / session expired | The backend could not verify the sign-in. Sign out and in again; check that the backend's `FIREBASE_PROJECT_ID` matches the frontend's Firebase project. |
 | "Missing or insufficient permissions" in the console | The published Firestore rules do not match the app. Publish `firestore.rules`. |
 | Rescan says "Rescan Failed" | For name investigations this is returned when no SerpApi call succeeded (quota/key/network). The saved data was not changed. |
 | How much quota is left? | Open `https://serpapi.com/account.json?api_key=<your key>` (this call is free) or the SerpApi dashboard. |

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { usePageState } from '../../lib/pageState';
 import { useSession } from '../../context/SessionContext';
 import { analyzeQuery, type QueryIntel, type QueryKind } from '../../lib/queryIntelClient';
 import { spellingFromResults, isRespelling, editDistance } from '../../lib/fuzzy';
@@ -17,16 +18,21 @@ export function useSearchMode(): [SearchMode, (m: SearchMode) => void] {
  * `check` resolves to the query to search: the original, or a high-confidence correction.
  * Any failure resolves to the original query, so the normal search always runs.
  */
-export function useQueryIntel() {
-  const [intel, setIntel] = useState<QueryIntel | null>(null);
-  const [checking, setChecking] = useState(false);
+let localCounter = 0;
+
+export function useQueryIntel(stateKey?: string) {
+  // With a stateKey (e.g. "geo:qi") the banner is kept when leaving the page and coming back.
+  const [localKey] = useState(() => `local-${++localCounter}:qi`);
+  const key = stateKey || localKey;
+  const [intel, setIntel] = usePageState<QueryIntel | null>(`${key}:intel`, null);
+  const [checking, setChecking] = usePageState<boolean>(`${key}:checking`, false);
   const controllerRef = useRef<AbortController | null>(null);
 
   const cancel = useCallback(() => {
     controllerRef.current?.abort();
     controllerRef.current = null;
     setChecking(false);
-  }, []);
+  }, [setChecking]);
 
   const check = useCallback(async (
     query: string,
@@ -82,7 +88,7 @@ export function useQueryIntel() {
         setChecking(false);
       }
     }
-  }, [intel]);
+  }, [intel, setIntel, setChecking]);
 
   /**
    * Result-based correction after a search: when the results consistently spell the searched words
@@ -107,7 +113,7 @@ export function useQueryIntel() {
         }]
       };
     });
-  }, []);
+  }, [setIntel]);
 
   /** Username searches: a handle one or two characters away that keeps appearing in the results. */
   const learnHandleFromResults = useCallback((searched: string, handles: string[]) => {
@@ -130,7 +136,7 @@ export function useQueryIntel() {
         reason: `The handle @${best[0]} appears in ${best[1]} results. A similar username is usually a different account.`, evidence: []
       }] };
     });
-  }, []);
+  }, [setIntel]);
 
   const step: LoaderStep[] = checking ? [{ id: 'intel', label: 'Checking spelling and meaning', state: 'active' }] : [];
   return { intel, setIntel, check, checking, cancel, step, learnFromResults, learnHandleFromResults };

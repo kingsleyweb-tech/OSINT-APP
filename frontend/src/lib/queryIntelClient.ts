@@ -1,4 +1,5 @@
 import { getApiBase } from './searchClient';
+import { apiFetch } from './apiAuth';
 import type { SearchMode } from '../types/user';
 
 /** Mirrors backend/src/services/queryIntel/intelService.ts. */
@@ -58,7 +59,7 @@ export async function analyzeQuery(
   const onAbort = () => controller.abort();
   opts.signal?.addEventListener('abort', onAbort);
   try {
-    const res = await fetch(`${getApiBase()}/query-intel`, {
+    const res = await apiFetch(`${getApiBase()}/query-intel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, kind, mode, country: opts.country, knownNames: opts.knownNames }),

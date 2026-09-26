@@ -24,6 +24,7 @@ import type { UserProfile, SearchHistoryEntry } from '../types/user';
  * Firestore layout (every document belongs to exactly one user):
  *   users/{uid}                          profile and settings
  *   users/{uid}/notifications/{id}       that user's notifications
+ *   users/{uid}/searchResults/{historyId} full results of one search in the history
  *   investigations/{id}                  createdBy = owner uid
  *   trackedPeople/{uid}_{investigationId} userId = owner uid
  * The security rules in /firestore.rules enforce the same ownership on the server.
@@ -33,6 +34,7 @@ const INVESTIGATIONS = 'investigations';
 const USERS = 'users';
 const TRACKED = 'trackedPeople';
 const NOTIFICATIONS = 'notifications';
+const SEARCH_RESULTS = 'searchResults';
 
 /** Strips `undefined` fields recursively so the Firestore SDK does not reject documents. */
 const clean = <T>(obj: T): T => (obj === null || obj === undefined ? obj : JSON.parse(JSON.stringify(obj)));
@@ -265,10 +267,11 @@ export async function deleteAllInvestigationsFromDb(uid: string): Promise<number
   return investigations.size;
 }
 
-/** Deletes every Firestore document of the user (investigations, tracked people, notifications, profile). */
+/** Deletes every Firestore document of the user (investigations, tracked people, notifications, saved search results, profile). */
 export async function deleteAllUserDataFromDb(uid: string): Promise<void> {
   await deleteAllInvestigationsFromDb(uid);
   await deleteAllNotificationsFromDb(uid);
+  await deleteAllSearchResultsFromDb(uid);
   await deleteDoc(doc(db, USERS, uid));
 }
 
@@ -282,9 +285,11 @@ export async function addSearchHistoryInDb(uid: string, entry: SearchHistoryEntr
   await runTransaction(db, async tx => {
     const snap = await tx.get(ref);
     const current: SearchHistoryEntry[] = (snap.exists() ? (snap.data() as UserProfile).searchHistory : undefined) || [];
-    const next = [clean(entry), ...current.filter(e => e.id !== entry.id)].slice(0, MAX_HISTORY);
+    const all = [clean(entry), ...current.filter(e => e.id !== entry.id)];
+    const next = all.slice(0, MAX_HISTORY);
     if (snap.exists()) tx.update(ref, { searchHistory: next });
     else tx.set(ref, { searchHistory: next }, { merge: true });
+    all.slice(MAX_HISTORY).forEach(e => tx.delete(doc(db, USERS, uid, SEARCH_RESULTS, e.id)));
   });
 }
 
@@ -304,4 +309,38 @@ export async function removeSearchHistoryInDb(uid: string, ids: string[] | 'all'
     const current: SearchHistoryEntry[] = (snap.exists() ? (snap.data() as UserProfile).searchHistory : undefined) || [];
     tx.update(ref, { searchHistory: ids === 'all' ? [] : current.filter(e => !ids.includes(e.id)) });
   });
+  if (ids === 'all') await deleteAllSearchResultsFromDb(uid);
+  else await deleteRefsInBatches(ids.map(id => doc(db, USERS, uid, SEARCH_RESULTS, id)));
+}
+
+// ─── Saved search results (users/{uid}/searchResults/{historyId}) ──────────────
+
+/** Firestore documents are limited to 1 MiB; larger result sets are not cached. */
+const MAX_RESULTS_BYTES = 900_000;
+
+/**
+ * Saves the full results of a search next to its history entry, so History can show them again
+ * without searching. Returns false when the results are too large to store.
+ */
+export async function saveSearchResultsInDb(uid: string, historyId: string, page: string, payload: unknown): Promise<boolean> {
+  const data = JSON.stringify(payload);
+  if (data.length > MAX_RESULTS_BYTES) return false;
+  await setDoc(doc(db, USERS, uid, SEARCH_RESULTS, historyId), { page, data, savedAt: new Date().toISOString() });
+  return true;
+}
+
+export async function getSearchResultsFromDb<T = unknown>(uid: string, historyId: string): Promise<{ page: string; payload: T; savedAt: string } | null> {
+  const snap = await getDoc(doc(db, USERS, uid, SEARCH_RESULTS, historyId));
+  if (!snap.exists()) return null;
+  const d = snap.data() as { page: string; data: string; savedAt: string };
+  try {
+    return { page: d.page, payload: JSON.parse(d.data) as T, savedAt: d.savedAt };
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteAllSearchResultsFromDb(uid: string): Promise<void> {
+  const snap = await getDocs(collection(db, USERS, uid, SEARCH_RESULTS));
+  await deleteRefsInBatches(snap.docs.map(d => d.ref));
 }

@@ -1,4 +1,5 @@
 import type { Investigation } from '../types/investigation';
+import { apiFetch } from './apiAuth';
 import type { DiscoveredIdentity } from '../components/search/PossibleIdentitiesView';
 import { searchLogFromTrail, urlKey } from './workspace';
 
@@ -28,7 +29,7 @@ export interface RunSearchOptions {
 
 /** Reads the newline-delimited JSON stream from POST /search/stream. Returns null when streaming is unavailable. */
 async function fetchStreamed(body: string, signal: AbortSignal, onProgress?: RunSearchOptions['onProgress']): Promise<{ status: number; body: any } | null> {
-  const res = await fetch(`${getApiBase()}/search/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal });
+  const res = await apiFetch(`${getApiBase()}/search/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal });
   if (res.status === 404 || !res.body) return null;
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -74,7 +75,7 @@ export async function runSearch(query: string, searchType: 'Name' | 'Username', 
     let streamed = await fetchStreamed(body, controller.signal, options.onProgress);
     if (!streamed) {
       // Older backend without streaming: plain request.
-      const response = await fetch(`${getApiBase()}/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
+      const response = await apiFetch(`${getApiBase()}/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
       streamed = { status: response.status, body: await response.json().catch(() => ({})) };
     }
     if (streamed.status !== 200) {
@@ -250,7 +251,7 @@ export interface LinkHealthResult {
 
 export async function checkLinkHealth(urls: string[]): Promise<LinkHealthResult[]> {
   if (urls.length === 0) return [];
-  const res = await fetch(`${getApiBase()}/link-health`, {
+  const res = await apiFetch(`${getApiBase()}/link-health`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ urls })

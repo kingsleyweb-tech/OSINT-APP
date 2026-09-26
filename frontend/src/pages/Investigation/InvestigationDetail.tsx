@@ -7,6 +7,7 @@ import { getInvestigationFromDb, saveInvestigationToDb, untrackPersonInDb } from
 import { useToast } from '../../components/ui/Toast';
 import { useNotifications } from '../../context/NotificationContext';
 import { getApiBase } from '../../lib/searchClient';
+import { apiFetch } from '../../lib/apiAuth';
 import {
   downloadFile, toCsv, fmtDate, fmtTime, LEVEL_LABEL, newAuditEvent, ownerName, safeFileName, searchLogFromTrail
 } from '../../lib/workspace';
@@ -19,6 +20,7 @@ import { SourcesTab } from '../../components/investigations/tabs/SourcesTab';
 import { WebTab } from '../../components/investigations/tabs/WebTab';
 import { NewsTab } from '../../components/investigations/tabs/NewsTab';
 import { ImagesTab } from '../../components/investigations/tabs/ImagesTab';
+import { LocationTab } from '../../components/investigations/tabs/LocationTab';
 import { SearchLoader } from '../../components/ui/SearchLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
@@ -33,6 +35,7 @@ const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 
   { key: 'web', label: 'Web', group: 'Evidence' },
   { key: 'news', label: 'News', group: 'Evidence' },
   { key: 'images', label: 'Images', group: 'Evidence' },
+  { key: 'location', label: 'Location', group: 'Evidence' },
   { key: 'metrics', label: 'Metrics', group: 'Record' },
   { key: 'audit', label: 'Audit', group: 'Record' }
 ];
@@ -141,7 +144,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     if (!current) return;
     setIsRescanning(true);
     try {
-      const response = await fetch(`${getApiBase()}/investigations/rescan`, {
+      const response = await apiFetch(`${getApiBase()}/investigations/rescan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ investigation: current, searchDepth: current.searchDepth || 'deep' })
@@ -338,6 +341,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           {isRescanning && <SearchLoader overlay title={`Re-running searches for ${investigation.name}`} />}
           {currentTab === 'news' && <NewsTab />}
           {currentTab === 'images' && <ImagesTab />}
+          {currentTab === 'location' && <LocationTab />}
           {currentTab === 'metrics' && <MetricsTab />}
           {currentTab === 'audit' && <AuditTab />}
         </div>

@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { LoaderStep } from '../ui/SearchLoader';
 import {
   planExplore, runExplore, mergeResponses, ExploreError,
   type ExploreCapability, type ExploreOptions, type ExploreResponse
 } from '../../lib/exploreClient';
+import { setPageState, usePageState } from '../../lib/pageState';
 
 export interface SearchTask {
   /** Key of this task's merged response in the result. */
@@ -17,27 +18,36 @@ export interface SearchTask {
 
 export type SearchRunResult = Record<string, ExploreResponse>;
 
+/** One in-flight search per key, kept outside the component so it survives leaving the page. */
+const controllers = new Map<string, AbortController>();
+let localCounter = 0;
+
 /**
  * Runs one or more searches, each engine as its own request, so the loader shows real
  * per-source progress. One engine failing never stops the others; Cancel aborts everything.
+ *
+ * With a `stateKey` (e.g. "geo:run") the progress is kept when you leave the page: coming back
+ * mid-search shows the loader still running, and the search is not interrupted.
  */
-export function useSearchRun() {
-  const [running, setRunning] = useState(false);
-  const [steps, setSteps] = useState<LoaderStep[]>([]);
-  const controllerRef = useRef<AbortController | null>(null);
+export function useSearchRun(stateKey?: string) {
+  const [localKey] = useState(() => `local-${++localCounter}:run`);
+  const key = stateKey || localKey;
+  const [running] = usePageState<boolean>(`${key}:running`, false);
+  const [steps] = usePageState<LoaderStep[]>(`${key}:steps`, []);
 
   const cancel = useCallback(() => {
-    controllerRef.current?.abort();
-    controllerRef.current = null;
-    setRunning(false);
-    setSteps([]);
-  }, []);
+    controllers.get(key)?.abort();
+    controllers.delete(key);
+    setPageState(`${key}:running`, false);
+    setPageState<LoaderStep[]>(`${key}:steps`, []);
+  }, [key]);
 
   const run = useCallback(async (tasks: SearchTask[]): Promise<SearchRunResult | null> => {
-    controllerRef.current?.abort();
+    controllers.get(key)?.abort();
     const controller = new AbortController();
-    controllerRef.current = controller;
-    setRunning(true);
+    controllers.set(key, controller);
+    const setSteps = (a: LoaderStep[] | ((p: LoaderStep[]) => LoaderStep[])) => setPageState<LoaderStep[]>(`${key}:steps`, a);
+    setPageState(`${key}:running`, true);
     setSteps(tasks.map(t => ({ id: `${t.key}:plan`, label: t.label || 'Preparing search', state: 'active' })));
 
     const update = (id: string, patch: Partial<LoaderStep>) => {
@@ -83,12 +93,12 @@ export function useSearchRun() {
       });
       return out;
     } finally {
-      if (controllerRef.current === controller) {
-        controllerRef.current = null;
-        setRunning(false);
+      if (controllers.get(key) === controller) {
+        controllers.delete(key);
+        setPageState(`${key}:running`, false);
       }
     }
-  }, []);
+  }, [key]);
 
   return { run, cancel, running, steps };
 }

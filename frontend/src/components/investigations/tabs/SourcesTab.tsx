@@ -101,7 +101,7 @@ export const SourcesTab: React.FC = () => {
           </div>
 
           <div className="ws-table-wrap">
-            <table className="ws-table">
+            <table className="ws-table ws-sources-table">
               <thead>
                 <tr><th>ID</th><th>Source</th><th>Type · platform</th><th>Published</th><th>Found</th><th>Link status</th><th>Level</th></tr>
               </thead>
@@ -117,16 +117,16 @@ export const SourcesTab: React.FC = () => {
                     <React.Fragment key={s.key}>
                       <tr className={`row${isOpen ? ' selected' : ''}`} onClick={() => setOpenKey(isOpen ? null : s.key)}>
                         <td className="ws-mono ws-cell-muted">{s.sid}</td>
-                        <td style={{ maxWidth: 400 }}>
+                        <td className="ws-src-cell">
                           <div className="ws-cell-flex">
                             <SourceLogo url={s.source.url} platform={s.source.sourceName} />
                             <div style={{ minWidth: 0 }}>
-                              <div className="ws-cell-title">{s.source.title}</div>
-                              <div className="ws-url ws-trunc" style={{ maxWidth: 330 }}>{shortUrl(s.source.url)}</div>
+                              <div className="ws-cell-title ws-src-title" title={s.source.title}>{s.source.title}</div>
+                              <div className="ws-url ws-trunc" title={s.source.url}>{shortUrl(s.source.url)}</div>
                             </div>
                           </div>
                         </td>
-                        <td><span className="ws-tag">{typeOf(s)}</span><div className="ws-cell-muted" style={{ marginTop: 3 }}>{s.source.sourceName || hostOf(s.source.url)}</div></td>
+                        <td className="ws-src-type"><span className="ws-tag">{typeOf(s)}</span><div className="ws-cell-muted ws-trunc" style={{ marginTop: 3 }} title={s.source.sourceName || hostOf(s.source.url)}>{s.source.sourceName || hostOf(s.source.url)}</div></td>
                         <td className="ws-mono ws-cell-muted">{s.source.publishedDate || '—'}</td>
                         <td className="ws-mono ws-cell-muted">{fmtShortDate(s.source.discoveredDate)}</td>
                         <td><LinkStatus status={linkOf(s)} /></td>

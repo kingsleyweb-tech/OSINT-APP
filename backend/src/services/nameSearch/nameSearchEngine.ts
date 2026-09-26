@@ -511,6 +511,8 @@ async function confirmProfiles(
           const text = String(item?.title || '').trim();
           const hit = FB_FACT_PATTERNS.find(f => f.re.test(text));
           if (hit && !profile.attributes[hit.attr]) profile.attributes[hit.attr] = text.replace(hit.re, '$1').trim();
+          // Keep the exact wording: "Lives in" (current city) and "From" (hometown) are different facts.
+          if (hit?.attr === 'location') profile.evidence.push({ code: 'about_location', text: `Facebook About section: "${text}"` });
         }));
       }
       if (engine === 'instagram_profile') {

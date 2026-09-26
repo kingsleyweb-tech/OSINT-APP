@@ -46,7 +46,7 @@ export class UsernameDiscoveryService {
             profileImage: data.avatar_url,
             confidence: 'confirmed',
             source: 'GitHub API',
-            metadata: { publicRepos: data.public_repos, followers: data.followers, bio: data.bio }
+            metadata: { publicRepos: data.public_repos, followers: data.followers, bio: data.bio, location: data.location || undefined, company: data.company || undefined }
           };
         } else if (res.status === 404) {
           return { status: 'no_match', source: 'GitHub API', confidence: 'unconfirmed' };
@@ -72,7 +72,8 @@ export class UsernameDiscoveryService {
               profileUrl: `https://hub.docker.com/u/${data.username}`,
               profileImage: data.gravatar_url,
               confidence: 'confirmed',
-              source: 'Docker Hub API'
+              source: 'Docker Hub API',
+              metadata: { location: data.location || undefined, company: data.company || undefined }
             };
           }
         } else if (res.status === 404) {
@@ -158,7 +159,8 @@ export class UsernameDiscoveryService {
               profileUrl: `https://dev.to/${data.username}`,
               profileImage: data.profile_image,
               confidence: 'confirmed',
-              source: 'Dev.to API'
+              source: 'Dev.to API',
+              metadata: { location: data.location || undefined, bio: data.summary || undefined }
             };
           }
         } else if (res.status === 404) {

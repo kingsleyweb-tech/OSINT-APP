@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HelpCircle, Search, ChevronDown, ChevronUp, Mail, MessageSquare, BookOpen, ArrowRight, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { HelpCircle, Search } from 'lucide-react';
 
 interface FAQItem {
   id: string;
@@ -12,63 +12,22 @@ interface FAQItem {
 export const PublicHelpPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [openId, setOpenId] = useState<string | null>('faq-1');
 
   const faqs: FAQItem[] = [
-    {
-      id: 'faq-1',
-      category: 'general',
-      question: 'What is the OSINT Investigation Platform?',
-      answer: 'It is a web-based open-source intelligence research workspace designed for conducting ethical public searches on people and usernames. It automates query building, executes index searches via SerpApi, verifies live profiles, and organizes digital footprints into clean case records.'
-    },
-    {
-      id: 'faq-2',
-      category: 'search',
-      question: 'How does Person / Name search work?',
-      answer: 'Name Search uses SerpApi to query public Google search engine indexes with targeted operators (site constraints, exact match phrase quotes, and role/location qualifiers). It aggregates matching social profiles, news mentions, publications, and web references.'
-    },
-    {
-      id: 'faq-3',
-      category: 'search',
-      question: 'How does Username search work?',
-      answer: 'Username search takes a target handle (e.g. "johndoe") and checks over 30 top public platforms (GitHub, LinkedIn, X, Instagram, Medium, Reddit, YouTube, etc.) for existing profiles and associated public activity.'
-    },
-    {
-      id: 'faq-4',
-      category: 'search',
-      question: 'What search provider powers the backend?',
-      answer: 'Search is powered by SerpApi. SerpApi delivers real-time, structured JSON data directly from public Google search engine indexes safely and reliably.'
-    },
-    {
-      id: 'faq-5',
-      category: 'accuracy',
-      question: 'What should I do if a search returns zero results?',
-      answer: 'Zero results can occur if the subject name is unique with limited web indexing, or if location/role qualifiers were too restrictive. Try broadening search terms, removing quotes, or searching by username handle instead.'
-    },
-    {
-      id: 'faq-6',
-      category: 'accuracy',
-      question: 'How do I handle similar names or false matches?',
-      answer: 'Common names (e.g., "John Smith") frequently produce search engine results for multiple individuals. Review the candidate profile bio, location, employment history, and original URLs before attributing a profile to your subject.'
-    },
-    {
-      id: 'faq-7',
-      category: 'privacy',
-      question: 'Does the platform collect or store private non-public data?',
-      answer: 'No. The platform only queries publicly discoverable search engine indexes and public profile endpoints. It does not hack, access private accounts, or query non-public databases.'
-    },
-    {
-      id: 'faq-8',
-      category: 'privacy',
-      question: 'Are target subjects notified when I search for them?',
-      answer: 'No. All searches are conducted via search index queries through SerpApi. Target profiles are never directly notified or pinged.'
-    },
-    {
-      id: 'faq-9',
-      category: 'account',
-      question: 'How are saved investigations protected?',
-      answer: 'Saved cases, candidate profile bookmarks, and notes are stored in Firebase Firestore and protected by security rules enforcing strict per-user UID isolation.'
-    }
+    { id: 'faq-1', category: 'general', question: 'What is the OSINT Investigation Platform?', answer: 'A workspace for lawful open-source investigations. It searches public sources for a person, username, organisation, place or topic — through SerpApi (Google, Bing, DuckDuckGo, Yahoo, YouTube, News, Images, Lens, Maps, Trends) and free public platform APIs — and organises the results into cases you can review, save and export.' },
+    { id: 'faq-2', category: 'general', question: 'What can I search?', answer: 'People by name, usernames, public social posts and forums, news, images and videos, reverse images, places and locations, and search trends. Each has its own page, shows its search cost first, and can save results to a case.' },
+    { id: 'faq-3', category: 'search', question: 'How does a name search work?', answer: 'It runs exact-name Google searches: the name on its own, then one search per platform group (LinkedIn, Facebook, Instagram, X, TikTok & Threads, YouTube, developer and writing sites). Adding a location or organisation narrows common names. Results are grouped into possible identities, and you pick the one to investigate.' },
+    { id: 'faq-4', category: 'search', question: 'How does a username search work?', answer: 'It checks platforms directly for free (GitHub, Reddit, Mastodon, Bluesky, Docker Hub, npm, DEV, Medium, Telegram, Twitch, Vimeo, YouTube, Wikipedia) and searches Google, DuckDuckGo and Yahoo, which also find the handle written with different punctuation (99_humblechild, 99.humblechild_). TikTok accounts are included.' },
+    { id: 'faq-5', category: 'search', question: 'What happens if I misspell a search?', answer: 'In Intelligent mode the platform checks the spelling first. If it is sure, it searches the correction and shows “Showing results for … · Search instead for …”. If not, it runs your search and suggests “Did you mean …?”. Precise mode searches exactly what you typed.' },
+    { id: 'faq-6', category: 'search', question: 'Can I limit news to one country?', answer: 'Yes. Choosing a country on the News, Geo or Trends pages shows only that country’s news edition. Choose “Any country” for worldwide coverage.' },
+    { id: 'faq-7', category: 'accuracy', question: 'What should I do if a search returns nothing?', answer: 'Check the “Did you mean” suggestion, try Intelligent mode, remove the location or organisation, or search the username instead of the name. The platform never fills empty results with made-up data.' },
+    { id: 'faq-8', category: 'accuracy', question: 'How are similar names and usernames handled?', answer: 'Accounts that only look similar (for example one letter different) are shown separately as “Similar accounts”, and their activity is never shown as your subject’s. Review the original sources before linking them to your subject.' },
+    { id: 'faq-9', category: 'account', question: 'How do I sign in?', answer: 'Choose Continue with Google, or sign in with email and password. Your credentials are held by Google and Firebase; the platform never stores passwords. Guest access is not available.' },
+    { id: 'faq-10', category: 'account', question: 'Where are my saved cases and past searches?', answer: 'Cases are under Investigations in the sidebar — including cases created automatically when you save a result from any search page. Every search you run is listed in Search history, grouped by kind.' },
+    { id: 'faq-11', category: 'account', question: 'How is my data protected?', answer: 'Every page and every search requires sign-in, and the server verifies it on each request. Your cases, history and notifications are stored in your own account and database rules stop anyone else from reading them. You can export or delete all your data in Settings.' },
+    { id: 'faq-12', category: 'privacy', question: 'Does the platform access private data?', answer: 'No. It only uses publicly indexed pages and public platform APIs. Private accounts, private messages and non-public databases are never accessed.' },
+    { id: 'faq-13', category: 'privacy', question: 'Are people notified when I search for them?', answer: 'No. Searches go through search engines and public APIs; nobody is contacted or notified.' },
+    { id: 'faq-14', category: 'privacy', question: 'Is facial recognition available?', answer: 'Not yet. Reverse image search (Google Lens) is available on the Media page.' }
   ];
 
   const filteredFaqs = faqs.filter((faq) => {
@@ -83,28 +42,30 @@ export const PublicHelpPage: React.FC = () => {
     <div className="lp-route-container">
       <section className="lp-section-wide">
         <div className="lp-container-wide">
-          
-          <div style={{ textAlign: 'center', maxWidth: '840px', margin: '0 auto 48px' }}>
+
+          <div style={{ textAlign: 'center', maxWidth: '840px', margin: '0 auto 40px' }}>
             <div className="lp-badge" style={{ margin: '0 auto 16px' }}>
               <HelpCircle size={14} />
               <span>Support & Help Center</span>
             </div>
             <h1 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '16px' }}>
-              Help Center & Troubleshooting
+              How can we help?
             </h1>
             <p className="lp-subtitle">
-              Find answers to common questions regarding search execution, accuracy verification, case management, and SerpApi integration.
+              Answers about searching, accuracy, similar accounts, sign-in, saved cases and privacy.
             </p>
 
             <div style={{ position: 'relative', marginTop: '28px' }}>
               <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', color: 'var(--text-muted)' }} />
               <input
                 type="text"
-                placeholder="Search help topics, keywords, or error troubleshooting..."
+                aria-label="Search help"
+                placeholder="Search questions, e.g. similar accounts, Google sign-in, saved cases"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '14px 16px 14px 48px',
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border-color)',
@@ -117,102 +78,53 @@ export const PublicHelpPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '40px' }}>
+          <div className="pd-tabs" role="tablist" aria-label="Help topics">
             {[
-              { id: 'all', label: 'All Topics' },
-              { id: 'general', label: 'General Scope' },
-              { id: 'search', label: 'Search Workflows' },
-              { id: 'accuracy', label: 'Accuracy & Verification' },
-              { id: 'account', label: 'Account & Firestore' },
-              { id: 'privacy', label: 'Privacy & Ethics' }
+              { id: 'all', label: 'All topics' },
+              { id: 'general', label: 'General' },
+              { id: 'search', label: 'Searching' },
+              { id: 'accuracy', label: 'Accuracy' },
+              { id: 'account', label: 'Account & cases' },
+              { id: 'privacy', label: 'Privacy & ethics' }
             ].map((cat) => (
               <button
                 key={cat.id}
+                type="button"
+                role="tab"
+                aria-selected={selectedCategory === cat.id}
+                className={`pd-tab${selectedCategory === cat.id ? ' on' : ''}`}
                 onClick={() => setSelectedCategory(cat.id)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  background: selectedCategory === cat.id ? 'var(--accent-warm)' : 'transparent',
-                  color: selectedCategory === cat.id ? '#ffffff' : 'var(--text-muted)',
-                  border: '1px solid',
-                  borderColor: selectedCategory === cat.id ? 'var(--accent-warm)' : 'var(--border-color)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
               >
                 {cat.label}
               </button>
             ))}
           </div>
 
-          <div style={{ maxWidth: '960px', margin: '0 auto 60px', display: 'flex', flexDirection: 'column' }}>
-            {filteredFaqs.map((faq) => {
-              const isOpen = openId === faq.id;
-              return (
-                <div key={faq.id} style={{ borderTop: '1px solid var(--border-color)', padding: '18px 0' }}>
-                  <button
-                    onClick={() => setOpenId(isOpen ? null : faq.id)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-primary)',
-                      fontSize: '1.1rem',
-                      fontWeight: 700,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      padding: '4px 0'
-                    }}
-                  >
-                    <span>{faq.question}</span>
-                    {isOpen ? (
-                      <ChevronUp size={20} style={{ color: 'var(--accent-warm-light)', flexShrink: 0 }} />
-                    ) : (
-                      <ChevronDown size={20} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    )}
-                  </button>
-                  {isOpen && (
-                    <div style={{ padding: '14px 0 6px', color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
-                      {faq.answer}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <div style={{ borderTop: '1px solid var(--border-color)' }} />
+          <div className="pd-faq">
+            {filteredFaqs.length === 0 && <p className="pd-empty">No questions match “{searchTerm}”.</p>}
+            {filteredFaqs.map((faq, i) => (
+              <details key={faq.id} open={i === 0 || searchTerm.trim() !== ''}>
+                <summary>{faq.question}</summary>
+                <p>{faq.answer}</p>
+              </details>
+            ))}
           </div>
 
-          <div className="lp-help-links-grid">
+          <div className="pd-links">
             <div>
-              <BookOpen size={24} style={{ color: 'var(--accent-warm-light)', marginBottom: '8px' }} />
-              <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Technical Manual</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '14px', lineHeight: 1.6 }}>Explore in-depth setup, dorks, and confidence rules.</p>
-              <Link to="/documentation" className="btn-outline" style={{ fontSize: '0.85rem' }}>
-                View Documentation
-              </Link>
+              <h3>Documentation</h3>
+              <p>How every search, result tab and case feature works.</p>
+              <Link to="/documentation">Read the documentation →</Link>
             </div>
-
             <div>
-              <MessageSquare size={24} style={{ color: 'var(--accent-warm-light)', marginBottom: '8px' }} />
-              <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Responsible Use</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '14px', lineHeight: 1.6 }}>Review ethics guidelines and non-FCRA rules.</p>
-              <Link to="/responsible-use" className="btn-outline" style={{ fontSize: '0.85rem' }}>
-                View Ethics Policy
-              </Link>
+              <h3>Responsible use</h3>
+              <p>What the platform may and may not be used for.</p>
+              <Link to="/responsible-use">Read the policy →</Link>
             </div>
-
             <div>
-              <Mail size={24} style={{ color: 'var(--accent-warm-light)', marginBottom: '8px' }} />
-              <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Launch Workspace</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '14px', lineHeight: 1.6 }}>Sign in to start your public search investigation.</p>
-              <Link to="/auth" className="btn-primary-warm" style={{ fontSize: '0.85rem' }}>
-                Launch Workspace <ArrowRight size={14} />
-              </Link>
+              <h3>Open the workspace</h3>
+              <p>Sign in with Google to start an investigation.</p>
+              <Link to="/auth">Sign in →</Link>
             </div>
           </div>
 

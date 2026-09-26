@@ -183,7 +183,7 @@ export async function saveItemsToCase(caseId: string, items: ExploreItem[], save
 /** Creates an empty case for results saved from a search (no Profiler search needed). */
 export async function createCaseFromSearch(name: string, savedFrom: string, query?: string): Promise<Investigation> {
   const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Sign in (or continue as a guest) to save cases.');
+  if (!uid) throw new Error('Sign in to save cases.');
   const now = new Date().toISOString();
   const clean = name.trim().slice(0, 120) || 'Untitled case';
   const initials = clean.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || 'CS';

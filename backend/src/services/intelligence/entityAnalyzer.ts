@@ -38,6 +38,8 @@ export interface AnalyzedPersonProfile {
     bio?: string;
     category?: 'Social' | 'Professional' | 'Developer' | 'Video & Streaming';
     isVerified?: boolean;
+    /** Facts the platform's API returns for the account, as set by its owner. */
+    attributes?: { location?: string; organization?: string };
   }>;
 }
 
@@ -528,9 +530,15 @@ export class EntityAnalyzer {
         confidenceLabel,
         matchReason: matchReasons.length > 0 ? matchReasons : [`Public profile match on ${platformName}`],
         avatarUrl: r.metadata?.avatarUrl || r.metadata?.profileImage || undefined,
-        bio: r.description,
+        bio: r.metadata?.profileBio || r.description,
         category,
-        isVerified: confidence >= 75
+        isVerified: confidence >= 75,
+        ...(r.metadata?.statedLocation || r.metadata?.statedOrganization ? {
+          attributes: {
+            ...(r.metadata?.statedLocation ? { location: r.metadata.statedLocation } : {}),
+            ...(r.metadata?.statedOrganization ? { organization: r.metadata.statedOrganization } : {})
+          }
+        } : {})
       });
     });
 

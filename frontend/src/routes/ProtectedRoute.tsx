@@ -6,7 +6,7 @@ interface ProtectedRouteProps {
   children: React.ReactElement;
 }
 
-/** Signed-out visitors are sent to the homepage, which tells them to sign in or continue as a guest. */
+/** Signed-out visitors are sent to the homepage, which asks them to sign in or continue with Google. */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, children }) => {
   const location = useLocation();
   if (!user) {

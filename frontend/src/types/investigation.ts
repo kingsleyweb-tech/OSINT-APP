@@ -320,6 +320,24 @@ export interface Investigation {
   imagesCheckedAt?: string;
   /** When the News tab last searched the news engines for the subject. */
   newsCheckedAt?: string;
+  /**
+   * The Location tab's searches across the open web: "core" (web, Bing, news, Maps; run on first open)
+   * and "more" (videos, images, social posts; on request). Each keeps how every source did and the
+   * location references found. Legacy fields (refs, engines…) come from the first version of the tab.
+   */
+  locationScan?: {
+    checkedAt?: string;
+    query?: string;
+    refs?: import('../lib/locationEvidence').LocationRef[];
+    runs?: Partial<Record<'core' | 'more', {
+      at: string;
+      resultsChecked: number;
+      sources: Array<{ label: string; status: 'ok' | 'empty' | 'failed'; results: number; error?: string }>;
+      /** Set when the search could not be run at all (network, rate limit, sign-in). */
+      error?: string;
+      refs: import('../lib/locationEvidence').LocationRef[];
+    }>>;
+  };
   createdBy: string;
   createdAt: string;
   updatedAt: string;

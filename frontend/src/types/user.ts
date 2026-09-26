@@ -44,6 +44,8 @@ export interface SearchHistoryEntry {
   /** Engines / sources that ran. */
   sources?: string[];
   mode?: SearchMode;
+  /** The full results are saved in users/{uid}/searchResults/{id} and can be shown again without searching. */
+  hasResults?: boolean;
 }
 
 export type SearchMode = 'intelligent' | 'precise';
@@ -68,6 +70,7 @@ export interface UserProfile {
   phoneNumber?: string;
   /** Small square JPEG as a data URL (resized in the browser before saving). */
   photoURL?: string;
+  /** Legacy field from the removed guest mode; no longer written. */
   isGuest?: boolean;
   timeZone?: string;
   dateFormat?: DateFormatPref;
@@ -95,5 +98,9 @@ export interface SessionUser {
   displayName: string;
   role: string;
   photoURL?: string;
-  isGuest: boolean;
+  /** How this account signs in. */
+  provider: 'google' | 'password' | 'other';
+  /** Firebase Authentication's own account timestamps (ISO). */
+  createdAt?: string;
+  lastSignInAt?: string;
 }

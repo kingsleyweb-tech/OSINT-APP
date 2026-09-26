@@ -1,443 +1,279 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 
-type DocSectionId =
-  | 'introduction'
-  | 'getting-started'
-  | 'creating-investigation'
-  | 'name-search'
-  | 'username-search'
-  | 'search-results'
-  | 'possible-people'
-  | 'profiles'
-  | 'activity'
-  | 'associations'
-  | 'websites'
-  | 'news'
-  | 'sources'
-  | 'deep-search'
-  | 'accuracy'
-  | 'confidence'
-  | 'saving-findings'
-  | 'analyst-notes'
-  | 'case-management'
-  | 'original-sources'
-  | 'limitations'
-  | 'responsible-osint'
-  | 'privacy'
-  | 'security'
-  | 'troubleshooting';
+type Category = 'Overview' | 'Search' | 'Results' | 'Cases' | 'Platform' | 'Ethics & Help';
 
-interface DocItem {
-  id: DocSectionId;
+interface DocSection {
+  id: string;
   label: string;
-  category: 'Overview' | 'Workflows' | 'Analysis' | 'Management' | 'Ethics & Help';
+  category: Category;
+  title: string;
+  paragraphs: string[];
+  list?: string[];
+  ordered?: boolean;
+  code?: string[];
 }
 
-export const DocumentationPage: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<DocSectionId>('introduction');
+const DOCS: DocSection[] = [
+  {
+    id: 'introduction', label: 'Platform introduction', category: 'Overview', title: 'Platform Introduction',
+    paragraphs: [
+      'The OSINT Investigation Platform is an open-source intelligence workspace for investigators, analysts, journalists and researchers. It searches public sources for a person, username, organisation, place or topic and organises what it finds into cases you can review, save and export.',
+      'Searches run live through SerpApi (Google, Bing, DuckDuckGo, Yahoo, YouTube, News, Images, Lens, Maps and Trends) and free public platform APIs (GitHub, Reddit, Mastodon, Bluesky and others). Nothing is invented: when nothing is found, the platform says so.'
+    ]
+  },
+  {
+    id: 'getting-started', label: 'Getting started', category: 'Overview', title: 'Getting Started', ordered: true,
+    paragraphs: [],
+    list: [
+      'Open the sign-in page and choose Continue with Google (or sign in with email and password).',
+      'Start from the Dashboard or New Search: choose Name or Username, and optionally add a location or organisation.',
+      'Watch the progress loader: every engine shows its own status, and you can cancel at any time.',
+      'Pick the possible identity that matches your subject to create a case.',
+      'Review the case tabs, save extra findings from the Social, News, Media, Geo and Trends pages, and export when you are done.'
+    ]
+  },
+  {
+    id: 'name-search', label: 'Name search', category: 'Search', title: 'Name Search',
+    paragraphs: [
+      'A name search runs a small, fixed plan of exact-phrase Google searches: the name on its own, then one search per platform group so every platform gets its own results.'
+    ],
+    list: [
+      'Platform groups: LinkedIn, Facebook (two result pages), Instagram, X, TikTok & Threads, YouTube channels, and GitHub/Medium/Reddit/Stack Overflow.',
+      'A location or organisation adds one search each and narrows common names.',
+      'Deep searches confirm the best Facebook and Instagram matches with their profile APIs.',
+      'Results are grouped into possible identities; choose one to create a case.'
+    ],
+    code: ['site:linkedin.com/in "Kwame Mensah"', '"Kwame Mensah" "Accra"']
+  },
+  {
+    id: 'username-search', label: 'Username search', category: 'Search', title: 'Username Search',
+    paragraphs: [
+      'A username search finds accounts that use a handle, including versions written with different punctuation — for example 99_humblechild, 99.humblechild_ and 99-humblechild.'
+    ],
+    list: [
+      'Free direct checks: GitHub, Reddit, Mastodon, Bluesky, Docker Hub, npm, DEV, Medium, Telegram, Twitch, Vimeo, YouTube and Wikipedia.',
+      'Search engines: Google, DuckDuckGo and Yahoo (which find punctuation variants), plus TikTok and YouTube searches.',
+      'Post and video links (an X post, a TikTok video) are traced back to the account that owns them.',
+      'Handles that only look similar are listed as similar usernames, never as the subject’s own accounts.'
+    ]
+  },
+  {
+    id: 'explore', label: 'Social, News, Media, Geo & Trends', category: 'Search', title: 'Explore Searches',
+    paragraphs: ['Beyond people and usernames, five search pages cover public content by keyword. Each one shows its search cost first and can save results to a case.'],
+    list: [
+      'Social search — public posts and pages on X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Reddit, Threads, Telegram, WhatsApp public groups, VK and Weibo (one search per platform), or forums and discussions.',
+      'News — Google News and Bing News. Choosing a country shows only that country’s edition; several words are matched as an exact phrase in the article text.',
+      'Media — images (Google & Bing), videos (YouTube & Google Videos) and reverse image search (Google Lens and Google Reverse Image).',
+      'Geo search — places and businesses with reviews (Google Maps), news, social posts, web pages and events for a location; with “Any country”, places with the same name elsewhere are listed.',
+      'Trends — interest over time and related queries (Google Trends), trending now in a country, and what news, social media and the web are saying.'
+    ]
+  },
+  {
+    id: 'intelligence', label: 'Search intelligence (typos)', category: 'Search', title: 'Search Intelligence: Typos and “Did you mean”',
+    paragraphs: [
+      'In Intelligent mode (the default), the platform checks the spelling of a search before running it, using one Google check that is cached for 12 hours. It learns from Google’s own spelling fix and from the spellings the results consistently use.'
+    ],
+    list: [
+      'High confidence: the search runs on the correction and shows “Showing results for … · Search instead for …”.',
+      'Medium or low confidence: your original search runs, with a “Did you mean” suggestion and at most two alternatives, which only run if you click them.',
+      'Every correction shows its confidence, the reason, and the full search path (original → correction → sources → results), plus related searches.',
+      'Precise mode searches exactly what you typed with no extra search. Usernames, quoted text and styled handles are never corrected.'
+    ]
+  },
+  {
+    id: 'loader', label: 'Progress, caching & quota', category: 'Search', title: 'Progress, Caching & Quota',
+    paragraphs: [
+      'Every search shows a progress loader listing each engine it calls, with real status for each. You can cancel at any time. A slow engine times out after 30 seconds and is retried once, so a search never freezes.',
+      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick) or 9 (standard/deep) searches plus one per location or organisation; a username search uses 5, 10 or up to 13, and its direct platform checks are free.'
+    ]
+  },
+  {
+    id: 'possible-people', label: 'Possible identities', category: 'Results', title: 'Possible Identities & Match Labels',
+    paragraphs: [
+      'Common names return results about many different people. The platform groups results that share a handle, location or organisation into separate possible identities rather than merging them.',
+      'Each result is labelled Exact match, Likely match, Similar match (a close spelling, such as one letter different) or Possible match, with the signals that support it.'
+    ]
+  },
+  {
+    id: 'similar', label: 'Similar accounts', category: 'Results', title: 'Similar Accounts',
+    paragraphs: [
+      'Accounts whose name or handle is close to — but not the same as — your subject’s are shown in their own “Similar accounts” section. Their posts and activity are never shown as belonging to your subject. Treat them as unconfirmed until evidence links them.'
+    ]
+  },
+  {
+    id: 'case-tabs', label: 'The 11 case tabs', category: 'Results', title: 'The 11 Case Tabs',
+    paragraphs: ['Each case is organised into eleven tabs:'],
+    list: [
+      'Overview — summary of the selected identity and its key facts.',
+      'Profiles — the subject’s own profiles, with link checks; similar accounts listed separately.',
+      'Activity — public posts, videos, articles and code activity in date order.',
+      'Associations — organisations, co-mentioned people and linked usernames.',
+      'Sources — every source URL, exportable as CSV.',
+      'Web — pages linked to the identity and pages that only mention the name.',
+      'News — news articles naming the subject, gathered automatically.',
+      'Images — public images of or about the subject, gathered automatically.',
+      'Location — places public sources connect to the person, each with the source’s exact words and whether it is a profile location, stated residence, hometown, workplace or only a mention. Nothing is guessed.',
+      'Metrics — result counts and the full SerpApi search log.',
+      'Audit — time-stamped log of every search and change, exportable as CSV.'
+    ]
+  },
+  {
+    id: 'saving', label: 'Saving to a case', category: 'Cases', title: 'Saving Findings to a Case',
+    paragraphs: [
+      'Every result list has a Save button. If you have no case yet, one is created automatically, so you can save from any search page without running a name search first. Saved items keep their source URL, platform and date.',
+      'All cases are listed under Investigations in the sidebar.'
+    ]
+  },
+  {
+    id: 'history', label: 'Search history', category: 'Cases', title: 'Search History',
+    paragraphs: [
+      'Every search is saved to your account and grouped by kind: name, username, social, forums, news, images, videos, reverse image, geo and trends. Open an entry to see its top results, run it again, or open the case made from it. Corrected searches show “Original → Correction” with the confidence.'
+    ]
+  },
+  {
+    id: 'people-analysis', label: 'People, Network & Content analysis', category: 'Cases', title: 'People, Network & Content Analysis',
+    paragraphs: [
+      'People lists the people you track from your cases; “View person” opens the saved case immediately, without searching again.',
+      'Network shows how the people, usernames, organisations and websites in your cases connect, and can compare two cases. Content analysis breaks saved results down by platform, type, date and words. Both are built only from data already in your cases and use no searches.'
+    ]
+  },
+  {
+    id: 'rerun-export', label: 'Re-run & export', category: 'Cases', title: 'Re-running and Exporting Cases',
+    paragraphs: [
+      'Re-run a case’s searches to see what has changed since it was created; changes are recorded in the Audit tab and you are notified when it finishes. Export a case as JSON, and its Sources and Audit lists as CSV, for reporting.'
+    ]
+  },
+  {
+    id: 'sources', label: 'Sources & API reference', category: 'Platform', title: 'Sources & API Reference',
+    paragraphs: [
+      'The Sources page (in the app) lists every source the platform searches — search engines, news, images and video, maps, trends, social and developer platforms — with what each returns and where it is used.',
+      'Its API endpoints tab documents the platform’s own backend endpoints and every external API it calls (19 SerpApi engines and the free platform APIs), each with a link to the provider’s documentation.'
+    ]
+  },
+  {
+    id: 'security', label: 'Sign-in & security', category: 'Platform', title: 'Sign-in & Security',
+    paragraphs: [
+      'Sign in with Google or with email and password through Firebase Authentication. Credentials are held by Google and Firebase; the platform never stores passwords. Guest access is not available.',
+      'Every app page requires sign-in, and the server verifies your sign-in on every search, so the search engine cannot be used without an account. Searches are limited per account to prevent abuse, and optional App Check (reCAPTCHA v3) blocks automated clients.',
+      'Cases, history, tracked people and notifications are stored in your own account; database rules stop anyone else from reading them. You can export or delete all your data in Settings.'
+    ]
+  },
+  {
+    id: 'limitations', label: 'Limitations', category: 'Ethics & Help', title: 'Limitations',
+    paragraphs: ['The platform only sees what is publicly indexed or exposed by public APIs.'],
+    list: [
+      'Private accounts, private messages, deleted content and pages search engines have not indexed cannot be found.',
+      'Some platforms (Facebook, Instagram, LinkedIn) show only what Google has indexed about them.',
+      'News engines match the exact wording of the article; a different spelling may need its own search.',
+      'Facial recognition is not connected yet.'
+    ]
+  },
+  {
+    id: 'responsible-osint', label: 'Responsible use', category: 'Ethics & Help', title: 'Responsible OSINT',
+    paragraphs: [
+      'Use the platform only for lawful, authorised purposes and follow the laws that apply to you. Harassment, stalking and doxxing are prohibited. Always open and review the original source before drawing conclusions, and never treat a similar name or username as the same person without evidence.'
+    ]
+  },
+  {
+    id: 'troubleshooting', label: 'Troubleshooting', category: 'Ethics & Help', title: 'Troubleshooting',
+    paragraphs: [],
+    list: [
+      'Nothing found — check the “Did you mean” suggestion, switch to Intelligent mode, remove the location or organisation, or search the username instead.',
+      'Country news is empty — that country’s edition has no coverage; choose “Any country”.',
+      '“Too many searches in a short time” — wait a few minutes; searches are limited per account.',
+      '“Your session has expired” — sign in again.',
+      'Google sign-in blocked — allow pop-ups for the site; otherwise the page goes to Google and returns automatically.'
+    ]
+  }
+];
 
-  const docNav: DocItem[] = [
-    { id: 'introduction', label: '01. Platform Introduction', category: 'Overview' },
-    { id: 'getting-started', label: '02. Getting Started', category: 'Overview' },
-    { id: 'creating-investigation', label: '03. Creating an Investigation', category: 'Workflows' },
-    { id: 'name-search', label: '04. Name Search Workflow', category: 'Workflows' },
-    { id: 'username-search', label: '05. Username Search Workflow', category: 'Workflows' },
-    { id: 'deep-search', label: '06. Deep Search Sweeping', category: 'Workflows' },
-    { id: 'search-results', label: '07. Results Normalization', category: 'Analysis' },
-    { id: 'possible-people', label: '08. Possible People Matching', category: 'Analysis' },
-    { id: 'profiles', label: '09. Profiles Discovery', category: 'Analysis' },
-    { id: 'activity', label: '10. Activity Extraction', category: 'Analysis' },
-    { id: 'associations', label: '11. Associations & Groups', category: 'Analysis' },
-    { id: 'websites', label: '12. Personal Web Presence', category: 'Analysis' },
-    { id: 'news', label: '13. News & Publications', category: 'Analysis' },
-    { id: 'sources', label: '14. Sources & Audit Metadata', category: 'Analysis' },
-    { id: 'accuracy', label: '15. Search Accuracy Rules', category: 'Analysis' },
-    { id: 'confidence', label: '16. Confidence Scoring', category: 'Analysis' },
-    { id: 'saving-findings', label: '17. Saving to Firestore', category: 'Management' },
-    { id: 'analyst-notes', label: '18. Analyst Case Notes', category: 'Management' },
-    { id: 'case-management', label: '19. Case Management', category: 'Management' },
-    { id: 'original-sources', label: '20. Reviewing Original Sources', category: 'Ethics & Help' },
-    { id: 'limitations', label: '21. Platform Search Limitations', category: 'Ethics & Help' },
-    { id: 'responsible-osint', label: '22. Responsible OSINT Rules', category: 'Ethics & Help' },
-    { id: 'privacy', label: '23. Privacy & Data Boundaries', category: 'Ethics & Help' },
-    { id: 'security', label: '24. Security & Access Control', category: 'Ethics & Help' },
-    { id: 'troubleshooting', label: '25. Troubleshooting & FAQs', category: 'Ethics & Help' },
-  ];
+const CATEGORIES: Category[] = ['Overview', 'Search', 'Results', 'Cases', 'Platform', 'Ethics & Help'];
+
+export const DocumentationPage: React.FC = () => {
+  const [activeSection, setActiveSection] = useState<string>(DOCS[0].id);
+  const index = Math.max(0, DOCS.findIndex(d => d.id === activeSection));
+  const doc = DOCS[index];
+  const prev = DOCS[index - 1];
+  const next = DOCS[index + 1];
+
+  const open = (id: string) => {
+    setActiveSection(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="lp-route-container">
       <section className="lp-section-wide">
         <div className="lp-container-wide">
-          
+
           <div style={{ marginBottom: '40px' }}>
             <div className="lp-badge" style={{ marginBottom: '14px' }}>
               <BookOpen size={14} />
-              <span>Product Documentation Manual</span>
+              <span>Product Documentation</span>
             </div>
             <h1 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '12px' }}>
               System Documentation & Guide
             </h1>
             <p className="lp-subtitle" style={{ maxWidth: '840px' }}>
-              Comprehensive operational reference manual covering query syntax, analysis tabs, confidence scoring, case management, and ethical compliance.
+              How every search works, what the results mean, how cases and history are kept, and how the platform protects your account and data.
             </p>
           </div>
 
           <div className="lp-doc-grid">
-            <div className="lp-doc-toc-sidebar">
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-warm-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
-                ON THIS PAGE
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {docNav.map((item) => {
-                  const isActive = activeSection === item.id;
-                  return (
+            <nav className="lp-doc-toc-sidebar" aria-label="Documentation contents">
+              {CATEGORIES.map(cat => (
+                <React.Fragment key={cat}>
+                  <div className="pd-nav-group">{cat}</div>
+                  {DOCS.filter(d => d.category === cat).map(item => (
                     <button
                       key={item.id}
-                      onClick={() => setActiveSection(item.id)}
-                      style={{
-                        display: 'block',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        fontWeight: isActive ? 700 : 400,
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                        background: isActive ? 'var(--bg-hover)' : 'transparent',
-                        borderLeft: isActive ? '3px solid var(--accent-warm-light)' : '3px solid transparent',
-                        borderTop: 'none',
-                        borderRight: 'none',
-                        borderBottom: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
+                      type="button"
+                      onClick={() => open(item.id)}
+                      className={`pd-nav-link${activeSection === item.id ? ' on' : ''}`}
+                      aria-current={activeSection === item.id ? 'page' : undefined}
                     >
                       {item.label}
                     </button>
-                  );
-                })}
+                  ))}
+                </React.Fragment>
+              ))}
+            </nav>
+
+            <article className="pd-article">
+              <span className="pd-eyebrow">{doc.category} · {String(index + 1).padStart(2, '0')} of {DOCS.length}</span>
+              <h2>{doc.title}</h2>
+              {doc.paragraphs.map(p => <p key={p}>{p}</p>)}
+              {doc.list && (doc.ordered ? (
+                <ol className="pd-steps">
+                  {doc.list.map((li, i) => (
+                    <li key={li}><span className="pd-sn" aria-hidden="true">{i + 1}</span><span>{li}</span></li>
+                  ))}
+                </ol>
+              ) : (
+                <ul className="pd-bullets">
+                  {doc.list.map(li => <li key={li}>{li}</li>)}
+                </ul>
+              ))}
+              {doc.code && (
+                <div className="pd-code">
+                  <span>Example queries</span>
+                  {doc.code.map(c => <code key={c}>{c}</code>)}
+                </div>
+              )}
+
+              <div className="pd-pager">
+                {prev ? (
+                  <button type="button" onClick={() => open(prev.id)}><small>Previous</small>← {prev.label}</button>
+                ) : <span />}
+                {next ? (
+                  <button type="button" onClick={() => open(next.id)} style={{ textAlign: 'right' }}><small>Next</small>{next.label} →</button>
+                ) : (
+                  <Link to="/help-center" style={{ textAlign: 'right' }}><small>Next</small>Help Center →</Link>
+                )}
               </div>
-            </div>
-
-            <div style={{ lineHeight: 1.7, color: 'var(--text-muted)', width: '100%' }}>
-              
-              {activeSection === 'introduction' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 01</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Platform Introduction
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75, marginBottom: '16px' }}>
-                    The OSINT Investigation Platform is a specialized open-source intelligence research workspace engineered for cybersecurity analysts, legal investigators, journalists, and academic researchers. It automates query generation, retrieves organic search engine index results via <strong>SerpApi</strong>, verifies live candidate profiles, and organizes digital footprints into clean case records.
-                  </p>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    All data aggregated by the platform is derived exclusively from publicly accessible search engine indexes. The platform does not access private accounts, bypass paywalls, or query non-public databases.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'getting-started' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 02</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Getting Started
-                  </h2>
-                  <ol style={{ paddingLeft: '20px', color: 'var(--text-primary)', fontSize: '1rem', lineHeight: 1.8 }}>
-                    <li>Create an account or sign in at the authentication portal (/auth).</li>
-                    <li>Select your search type: <strong>Person / Name Search</strong> or <strong>Username Search</strong>.</li>
-                    <li>Enter the target subject name or handle along with optional location/role qualifiers.</li>
-                    <li>Execute the query to launch SerpApi index requests.</li>
-                    <li>Review findings structured across Overview, Profiles, Activity, Associations, News, and Sources.</li>
-                    <li>Bookmark verified candidate profiles and save case records to your Firestore account workspace.</li>
-                  </ol>
-                </div>
-              )}
-
-              {activeSection === 'creating-investigation' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 03</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Creating an Investigation
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75, marginBottom: '16px' }}>
-                    To launch a new investigation, navigate to the <strong>New Search</strong> tab in the workspace. Enter your subject parameters. The system automatically constructs targeted Google search dorks combining exact match phrase quotes and site filters.
-                  </p>
-                  <div className="lp-code-block" style={{ padding: '20px', marginBottom: '20px', fontSize: '0.9rem' }}>
-                    Query Syntax Example:<br />
-                    Name: "Kwame Mensah"<br />
-                    Location: "Accra"<br />
-                    Generated Dork: site:linkedin.com/in "Kwame Mensah" "Accra"
-                  </div>
-                </div>
-              )}
-
-              {activeSection === 'name-search' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 04</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Name Search Workflow
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Name search evaluates public web records across major search engine indexes. It is optimized for discovering professional profiles, news mentions, corporate registrations, and academic publications.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'username-search' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 05</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Username Search Workflow
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Username search probes over 30 leading web services (GitHub, X, Instagram, Medium, Reddit, YouTube, etc.) for target handle existence and returns canonical profile links.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'deep-search' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 06</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Deep Search Sweeping
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Deep Search executes secondary query sweeps combining subject names with niche keywords, co-authors, or historic domain references to surface long-tail web mentions.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'search-results' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 07</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Search Results Normalization
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Raw search engine JSON data returned by SerpApi is processed by our normalization service: tracking parameters (utm_*, ref) are stripped, duplicate URLs removed, and snippets categorized.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'possible-people' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 08</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Possible People Matching
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    The Possible People section clusters candidate profiles by matching name tokens, location alignment, and co-occurring bio details. Matches are classified as Strong, Possible, or Mention Only.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'profiles' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 09</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Profiles Discovery
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Displays verified social, professional, developer, and creative profiles discovered during the search.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'activity' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 10</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Activity Extraction
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Gathers publicly indexed commits, posted articles, media appearances, and blog posts into a unified chronological timeline.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'associations' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 11</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Associations & Group Affiliations
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Identifies documented employer links, academic institution affiliations, GitHub open-source organization memberships, and public co-authors.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'websites' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 12</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Personal & Portfolio Web Presence
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Surfaces target personal blogs, custom portfolio sites, resume pages, and project domains.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'news' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 13</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    News & Publications
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Filters press reporting, media interviews, and academic journal articles citing the subject name.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'sources' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 14</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Sources & Audit Metadata
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Maintains an auditable reference log containing original web URLs, crawl dates, and query parameters.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'accuracy' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 15</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Search Accuracy Rules
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Analysts must account for common names, shared handles, and outdated search engine crawl caches. Always review target URLs directly before making identity assessments.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'confidence' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 16</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Confidence Scoring Model
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Confidence scores evaluate name token similarity, location overlap, and bio context. High confidence indicates strong profile alignment; low confidence indicates a possible or generic mention.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'saving-findings' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 17</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Saving Findings to Firestore
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Clicking <strong>Save Investigation</strong> writes candidate profile bookmarks, query metadata, and analyst notes to your Firebase Firestore user collection.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'analyst-notes' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 18</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Adding Analyst Notes
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    The <strong>Notes</strong> tab allows investigators to record research conclusions, hypothesis evaluations, and verification steps directly within the case document.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'case-management' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 19</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Managing Investigation Cases
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    All historical investigations are accessible from the <strong>Investigations</strong> dashboard list, allowing analysts to resume, update, or archive past research.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'original-sources' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 20</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Reviewing Original Sources
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Search engine snippets are preliminary summaries. Investigators must open and review original target URLs to confirm full context and accuracy.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'limitations' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 21</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Platform Search Limitations
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    The platform cannot search unindexed web pages, private social accounts, password-protected forums, or deleted web content.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'responsible-osint' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 22</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Responsible OSINT Rules
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    Users must comply with all applicable local and international laws. Harassment, stalking, doxxing, and non-FCRA credit/employment screening are strictly prohibited.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'privacy' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 23</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Privacy & Data Boundaries
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    The platform aggregates public search engine index data. It does not collect or sell private personal dossiers.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'security' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 24</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Security & Access Control
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    User accounts and Firestore investigation collections are protected by Firebase Auth and security rules enforcing strict per-user UID isolation.
-                  </p>
-                </div>
-              )}
-
-              {activeSection === 'troubleshooting' && (
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '32px', marginBottom: '32px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '8px' }}>SECTION 25</div>
-                  <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                    Troubleshooting & FAQs
-                  </h2>
-                  <p style={{ fontSize: '1rem', lineHeight: 1.75 }}>
-                    If a search returns zero results, verify spelling, broaden location qualifiers, or try searching by username handle instead of full name.
-                  </p>
-                </div>
-              )}
-
-            </div>
-
+            </article>
           </div>
         </div>
       </section>

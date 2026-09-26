@@ -138,6 +138,8 @@ textarea.ex-input { height: auto; padding: 10px 12px; resize: vertical; }
 .ex-chart-axis { font-size: 10px; fill: var(--text-muted); }
 
 .ex-map { width: 100%; height: 340px; border: 0; display: block; border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--bg-hover); }
+/* Dark mode: the OpenStreetMap tiles are inverted and re-hued so the map is dark but keeps its colours. */
+.ex-map-dark { filter: invert(0.92) hue-rotate(180deg) brightness(0.92) contrast(0.92); }
 
 .ex-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
 .ex-table th { text-align: left; font-size: 0.74rem; font-weight: 650; color: var(--text-muted); padding: 9px 18px; border-bottom: 1px solid var(--border-color); background: var(--bg-hover); }

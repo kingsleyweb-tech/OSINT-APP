@@ -1,12 +1,12 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Database, Loader2, Lock, Search, Shield, User, UserPlus } from 'lucide-react';
+import { Bell, Database, ExternalLink, Loader2, Search, Shield, User } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { useSignOutPrompt } from '../../context/SignOutPromptContext';
 import { useToast } from '../../components/ui/Toast';
 import {
-  authErrorMessage, changePassword, clearLocalSessionData, deleteAuthAccount, reauthenticate, resetPassword, upgradeGuestAccount
+  authErrorMessage, changePassword, clearLocalSessionData, deleteAuthAccount, reauthenticate, resetPassword, signInMethods
 } from '../../firebase/auth';
 import { deleteAllInvestigationsFromDb, deleteAllUserDataFromDb, exportUserDataFromDb } from '../../firebase/firestore';
 import { browserTimeZone, dateFormatExample } from '../../lib/session';
@@ -26,7 +26,7 @@ const SECTIONS: Array<{ key: Section; label: string; icon: React.ElementType }> 
   { key: 'data', label: 'Data & privacy', icon: Database }
 ];
 
-const ROLES = ['Investigator', 'Analyst', 'Researcher', 'Journalist', 'Compliance officer', 'Administrator', 'Guest'];
+const ROLES = ['Investigator', 'Analyst', 'Researcher', 'Journalist', 'Compliance officer', 'Administrator'];
 
 function timeZones(): string[] {
   try {
@@ -73,17 +73,8 @@ function resizeImage(file: File): Promise<string> {
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '?';
 
 export const SettingsPage: React.FC = () => {
-  const { user } = useSession();
-  const isGuest = Boolean(user?.isGuest);
-  const [section, setSection] = useState<Section>(isGuest ? 'security' : 'profile');
-  const [guestNotice, setGuestNotice] = useState(false);
+  const [section, setSection] = useState<Section>('profile');
   const active = SECTIONS.find(s => s.key === section)!;
-  // Guests may look around, but only the "create an account" form (Security) can be used.
-  const locked = isGuest && section !== 'security';
-  const goCreateAccount = () => {
-    setGuestNotice(false);
-    setSection('security');
-  };
 
   return (
     <div className="st-root">
@@ -92,16 +83,6 @@ export const SettingsPage: React.FC = () => {
         <h1 className="st-title">Settings</h1>
         <p className="st-lead">Manage your profile, sign-in security, notifications and how new investigations run.</p>
       </header>
-      {isGuest && (
-        <div className="st-guest-banner" role="status">
-          <Lock size={18} />
-          <div>
-            <b>You're in guest mode</b>
-            <span>Guest accounts can search and view their investigations on this device, but can't change settings. Create an account to unlock everything — your investigations and tracked people come with you.</span>
-          </div>
-          <button type="button" className="st-btn st-primary" onClick={goCreateAccount}><UserPlus size={16} /> Create an account</button>
-        </div>
-      )}
       <div className="st-body">
         <nav className="st-nav" aria-label="Settings sections">
           {SECTIONS.map(s => {
@@ -114,55 +95,13 @@ export const SettingsPage: React.FC = () => {
           })}
         </nav>
         <div className="st-content" aria-label={active.label}>
-          <GuestLock locked={locked} onBlocked={() => setGuestNotice(true)}>
-            {section === 'profile' && <ProfileSection />}
-            {section === 'security' && <SecuritySection />}
-            {section === 'notifications' && <NotificationsSection />}
-            {section === 'search' && <SearchSection />}
-            {section === 'data' && <DataSection />}
-          </GuestLock>
+          {section === 'profile' && <ProfileSection />}
+          {section === 'security' && <SecuritySection />}
+          {section === 'notifications' && <NotificationsSection />}
+          {section === 'search' && <SearchSection />}
+          {section === 'data' && <DataSection />}
         </div>
       </div>
-      {guestNotice && (
-        <div className="st-modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setGuestNotice(false)}>
-          <div className="st-modal" role="dialog" aria-modal="true" aria-labelledby="st-guest-title">
-            <div className="st-modal-icon"><Lock size={22} /></div>
-            <h2 id="st-guest-title">You're in guest mode</h2>
-            <p>
-              Guest accounts are limited: you can run searches and view your investigations on this device, but you can't
-              change your profile, security, notifications, search defaults or data settings.
-            </p>
-            <p>Create an account to unlock every setting. Your investigations, tracked people and history move to the new account.</p>
-            <div className="st-modal-actions">
-              <button type="button" className="st-btn" onClick={() => setGuestNotice(false)} autoFocus>Not now</button>
-              <button type="button" className="st-btn st-primary" onClick={goCreateAccount}><UserPlus size={16} /> Create an account</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-/**
- * For guests: shows the section as it is but catches every click, tap and keyboard focus inside it
- * and opens the guest-mode notice instead, so nothing can be changed.
- */
-const GuestLock: React.FC<{ locked: boolean; onBlocked: () => void; children: React.ReactNode }> = ({ locked, onBlocked, children }) => {
-  if (!locked) return <>{children}</>;
-  return (
-    <div
-      className="st-lockwrap"
-      onFocusCapture={e => {
-        const target = e.target as HTMLElement;
-        if (!target.classList.contains('st-lock-overlay')) {
-          target.blur();
-          onBlocked();
-        }
-      }}
-    >
-      <div className="st-locked-content" aria-hidden="true">{children}</div>
-      <button type="button" className="st-lock-overlay" onClick={onBlocked} aria-label="Guest accounts cannot change settings. Show details." />
     </div>
   );
 };
@@ -274,7 +213,7 @@ const ProfileEditor: React.FC<{ initial: ProfileForm }> = ({ initial }) => {
         <label className="st-field"><span>Full name</span><input value={form.displayName} onChange={e => setForm({ ...form, displayName: e.target.value })} /></label>
         <label className="st-field">
           <span>Email</span>
-          <input value={user?.email || ''} placeholder={user?.isGuest ? 'Guest account — no email' : 'you@organisation.com'} readOnly />
+          <input value={user?.email || ''} placeholder="you@organisation.com" readOnly />
         </label>
         <label className="st-field">
           <span>Phone number</span>
@@ -308,50 +247,33 @@ const ProfileEditor: React.FC<{ initial: ProfileForm }> = ({ initial }) => {
 // ─── Security ───────────────────────────────────────────────────────────────
 
 const SecuritySection: React.FC = () => {
-  const { user, profile, updateProfile } = useSession();
+  const { user, profile } = useSession();
   const { promptSignOut } = useSignOutPrompt();
   const toast = useToast();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
-  const [upgrade, setUpgrade] = useState({ name: profile?.displayName === 'Guest Investigator' ? '' : profile?.displayName || '', phone: '', email: '', password: '', confirm: '' });
+  const methods = signInMethods();
+  const lastSignIn = user?.lastSignInAt || profile?.lastLoginAt;
 
-  if (user?.isGuest) {
-    const doUpgrade = async () => {
-      if (!upgrade.name.trim()) return toast.error('Name required', 'Enter your full name.');
-      if (!isValidPhone(upgrade.phone)) return toast.error('Invalid phone number', 'Include the country code, e.g. +233 24 123 4567.');
-      if (upgrade.password.length < 8) return toast.error('Password too short', 'Use at least 8 characters.');
-      if (upgrade.password !== upgrade.confirm) return toast.error('Passwords differ', 'The passwords do not match.');
-      setBusy(true);
-      try {
-        const u = await upgradeGuestAccount(upgrade.email, upgrade.password, upgrade.name);
-        await updateProfile({ email: u.email || upgrade.email.trim(), displayName: upgrade.name.trim(), phoneNumber: upgrade.phone.trim(), isGuest: false, role: profile?.role === 'Guest' ? 'Investigator' : profile?.role || 'Investigator' });
-        toast.success('Account created', 'Your guest investigations now belong to your new account. Sign in with this email next time.');
-        window.location.reload();
-      } catch (err) {
-        toast.error('Account not created', authErrorMessage(err));
-      } finally {
-        setBusy(false);
-      }
-    };
+  if (!methods.includes('password')) {
+    // Google accounts have no password here: Google holds the credentials.
     return (
       <Card
         title="Security"
-        sub="You're in guest mode. Create an account to keep your data and unlock every setting."
-        footer={<button type="button" className="st-btn st-primary" onClick={doUpgrade} disabled={busy}>{busy && <Loader2 size={16} className="st-spin" />} Create account</button>}
+        sub={`Signed in with Google as ${user?.email || 'your Google account'}.`}
+        footer={<button type="button" className="st-btn" onClick={promptSignOut}>Sign out</button>}
       >
         <p className="st-text">
-          A guest account works only in this browser. If you sign out or clear your browser data, you cannot get back into it and its investigations are lost.
-          Create an account with your email to keep everything: your investigations, tracked people and settings move to the new account.
+          Your password, two-step verification and recovery options are managed in your Google Account. This app never sees or stores your Google password.
         </p>
-        <div className="st-grid">
-          <label className="st-field"><span>Full name</span><input value={upgrade.name} onChange={e => setUpgrade({ ...upgrade, name: e.target.value })} autoComplete="name" /></label>
-          <label className="st-field"><span>Phone number</span><input type="tel" value={upgrade.phone} onChange={e => setUpgrade({ ...upgrade, phone: e.target.value })} placeholder="+233 24 123 4567" autoComplete="tel" inputMode="tel" /></label>
-          <label className="st-field"><span>Email</span><input type="email" value={upgrade.email} onChange={e => setUpgrade({ ...upgrade, email: e.target.value })} placeholder="you@organisation.com" autoComplete="email" /></label>
-          <label className="st-field"><span>Password</span><input type="password" value={upgrade.password} onChange={e => setUpgrade({ ...upgrade, password: e.target.value })} placeholder="At least 8 characters" autoComplete="new-password" /></label>
-          <label className="st-field"><span>Confirm password</span><input type="password" value={upgrade.confirm} onChange={e => setUpgrade({ ...upgrade, confirm: e.target.value })} autoComplete="new-password" /></label>
-        </div>
+        <p className="st-hint" style={{ marginTop: 12 }}>
+          <a className="st-link" href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer">
+            Open Google Account security <ExternalLink size={13} />
+          </a>
+        </p>
+        {lastSignIn && <p className="st-hint">Last sign-in: {new Date(lastSignIn).toLocaleString()}</p>}
       </Card>
     );
   }
@@ -400,7 +322,7 @@ const SecuritySection: React.FC = () => {
       <p className="st-hint" style={{ marginTop: 12 }}>
         Forgot your current password? <button type="button" className="st-link" onClick={sendReset}>Email me a reset link</button>
       </p>
-      {profile?.lastLoginAt && <p className="st-hint">Last sign-in: {new Date(profile.lastLoginAt).toLocaleString()}</p>}
+      {lastSignIn && <p className="st-hint">Last sign-in: {new Date(lastSignIn).toLocaleString()}</p>}
     </Card>
   );
 };
@@ -558,13 +480,16 @@ const DataSection: React.FC = () => {
     }
   };
 
+  const usesPassword = signInMethods().includes('password');
+
   const deleteAccount = async () => {
-    if (!user.isGuest && !password) return toast.error('Password required', 'Enter your password to delete your account.');
+    if (usesPassword && !password) return toast.error('Password required', 'Enter your password to delete your account.');
     if (window.prompt('This permanently deletes your account and all its data. Type DELETE to confirm.') !== 'DELETE') return;
     setBusy('account');
     try {
       // Confirm identity first, delete the data while still signed in, then delete the login itself.
-      if (!user.isGuest) await reauthenticate(password);
+      // Password accounts confirm with their password; Google accounts confirm in Google's sign-in window.
+      await reauthenticate(usesPassword ? password : undefined);
       await deleteAllUserDataFromDb(user.uid);
       await deleteAuthAccount();
       clearLocalSessionData();
@@ -589,8 +514,10 @@ const DataSection: React.FC = () => {
         <div>
           <b>Delete account</b>
           <span>Permanently deletes your account and everything stored for it. This cannot be undone.</span>
-          {!user.isGuest && (
+          {usesPassword ? (
             <input className="st-inline-input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" autoComplete="current-password" />
+          ) : (
+            <span>You will be asked to confirm with Google.</span>
           )}
         </div>
         <button type="button" className="st-btn st-danger" onClick={deleteAccount} disabled={busy !== null}>{busy === 'account' && <Loader2 size={16} className="st-spin" />} Delete account</button>

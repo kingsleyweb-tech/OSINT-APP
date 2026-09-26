@@ -492,6 +492,7 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
   border: 1px solid var(--ws-border);
   border-radius: 12px;
   overflow: hidden;
+  overflow-x: auto;
   background: var(--ws-bg);
 }
 .ws-table { width: 100%; border-collapse: collapse; }
@@ -966,3 +967,66 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
 .ws-similar-row:last-child { border-bottom: 0; }
 .ws-similar-row:hover { opacity: 1; background: var(--bg-card); }
 .ws-similar-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* Sources tab: every column fits. The Source column takes the free space and truncates long titles
+   and URLs (full text on hover); the short columns never wrap. */
+.ws-sources-table th, .ws-sources-table td { white-space: nowrap; }
+.ws-sources-table th, .ws-sources-table td { padding-left: 12px; padding-right: 12px; }
+.ws-sources-table td.ws-src-cell { width: 100%; max-width: 0; min-width: 220px; white-space: normal; }
+.ws-sources-table .ws-src-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-sources-table td.ws-src-cell .ws-trunc { max-width: 100%; }
+.ws-sources-table td.ws-src-type .ws-trunc { max-width: 170px; }
+.ws-sources-table tr.detail td { white-space: normal; }
+.ws-sources-table tr.detail .ws-url { overflow-wrap: anywhere; }
+
+/* ─── Location tab: sections separated by space and hairlines, no boxes ─── */
+.ws-loc { display: flex; flex-direction: column; }
+.ws-loc-intro { font-size: 14px; line-height: 1.6; margin: 2px 0 14px; max-width: 760px; }
+.ws-loc-status-line { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.ws-loc-warn { font-size: 14px; color: var(--ws-bad); line-height: 1.5; }
+.ws-loc-section { margin-top: 34px; }
+.ws-loc-place { display: inline-flex; align-items: center; gap: 6px; color: var(--ws-text); font-weight: 600; }
+.ws-loc-place svg { color: var(--ws-accent); flex-shrink: 0; }
+.ws-loc-table { border: 0; }
+.ws-loc-table th { background: transparent; padding-left: 0; }
+.ws-loc-table td { padding-left: 0; vertical-align: top; }
+.ws-loc-table td:last-child, .ws-loc-table th:last-child { text-align: right; padding-right: 0; white-space: nowrap; }
+.ws-loc-list { display: flex; flex-direction: column; }
+.ws-loc-ref { padding: 16px 0; border-top: 1px solid var(--ws-border); }
+.ws-loc-ref:first-child { border-top: 0; padding-top: 4px; }
+.ws-loc-ref-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.ws-loc-ref-body { display: flex; flex-direction: column; gap: 6px; padding-left: 20px; }
+.ws-loc-ref-body > .ws-sub:first-child { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ws-loc-quote { margin: 0; padding: 2px 0 2px 12px; border-left: 2px solid var(--ws-accent-line); color: var(--ws-text-2); font-size: 14.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.ws-loc-rel { font-size: 13.5px; line-height: 1.5; }
+.ws-loc-ref-body .ws-url { align-self: flex-start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-loc-status { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.ws-loc-status.ok { color: var(--ws-good); }
+.ws-loc-status.muted { color: var(--ws-muted); }
+.ws-loc-status.warn { color: var(--ws-bad); }
+.ws-loc-timeline { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--ws-border); display: flex; flex-direction: column; gap: 12px; }
+.ws-loc-timeline li { position: relative; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; font-size: 14.5px; }
+.ws-loc-timeline li::before { content: ''; position: absolute; left: -20px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--ws-accent); }
+.ws-loc-sources { display: flex; flex-direction: column; }
+.ws-loc-source { display: grid; grid-template-columns: 24px minmax(90px, 180px) minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--ws-border); font-size: 14px; }
+.ws-loc-source:first-child { border-top: 0; }
+.ws-loc-source .name { font-weight: 600; color: var(--ws-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-loc-source .ws-trunc { max-width: 100%; text-align: left; }
+@media (max-width: 700px) {
+  .ws-loc-table thead { display: none; }
+  .ws-loc-table tr { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--ws-border); }
+  .ws-loc-table td { border: 0; padding: 0; }
+  .ws-loc-table td:first-child { width: 100%; }
+  .ws-loc-table td:last-child { text-align: left; }
+  .ws-loc-ref-body { padding-left: 0; }
+  .ws-loc-timeline li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .ws-loc-source { grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .ws-loc-source .ws-trunc { display: none; }
+}
+.ws-loc-run { display: flex; flex-direction: column; gap: 4px; }
+.ws-loc-run b { color: var(--ws-text); font-weight: 600; }
+.ws-loc-sources-line { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
+.ws-loc-src.ok { color: var(--ws-good); }
+.ws-loc-src.empty { color: var(--ws-muted); }
+.ws-loc-src.failed { color: var(--ws-bad); }
+.ws-loc-sites { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

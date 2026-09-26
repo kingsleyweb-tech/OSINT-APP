@@ -1,9 +1,10 @@
 import { getApiBase } from './searchClient';
+import { apiFetch } from './apiAuth';
 
 /** Mirrors backend/src/types/explore.ts. */
 export type ExploreCapability =
   | 'news' | 'images' | 'videos' | 'reverseImage' | 'social' | 'forums'
-  | 'places' | 'placeReviews' | 'events' | 'trends' | 'trendingNow' | 'web' | 'placeLookup';
+  | 'places' | 'placeReviews' | 'events' | 'trends' | 'trendingNow' | 'web' | 'webBing' | 'placeLookup';
 
 export type ExploreItemKind =
   | 'news' | 'image' | 'video' | 'post' | 'profile' | 'group' | 'forum' | 'web'
@@ -96,7 +97,7 @@ export async function runExplore(capability: ExploreCapability, query: string, o
   const onAbort = () => controller.abort();
   signal?.addEventListener('abort', onAbort);
   try {
-    const res = await fetch(`${getApiBase()}/explore`, {
+    const res = await apiFetch(`${getApiBase()}/explore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ capability, query, options }),
@@ -121,7 +122,7 @@ export interface PlannedCall { index: number; engine: string; label: string }
 
 /** The engines a search will call, without running them (no SerpApi search is used). */
 export async function planExplore(capability: ExploreCapability, query: string, options: ExploreOptions = {}): Promise<PlannedCall[]> {
-  const res = await fetch(`${getApiBase()}/explore/plan`, {
+  const res = await apiFetch(`${getApiBase()}/explore/plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ capability, query, options })
@@ -185,7 +186,7 @@ export function mergeResponses(capability: ExploreCapability, query: string, par
 
 export async function getQuota(): Promise<QuotaStatus | null> {
   try {
-    const res = await fetch(`${getApiBase()}/quota`);
+    const res = await apiFetch(`${getApiBase()}/quota`);
     return res.ok ? await res.json() : null;
   } catch {
     return null;

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageSearch } from '../../components/explore/usePageSearch';
+import { clearPageState, usePageState } from '../../lib/pageState';
+import type { QueryIntel } from '../../lib/queryIntelClient';
 import { 
   ArrowLeft, 
   Search as SearchIcon, 
@@ -38,59 +40,28 @@ type SearchType = typeof SEARCH_TYPES[number];
 export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
-  const profiler = useProfilerSearch();
+  const profiler = useProfilerSearch('profiler');
   const [searchMode, setSearchMode] = useSearchMode();
   const { addNotification } = useNotifications();
   const { profile } = useSession();
   const searchDefaults = { ...DEFAULT_SEARCH_DEFAULTS, ...(profile?.searchDefaults || {}) };
 
-  const [searchType, setSearchType] = useState<SearchType>(() => {
-    return (sessionStorage.getItem('osint_new_inv_type') as SearchType) || searchDefaults.type;
-  });
-  const [queryInput, setQueryInput] = useState(() => {
-    return sessionStorage.getItem('osint_new_inv_query') || '';
-  });
+  // The search, its progress and its results are kept when you leave the page (until "New search").
+  const [searchType, setSearchType] = usePageState<SearchType>('profiler:type', searchDefaults.type);
+  const [queryInput, setQueryInput] = usePageState('profiler:query', '');
   const [isLoading, setIsLoading] = useState(false);
   const [realInvestigations, setRealInvestigations] = useState<Investigation[]>([]);
 
-  const [activeQuery, setActiveQuery] = useState(() => {
-    return sessionStorage.getItem('osint_new_inv_active_query') || '';
-  });
-  const [activeSearchType, setActiveSearchType] = useState<SearchType>(() => {
-    return (sessionStorage.getItem('osint_new_inv_active_type') as SearchType) || 'Name';
-  });
-  useEffect(() => {
-    sessionStorage.setItem('osint_new_inv_active_type', activeSearchType);
-  }, [activeSearchType]);
-  const [discoveredIdentities, setDiscoveredIdentities] = useState<DiscoveredIdentity[] | null>(() => {
-    const saved = sessionStorage.getItem('osint_new_inv_identities');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return null;
-  });
+  const [activeQuery, setActiveQuery] = usePageState('profiler:activeQuery', '');
+  const [activeSearchType, setActiveSearchType] = usePageState<SearchType>('profiler:activeType', 'Name');
+  const [discoveredIdentities, setDiscoveredIdentities] = usePageState<DiscoveredIdentity[] | null>('profiler:identities', null);
+  const newSearch = () => {
+    profiler.cancel();
+    clearPageState('profiler');
+  };
 
   const userId = currentUser?.uid || '';
 
-  useEffect(() => {
-    sessionStorage.setItem('osint_new_inv_type', searchType);
-  }, [searchType]);
-
-  useEffect(() => {
-    sessionStorage.setItem('osint_new_inv_query', queryInput);
-  }, [queryInput]);
-
-  useEffect(() => {
-    sessionStorage.setItem('osint_new_inv_active_query', activeQuery);
-  }, [activeQuery]);
-
-  useEffect(() => {
-    if (discoveredIdentities) {
-      sessionStorage.setItem('osint_new_inv_identities', JSON.stringify(discoveredIdentities));
-    } else {
-      sessionStorage.removeItem('osint_new_inv_identities');
-    }
-  }, [discoveredIdentities]);
 
   useEffect(() => {
     getUserInvestigationsFromDb(userId).then(setRealInvestigations);
@@ -137,6 +108,12 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     setQueryInput(q);
     setSearchType(t);
     runFromParams.current = { q, t };
+  }, payload => {
+    // History → "View results": the saved results, no searches used.
+    const d = payload as { query: string; searchQuery: string; type: SearchType; identities: DiscoveredIdentity[]; intel?: QueryIntel | null };
+    setQueryInput(d.query); setSearchType(d.type); setActiveSearchType(d.type);
+    setActiveQuery(d.searchQuery || d.query); setDiscoveredIdentities(d.identities || []);
+    profiler.setIntel(d.intel || null);
   });
   React.useEffect(() => {
     const pending = runFromParams.current;
@@ -197,7 +174,7 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
           query={activeQuery}
           identities={discoveredIdentities}
           onSelectIdentity={handleSelectIdentity}
-          onNewSearch={() => setDiscoveredIdentities(null)}
+          onNewSearch={newSearch}
         />
       </div>
     );

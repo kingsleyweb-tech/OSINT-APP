@@ -346,7 +346,13 @@ export class DeepSearchEngine {
               discoveredAt: new Date().toISOString(),
               confidence: 90,
               confidenceLevel: 'High',
-              metadata: { platform: it.source, category: it.category || 'social', domain: it.domain || 'social', itemType: 'profile', isVerifiedProfileUrl: true, confidenceLabel: 'Exact Match', nameMatched: true }
+              metadata: {
+                platform: it.source, category: it.category || 'social', domain: it.domain || 'social', itemType: 'profile', isVerifiedProfileUrl: true, confidenceLabel: 'Exact Match', nameMatched: true,
+                // Fields the platform's API returns for the account (as set by its owner), for the Location tab.
+                ...(it.metadata?.location ? { statedLocation: String(it.metadata.location).slice(0, 120) } : {}),
+                ...(it.metadata?.bio ? { profileBio: String(it.metadata.bio).slice(0, 500) } : {}),
+                ...(it.metadata?.company ? { statedOrganization: String(it.metadata.company).replace(/^@/, '').slice(0, 120) } : {})
+              }
             });
             platformsCheckedSet.add(it.source);
           });

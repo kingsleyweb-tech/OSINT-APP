@@ -1,9 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import {
-  UserCheck, Search, Globe, Activity, Share2, FileText,
-  Database, Layers, ArrowRight, ShieldCheck, CheckCircle2, AlertTriangle, Cpu
-} from 'lucide-react';
+import { Layers, ArrowRight } from 'lucide-react';
 
 interface FeatureDetailProps {
   num: string;
@@ -83,37 +80,37 @@ export const FeaturesPage: React.FC = () => {
       num: '01',
       id: 'name-investigation',
       title: 'Name Investigation Engine',
-      tags: ['Google Dorks', 'SerpApi Engine', 'LinkedIn Filter', 'News Index'],
-      whatItIs: 'A specialized search engine aggregator designed to query public search engine indexes for a person full name.',
-      whyItExists: 'Manual web searching for individuals requires writing complex Google dorks and manually filtering thousands of irrelevant results.',
-      howItWorks: 'Constructs targeted search expressions combining site constraints (e.g. site:linkedin.com/in) and exact name quotes routed through SerpApi.',
-      whatUsersSee: 'Indexed social profiles, news articles, academic publications, professional bio entries, and public web mentions.',
-      limitations: 'Common names (e.g., "John Smith") will produce matches for unrelated individuals sharing the same name.',
-      whatToVerify: 'Verify city, employment history, and bio context on original target pages before assuming identity correlation.'
+      tags: ['Exact Phrase', 'Per-Platform Queries', 'Profile Confirmation', 'Possible Identities'],
+      whatItIs: 'A people search that finds a person’s public profiles, web pages and news from their full name.',
+      whyItExists: 'Manual searching means writing many site-restricted queries and sorting thousands of unrelated results by hand.',
+      howItWorks: 'Runs exact-name Google searches through SerpApi: the name alone, then one query per platform group (LinkedIn, Facebook with two result pages, Instagram, X, TikTok & Threads, YouTube, developer and writing sites). Optional location and organisation narrow common names; deep searches confirm the best Facebook and Instagram matches with their profile APIs.',
+      whatUsersSee: 'Possible identities grouped from the results, each with its profiles, web pages and news, labelled Exact, Likely, Similar or Possible match.',
+      limitations: 'Common names (e.g. "John Smith") return many different people; the platform separates them but cannot know which one you mean.',
+      whatToVerify: 'Check city, employer and bio on the original pages before choosing an identity.'
     },
     {
       num: '02',
       id: 'username-investigation',
       title: 'Username Handle Discovery',
-      tags: ['Multi-Platform', '30+ Networks', 'Handle Probing', 'URL Check'],
-      whatItIs: 'A multi-platform handle probing feature checking over 30 leading web services for target username existence.',
-      whyItExists: 'People frequently reuse username handles across developer, social, creative, and media platforms.',
-      howItWorks: 'Queries platform-specific URL schemas (e.g. github.com/username) and evaluates HTTP response codes and profile metadata.',
-      whatUsersSee: 'A consolidated list of discovered active profiles across GitHub, X, Instagram, Medium, Reddit, YouTube, and Behance.',
-      limitations: 'Identical usernames on different platforms do not guarantee they belong to the same human individual.',
-      whatToVerify: 'Cross-reference profile avatars, bio text, external link listings, and activity timestamps across discovered profiles.'
+      tags: ['13 Free Checks', 'DuckDuckGo & Yahoo', 'Punctuation Variants', 'TikTok'],
+      whatItIs: 'Finds accounts that use a handle, including versions written with different punctuation (99_humblechild, 99.humblechild_, 99-humblechild).',
+      whyItExists: 'People reuse handles across platforms, often with small punctuation changes that exact searches miss.',
+      howItWorks: 'Checks GitHub, Reddit, Mastodon, Bluesky, Docker Hub, npm, DEV, Medium, Telegram, Twitch, Vimeo, YouTube and Wikipedia directly through free public APIs, and searches Google, DuckDuckGo and Yahoo, which find punctuation variants and TikTok accounts. Post and video links are traced back to the account that owns them.',
+      whatUsersSee: 'The subject’s accounts per platform, with a separate list of similar usernames that may belong to other people.',
+      limitations: 'The same handle on two platforms does not prove it is the same person.',
+      whatToVerify: 'Compare avatars, bios, links and posting times across the accounts found.'
     },
     {
       num: '03',
-      id: 'deep-search',
-      title: 'Deep Search Sweeping',
-      tags: ['Secondary Dorks', 'Long-Tail Web', 'Niche Keyphrase', 'Archived PDFs'],
-      whatItIs: 'An extended secondary query execution feature that expands search scope to secondary indexes and long-tail web results.',
-      whyItExists: 'Primary search queries often return top-tier social profiles while missing historical blog posts or archived PDF mentions.',
-      howItWorks: 'Generates secondary dorks combining subject names with niche keywords, company names, or co-authors.',
-      whatUsersSee: 'Secondary web mentions, archived articles, forum postings, and niche industry directory pages.',
-      limitations: 'Increases the volume of candidate results, requiring greater analyst review to filter false matches.',
-      whatToVerify: 'Inspect published dates and surrounding document text to confirm subject context.'
+      id: 'search-intelligence',
+      title: 'Search Intelligence (Typo-Tolerant Search)',
+      tags: ['Did You Mean', 'Intelligent / Precise', 'Confidence', 'Search Path'],
+      whatItIs: 'A spelling check that runs before a search so typos like "Kingley Anab" or "gaalemseyy" still find the right results.',
+      whyItExists: 'A single misspelt letter can make a search return nothing, and the investigator may not notice.',
+      howItWorks: 'In Intelligent mode one cached Google check reads Google’s spelling fix and the spellings the results use. High-confidence corrections are searched directly ("Showing results for … · Search instead for …"); less certain ones become a "Did you mean" suggestion. Precise mode searches exactly what was typed. Usernames and quoted text are never corrected.',
+      whatUsersSee: 'The correction with High, Medium or Low confidence, the reason, the full search path, related searches and any of your cases that match.',
+      limitations: 'A correction is a best guess from public results; unusual spellings of real names can be corrected wrongly.',
+      whatToVerify: 'If the correction looks wrong, click "Search instead for" your original spelling.'
     },
     {
       num: '04',
@@ -167,37 +164,85 @@ export const FeaturesPage: React.FC = () => {
       num: '08',
       id: 'news-articles',
       title: 'News & Article Aggregation',
-      tags: ['Google News', 'Press Releases', 'Interviews', 'Journal Articles'],
-      whatItIs: 'Filters search engine results specifically for press releases, news reporting, interviews, and journal articles mentioning the subject.',
-      whyItExists: 'Press coverage provides independent third-party context regarding a subject public endeavors.',
-      howItWorks: 'Queries Google News indexes via SerpApi and classifies press domain authority.',
-      whatUsersSee: 'News headlines, publication names, publishing dates, and snippet excerpts mentioning the target name.',
-      limitations: 'Distinguishes between articles focused primarily on the subject versus articles containing brief incidental mentions.',
-      whatToVerify: 'Read the full news report to ensure the article refers to your target subject and not a namesake.'
+      tags: ['Google News', 'Bing News', 'Country Editions', 'Exact Phrase'],
+      whatItIs: 'News coverage of a person, organisation, place or topic, and automatic news for each case.',
+      whyItExists: 'Press coverage gives independent context about a subject.',
+      howItWorks: 'Searches Google News and Bing News through SerpApi. Several words are matched as an exact phrase in the article text; if that finds nothing, a looser search runs. Choosing a country shows only that country’s news edition.',
+      whatUsersSee: 'Headlines, publishers, dates and thumbnails, ranked by how closely they match your terms.',
+      limitations: 'Articles that spell the name differently need their own search; some articles only mention the subject briefly.',
+      whatToVerify: 'Read the full article to confirm it refers to your subject and not a namesake.'
     },
     {
       num: '09',
       id: 'sources',
-      title: 'Source URL Tracking & Metadata',
-      tags: ['Audit Log', 'SerpApi Metadata', 'Raw JSON', 'Timestamping'],
-      whatItIs: 'A dedicated audit tab recording every original source URL, crawl date, search query expression, and engine provider.',
-      whyItExists: 'Investigative integrity requires maintaining a complete, auditable record of where every data point originated.',
-      howItWorks: 'Logs raw JSON metadata returned by SerpApi into the investigation document structure.',
-      whatUsersSee: 'A clean table of source URLs, domain names, query origins, and date stamps.',
-      limitations: 'External web pages may change or be removed by site owners after the search engine crawl.',
-      whatToVerify: 'Bookmark or save critical source URLs in your Firestore investigation case notes.'
+      title: 'Sources, Audit Log & API Reference',
+      tags: ['Audit Log', 'Search Log', 'Sources Page', 'API Docs'],
+      whatItIs: 'A record of where every result came from, plus a Sources page listing every provider and API the platform uses.',
+      whyItExists: 'Investigations need an auditable record of where each piece of evidence originated.',
+      howItWorks: 'Each case keeps every source URL, the searches that found it and a time-stamped audit log. The Sources page lists all search engines and platforms, and its API endpoints tab documents every endpoint with links to the provider documentation.',
+      whatUsersSee: 'Source and audit tables (exportable as CSV), the full SerpApi search log, and the Sources & API reference.',
+      limitations: 'Web pages can change or be removed after they were found.',
+      whatToVerify: 'Save or export critical sources while they are available.'
     },
     {
       num: '10',
       id: 'investigation-management',
-      title: 'Firestore Case Management & Saved Findings',
-      tags: ['Firebase Auth', 'Firestore Rules', 'UID Isolated', 'Case Notes'],
-      whatItIs: 'A secure cloud storage workspace allowing analysts to bookmark profiles, save full search runs, and write investigation notes.',
-      whyItExists: 'Investigations span multiple sessions and require organized case records that can be revisited over time.',
-      howItWorks: 'Stores case files in Firebase Firestore protected by strict per-user UID security rules.',
-      whatUsersSee: 'Saved investigation lists, bookmarked candidate profiles, analyst summary notes, and historical query logs.',
-      limitations: 'Saved data is accessible exclusively to the authenticated user account that created the case.',
-      whatToVerify: 'Review saved notes periodically and export important evidence records for archival.'
+      title: 'Cases, Search History & Saved Findings',
+      tags: ['Save to Case', 'Auto-Created Case', 'Search History', 'Export'],
+      whatItIs: 'Your workspace: cases, saved findings from any search page, tracked people and a history of every search.',
+      whyItExists: 'Investigations span many sessions and many kinds of search.',
+      howItWorks: 'Any result can be saved to a case; if you have no case yet one is created automatically. Every search is saved to your history, grouped by kind, and can be re-run or opened as its case. Cases can be re-run to see what changed and exported as JSON and CSV.',
+      whatUsersSee: 'Investigations list, the 11 case tabs, tracked people, and Search history with results and corrections.',
+      limitations: 'Data is stored in your own account and visible only to you.',
+      whatToVerify: 'Export important cases periodically for your records.'
+    },
+    {
+      num: '11',
+      id: 'explore-searches',
+      title: 'Social, Media, Geo & Trends Searches',
+      tags: ['Social Posts', 'Reverse Image', 'Places & Reviews', 'Trending Now'],
+      whatItIs: 'Keyword searches across public social content, images and videos, places and search trends.',
+      whyItExists: 'Investigations often start from a topic, image or place rather than a person.',
+      howItWorks: 'Social search runs one query per platform (X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Reddit, Threads, Telegram, WhatsApp public groups, VK, Weibo) or searches forums. Media searches images, videos and reverse images (Google Lens). Geo search covers places with reviews, news, social, web and events for a location, with same-named places in other countries. Trends shows interest over time, related queries and what is trending now.',
+      whatUsersSee: 'Result lists with engine status, thumbnails and a Save button on each result.',
+      limitations: 'Only content that search engines have indexed or platforms expose publicly can be found.',
+      whatToVerify: 'Open posts and images on the original platform to confirm context and date.'
+    },
+    {
+      num: '12',
+      id: 'similar-accounts',
+      title: 'Similar Accounts Separation',
+      tags: ['Identity Separation', 'Similar Match', 'No Merging'],
+      whatItIs: 'Keeps accounts that only look like your subject apart from your subject.',
+      whyItExists: 'Names and handles one letter apart often belong to different people, and mixing them corrupts an investigation.',
+      howItWorks: 'Close spellings are labelled Similar match and listed in their own "Similar accounts" section. Their posts and activity are never counted as your subject’s.',
+      whatUsersSee: 'A separate section for similar accounts in Profiles, Activity and search results.',
+      limitations: 'A similar account can still be your subject using a variant handle.',
+      whatToVerify: 'Look for shared photos, links or contacts before linking a similar account to your subject.'
+    },
+    {
+      num: '13',
+      id: 'analysis',
+      title: 'Network & Content Analysis',
+      tags: ['Connections', 'Case Comparison', 'No Searches Used'],
+      whatItIs: 'Analysis of the data already saved in your cases.',
+      whyItExists: 'Patterns across cases are easier to see visually than in lists.',
+      howItWorks: 'Network links the people, usernames, organisations and websites in your cases and compares two cases. Content analysis breaks saved results down by platform, type, date and words. Neither uses any searches.',
+      whatUsersSee: 'A connection graph, case comparison, and charts of saved content.',
+      limitations: 'Only as complete as the data you have saved.',
+      whatToVerify: 'Confirm important connections on the original sources.'
+    },
+    {
+      num: '14',
+      id: 'account-security',
+      title: 'Google Sign-in & Protected Access',
+      tags: ['Continue with Google', 'Protected API', 'Per-User Data'],
+      whatItIs: 'Account sign-in and protection for your workspace and the search engine.',
+      whyItExists: 'Investigation data is sensitive and the search engine must not be open to anyone.',
+      howItWorks: 'Sign in with Google or email and password through Firebase Authentication; passwords are never stored by the platform. Every page requires sign-in, the server verifies it on every search, searches are limited per account, and database rules keep each account’s data private.',
+      whatUsersSee: 'Continue with Google on the sign-in page, and Security and Data & privacy settings.',
+      limitations: 'Guest access is not available.',
+      whatToVerify: 'Sign out on shared computers.'
     }
   ];
 
@@ -215,7 +260,7 @@ export const FeaturesPage: React.FC = () => {
               Product Feature Reference
             </h1>
             <p className="lp-subtitle" style={{ maxWidth: '820px' }}>
-              An in-depth explanation of every core capability, underlying search engine mechanism, data display format, and analyst verification rule.
+              How every capability works, what it shows, its limits, and what to verify.
             </p>
           </div>
 

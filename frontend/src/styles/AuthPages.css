@@ -219,10 +219,10 @@
 }
 .au-submit svg { width: 18px; height: 18px; }
 .au-submit:hover:not(:disabled) { background: var(--au-accent-hover); }
-.au-submit:disabled, .au-guest:disabled { opacity: 0.7; cursor: wait; }
+.au-submit:disabled, .au-google:disabled { opacity: 0.7; cursor: wait; }
 .au-or { display: flex; align-items: center; gap: 16px; color: #6b6560; margin: 18px 0; font-size: 13px; }
 .au-or::before, .au-or::after { content: ''; flex: 1; height: 1px; background: var(--au-border); }
-.au-guest {
+.au-google {
   width: 100%;
   height: 46px;
   display: inline-flex;
@@ -236,9 +236,8 @@
   font-size: 15px;
   font-weight: 600;
 }
-.au-guest svg { width: 17px; height: 17px; }
-.au-guest:hover:not(:disabled) { background: #faf9f7; }
-.au-guest-note { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--au-muted); }
+.au-google svg { width: 17px; height: 17px; }
+.au-google:hover:not(:disabled) { background: #faf9f7; }
 .au-switch { text-align: center; font-size: 14px; color: #3d3935; margin: 18px 0 8px; }
 .au-switch button { border: none; background: none; padding: 0; color: var(--au-accent); font-weight: 700; font-size: inherit; }
 .au-legal { text-align: center; font-size: 12.5px; color: #6b6560; line-height: 1.55; margin: 16px 0 0; }

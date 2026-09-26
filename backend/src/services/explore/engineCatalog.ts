@@ -176,6 +176,10 @@ export function planCalls(capability: ExploreCapability, query: string, o: Explo
         fallback: { engine: 'bing', label: 'Bing Search', params: { q: query, first: page * 20 + 1 } }
       }];
 
+    case 'webBing':
+      // Bing's own web index (independent of Google), e.g. to check a person's location across more of the open web.
+      return [{ engine: 'bing', label: 'Bing Search', params: { q: query, first: page * 20 + 1, count: 20 } }];
+
     case 'placeLookup':
       // Place names that match the text, worldwide (e.g. "Osu" in Ghana, Japan, the US…).
       // Needs a map position; a zoomed-out world view keeps the suggestions worldwide.
@@ -190,7 +194,7 @@ export function planCalls(capability: ExploreCapability, query: string, o: Explo
 }
 
 /** Capabilities whose results are scored against the query text (others are shown as returned). */
-export const SCORED_CAPABILITIES: ExploreCapability[] = ['news', 'images', 'videos', 'social', 'forums', 'web'];
+export const SCORED_CAPABILITIES: ExploreCapability[] = ['news', 'images', 'videos', 'social', 'forums', 'web', 'webBing'];
 
 /** Capabilities that do not take a text query. */
 export const QUERYLESS_CAPABILITIES: ExploreCapability[] = ['reverseImage', 'placeReviews', 'trendingNow'];

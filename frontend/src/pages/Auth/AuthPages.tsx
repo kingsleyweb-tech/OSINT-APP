@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Globe, Loader2, Lock, Mail, Phone, ShieldCheck, User, Zap } from 'lucide-react';
-import { authErrorMessage, hasSavedGuestSession, resetPassword, signIn, signInAsGuest, signUp } from '../../firebase/auth';
+import {
+  AUTH_NOTICE_TEXT, authErrorMessage, clearAuthNotice, peekAuthNotice, resetPassword, signIn, signInWithGoogle, signUp
+} from '../../firebase/auth';
+import { useSession } from '../../context/SessionContext';
+import { GoogleIcon } from '../../components/ui/GoogleIcon';
 import { updateUserProfileInDb } from '../../firebase/firestore';
 import { browserTimeZone } from '../../lib/session';
 import { isValidPhone } from '../../lib/validation';
@@ -19,15 +23,25 @@ export const AuthPage: React.FC = () => {
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(false);
-  const [busy, setBusy] = useState<'form' | 'guest' | 'reset' | null>(null);
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
-  const savedGuest = hasSavedGuestSession();
+  const [busy, setBusy] = useState<'form' | 'google' | 'reset' | null>(null);
+  const { authError, clearAuthError } = useSession();
+  const [ownError, setOwnError] = useState('');
+  // Also shows a Google sign-in that went through a full-page redirect and failed.
+  const error = ownError || authError;
+  const setError = (message: string) => {
+    setOwnError(message);
+    clearAuthError();
+  };
+  const [info, setInfo] = useState(() => {
+    const notice = peekAuthNotice();
+    return notice ? AUTH_NOTICE_TEXT[notice] : '';
+  });
 
   const switchMode = (m: Mode) => {
     setMode(m);
     setError('');
     setInfo('');
+    clearAuthNotice();
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -53,7 +67,6 @@ export const AuthPage: React.FC = () => {
           displayName: name.trim(),
           phoneNumber: phone.trim(),
           role: 'Investigator',
-          isGuest: false,
           timeZone: browserTimeZone(),
           dateFormat: 'dmy',
           searchDefaults: DEFAULT_SEARCH_DEFAULTS,
@@ -68,12 +81,15 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  const continueAsGuest = async () => {
+  const continueWithGoogle = async () => {
     setError('');
     setInfo('');
-    setBusy('guest');
+    clearAuthNotice();
+    setBusy('google');
     try {
-      await signInAsGuest();
+      // Resolves once signed in (the auth route then opens the dashboard), or when the page is
+      // being sent to Google because the pop-up was blocked.
+      await signInWithGoogle();
     } catch (err) {
       setError(authErrorMessage(err));
       setBusy(null);
@@ -130,6 +146,12 @@ export const AuthPage: React.FC = () => {
           <Link to="/" className="au-back"><ArrowLeft size={17} /> Back to home</Link>
           <h2 className="au-title">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
           <p className="au-sub">{mode === 'signin' ? 'Sign in to continue your investigations.' : 'Your investigations are saved privately to your account.'}</p>
+
+          <button type="button" className="au-google" onClick={continueWithGoogle} disabled={busy !== null}>
+            {busy === 'google' ? <Loader2 size={19} className="au-spin" /> : <GoogleIcon size={19} />} Continue with Google
+          </button>
+
+          <div className="au-or"><span>or use your email</span></div>
 
           <div className="au-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={mode === 'signin'} className={mode === 'signin' ? 'on' : ''} onClick={() => switchMode('signin')}>Sign in</button>
@@ -199,18 +221,6 @@ export const AuthPage: React.FC = () => {
               {mode === 'signin' ? 'Sign in' : 'Create account'} {busy !== 'form' && <ArrowRight size={20} />}
             </button>
           </form>
-
-          <div className="au-or"><span>or</span></div>
-
-          <button type="button" className="au-guest" onClick={continueAsGuest} disabled={busy !== null}>
-            {busy === 'guest' ? <Loader2 size={19} className="au-spin" /> : <User size={19} />} {savedGuest ? 'Resume guest session' : 'Continue with guest account'}
-          </button>
-          {savedGuest && (
-            <p className="au-guest-note">
-              Your guest session is saved on this browser. Resume it to see your previous investigations and tracked people.
-              Signing in or creating an account here ends that guest session; to keep its data, resume it and create an account in Settings → Security.
-            </p>
-          )}
 
           <p className="au-switch">
             {mode === 'signin'

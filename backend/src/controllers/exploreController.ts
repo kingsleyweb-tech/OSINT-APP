@@ -5,7 +5,7 @@ import type { ExploreCapability } from '../types/explore';
 
 const CAPABILITIES: ExploreCapability[] = [
   'news', 'images', 'videos', 'reverseImage', 'social', 'forums', 'places', 'placeReviews', 'events', 'trends', 'trendingNow',
-  'web', 'placeLookup'
+  'web', 'webBing', 'placeLookup'
 ];
 
 // Simple per-client limit so a runaway page cannot drain the monthly SerpApi quota.
@@ -14,7 +14,7 @@ const MAX_PER_WINDOW = 40;
 const hits = new Map<string, number[]>();
 
 export function rateLimited(req: Request): boolean {
-  const id = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'local').split(',')[0].trim();
+  const id = (req as any).user?.uid || String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'local').split(',')[0].trim();
   const now = Date.now();
   const recent = (hits.get(id) || []).filter(t => now - t < WINDOW_MS);
   recent.push(now);

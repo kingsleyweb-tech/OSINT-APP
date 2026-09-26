@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, TrendingUp, Flame } from 'lucide-react';
+import React from 'react';
+import { Search, TrendingUp, Flame, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { useSearchRun, type SearchTask } from '../../components/explore/useSearchRun';
 import { usePageSearch } from '../../components/explore/usePageSearch';
@@ -9,7 +9,8 @@ import { COUNTRY_OPTIONS, SOCIAL_PLATFORM_OPTIONS, mergeResponses, type ExploreR
 import { fmtDate } from '../../lib/workspace';
 import { useQueryIntel, useSearchMode } from '../../components/search/useIntelligentSearch';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
-import { intelHistoryFields } from '../../lib/queryIntelClient';
+import { intelHistoryFields, type QueryIntel } from '../../lib/queryIntelClient';
+import { clearPageState, usePageState } from '../../lib/pageState';
 import { useCases } from '../../components/explore/exploreHooks';
 
 const TIMEFRAMES = [
@@ -60,19 +61,28 @@ const TrendChart: React.FC<{ timeline: Point[] }> = ({ timeline }) => {
 };
 
 export const TrendsSearchPage: React.FC = () => {
-  const { run, cancel, running, steps } = useSearchRun();
+  // Everything on this page is kept when you leave it (until "New search").
+  const { run, cancel, running, steps } = useSearchRun('trends:run');
   const [searchMode, setSearchMode] = useSearchMode();
-  const qi = useQueryIntel();
+  const qi = useQueryIntel('trends:qi');
   const { cases } = useCases();
-  const trendingRun = useSearchRun();
-  const [terms, setTerms] = useState('');
-  const [country, setCountry] = useState('');
-  const [timeframe, setTimeframe] = useState('today 12-m');
-  const [error, setError] = useState('');
-  const [results, setResults] = useState<Record<string, ExploreResponse> | null>(null);
-  const [tab, setTab] = useState<Tab>('news');
-  const [trendCountry, setTrendCountry] = useState('gh');
-  const [trending, setTrending] = useState<ExploreResponse | null>(null);
+  const trendingRun = useSearchRun('trends:trendingRun');
+  const [terms, setTerms] = usePageState('trends:terms', '');
+  const [country, setCountry] = usePageState('trends:country', '');
+  const [timeframe, setTimeframe] = usePageState('trends:timeframe', 'today 12-m');
+  const [error, setError] = usePageState('trends:error', '');
+  const [results, setResults] = usePageState<Record<string, ExploreResponse> | null>('trends:results', null);
+  const [tab, setTab] = usePageState<Tab>('trends:tab', 'news');
+  const [trendCountry, setTrendCountry] = usePageState('trends:trendCountry', 'gh');
+  const [trending, setTrending] = usePageState<ExploreResponse | null>('trends:trending', null);
+  const [restoredAt, setRestoredAt] = usePageState<string | null>('trends:restoredAt', null);
+
+  const newSearch = () => {
+    qi.cancel();
+    cancel();
+    trendingRun.cancel();
+    clearPageState('trends');
+  };
 
   const search = async (o: { t?: string; cc?: string; tf?: string; keepOriginal?: boolean; chosen?: string } = {}) => {
     const list = (o.t ?? terms).split(',').map(t => t.trim()).filter(Boolean).slice(0, 5);
@@ -80,6 +90,7 @@ export const TrendsSearchPage: React.FC = () => {
     const tf = o.tf ?? timeframe;
     if (list.length === 0) { setError('Enter a search term, or up to 5 separated by commas.'); return; }
     setError('');
+    setRestoredAt(null);
     // Search intelligence for a single topic; several comparison terms are searched as typed.
     const checked = list.length === 1
       ? await qi.check(list[0], 'topic', searchMode, { country: cc || undefined, knownNames: cases.map(c => c.name), keepOriginal: o.keepOriginal, chosen: o.chosen })
@@ -104,7 +115,8 @@ export const TrendsSearchPage: React.FC = () => {
     setResults(out);
     if (list.length === 1) qi.learnFromResults(checked.query, [...(out.news?.items || []), ...(out.web?.items || [])].map(i => `${i.title} ${i.snippet || ''}`), 'results');
     if (out.trending) { setTrending(out.trending); setTrendCountry(cc || 'us'); }
-    setTab((['news', 'social', 'web'] as Tab[]).find(t => out[t]?.items.length) || 'news');
+    const firstTab = (['news', 'social', 'web'] as Tab[]).find(t => out[t]?.items.length) || 'news';
+    setTab(firstTab);
     const all = Object.values(out);
     recordSearch({
       ...intelHistoryFields(checked.intel),
@@ -113,12 +125,17 @@ export const TrendsSearchPage: React.FC = () => {
       resultCount: all.reduce((n, r) => n + r.items.length, 0), searchesUsed: all.reduce((n, r) => n + r.stats.searchesUsed, 0),
       topResults: topFromItems([...(out.news?.items || []).slice(0, 4), ...(out.social?.items || []).slice(0, 4)]),
       params: { q: list.join(','), tf, ...(cc ? { country: cc } : {}) }
-    });
+    }, { page: 'trends', payload: { results: out, terms: list.join(', '), country: cc, timeframe: tf, tab: firstTab, trendCountry: cc || 'us', intel: checked.intel } });
   };
 
   usePageSearch(p => {
     setTerms(p.get('q') || ''); setCountry(p.get('country') || ''); setTimeframe(p.get('tf') || 'today 12-m');
     search({ t: p.get('q') || '', cc: p.get('country') || '', tf: p.get('tf') || 'today 12-m' });
+  }, (payload, savedAt) => {
+    const d = payload as { results: Record<string, ExploreResponse>; terms: string; country: string; timeframe: string; tab: Tab; trendCountry: string; intel: QueryIntel | null };
+    setResults(d.results); setTerms(d.terms); setCountry(d.country); setTimeframe(d.timeframe); setTab(d.tab);
+    setTrending(d.results.trending || null); setTrendCountry(d.trendCountry);
+    qi.setIntel(d.intel); setError(''); setRestoredAt(savedAt);
   });
 
   const loadTrending = async () => {
@@ -138,7 +155,8 @@ export const TrendsSearchPage: React.FC = () => {
   const trendingMatches = trendingList.filter(t => matchesTopic(t.query));
 
   return (
-    <ExplorePage title="Trends" subtitle="How public interest in a name, organisation, place or topic changes over time — and what news, social platforms and the web are saying about it.">
+    <ExplorePage title="Trends" subtitle="How public interest in a name, organisation, place or topic changes over time — and what news, social platforms and the web are saying about it."
+      actions={results || running ? <button type="button" className="ex-btn ex-btn-ghost" onClick={newSearch}><RotateCcw size={15} /> New search</button> : undefined}>
       <form className="ex-card ex-card-pad ex-form" onSubmit={e => { e.preventDefault(); search(); }}>
         <Field label="Topic, or up to 5 terms to compare (comma-separated)" htmlFor="tr-q" grow>
           <input id="tr-q" className="ex-input" value={terms} onChange={e => setTerms(e.target.value)} placeholder="e.g. recruits passing out, or flooding, drainage" maxLength={200} />
@@ -164,6 +182,7 @@ export const TrendsSearchPage: React.FC = () => {
           <QueryIntelBanner intel={qi.intel} cases={cases} resultCount={combined?.items.length} sources={combined?.engines.map(e => e.label)}
         onSearch={q2 => { setTerms(q2); search({ t: q2, chosen: qi.intel?.corrections.some(c => c.query === q2) ? q2 : undefined }); }}
         onSearchOriginal={() => { if (qi.intel) search({ t: qi.intel.original, keepOriginal: true }); }} />
+          {restoredAt && results && <div className="ex-notice">Saved results from {fmtDate(restoredAt, true)} — no searches were used. Search again for the latest results.</div>}
           <EngineStatus response={combined} />
         </>
       )}

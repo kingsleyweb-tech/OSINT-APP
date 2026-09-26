@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { getPageState, setPageState, usePageState } from '../../lib/pageState';
 import type { LoaderStep } from '../ui/SearchLoader';
 import type { DiscoveredIdentity } from './PossibleIdentitiesView';
 import { runSearch, SearchError, type SearchProgressEvent } from '../../lib/searchClient';
@@ -26,13 +27,21 @@ export interface ProfilerRunResult {
 const DAY_MS = 24 * 3600 * 1000;
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
-/** Name / username search with the intelligence check, live per-source progress, cancel, and history saving. */
-export function useProfilerSearch() {
-  const [running, setRunning] = useState(false);
-  const [steps, setSteps] = useState<LoaderStep[]>([]);
-  const controllerRef = useRef<AbortController | null>(null);
-  const historyIdRef = useRef<string | null>(null);
-  const qi = useQueryIntel();
+const controllers = new Map<string, AbortController>();
+
+/**
+ * Name / username search with the intelligence check, live per-source progress, cancel, and history saving.
+ * `page` keeps the progress, banner and history link when leaving the page mid-search
+ * ("dashboard" and "profiler" are separate pages with their own searches).
+ */
+export function useProfilerSearch(page = 'profiler') {
+  const [running, setRunning] = usePageState<boolean>(`${page}:run:running`, false);
+  const [steps, setSteps] = usePageState<LoaderStep[]>(`${page}:run:steps`, []);
+  // History entry of the latest search (read when a case is created from it).
+  const historyIdRef = useMemo(() => ({
+    get current(): string | null { return getPageState<string | null>(`${page}:historyId`) ?? null; }
+  }), [page]);
+  const qi = useQueryIntel(`${page}:qi`);
 
   const onProgress = useCallback((e: SearchProgressEvent) => {
     if (e.type === 'plan' || e.type === 'add') {
@@ -45,20 +54,20 @@ export function useProfilerSearch() {
         note: e.note
       })));
     }
-  }, []);
+  }, [setSteps]);
 
   const cancel = useCallback(() => {
     qi.cancel();
-    controllerRef.current?.abort();
-    controllerRef.current = null;
+    controllers.get(page)?.abort();
+    controllers.delete(page);
     setRunning(false);
     setSteps([]);
-  }, [qi]);
+  }, [qi, page, setRunning, setSteps]);
 
   const run = useCallback(async (query: string, type: 'Name' | 'Username', depth?: 'quick' | 'standard' | 'deep', opts: ProfilerRunOptions = {}): Promise<ProfilerRunResult> => {
-    controllerRef.current?.abort();
+    controllers.get(page)?.abort();
     const controller = new AbortController();
-    controllerRef.current = controller;
+    controllers.set(page, controller);
     const kind = type === 'Username' ? 'username' : 'name';
     const mode = opts.mode || 'intelligent';
 
@@ -69,7 +78,7 @@ export function useProfilerSearch() {
         (!c.searchType || c.searchType === kind) &&
         Date.now() - Date.parse(c.lastSearched || c.createdAt || '') < DAY_MS);
       if (recent && window.confirm(`You already searched "${recent.name}" in the last 24 hours.\n\nOK: open that case (no searches used)\nCancel: search again`)) {
-        controllerRef.current = null;
+        controllers.delete(page);
         return { identities: [], searchQuery: query, openCaseId: recent.id };
       }
     }
@@ -95,7 +104,7 @@ export function useProfilerSearch() {
         };
       });
       // Saved in the background so the results appear without waiting for Firestore.
-      historyIdRef.current = null;
+      setPageState<string | null>(`${page}:historyId`, null);
       recordSearch({
         ...intelHistoryFields(checked.intel),
         category: kind, query,
@@ -103,7 +112,7 @@ export function useProfilerSearch() {
         resultCount: identities.reduce((n, i) => n + i.profilesCount, 0),
         topResults: top,
         params: { q: query, type }
-      }).then(id => { historyIdRef.current = id; });
+      }, { page, payload: { query, searchQuery: checked.query, type, identities, intel: checked.intel } }).then(id => setPageState<string | null>(`${page}:historyId`, id));
       if (kind === 'name' && mode === 'intelligent') {
         const names = identities.flatMap(i => (i.investigation?.socialProfiles || []).map((p: { profileName?: string; title?: string }) => p.profileName || p.title || ''));
         qi.learnFromResults(checked.query, [...names, ...identities.map(i => i.fullName)], 'profiles');
@@ -122,12 +131,12 @@ export function useProfilerSearch() {
       }
       return { identities, searchQuery: checked.query };
     } finally {
-      if (controllerRef.current === controller) {
-        controllerRef.current = null;
+      if (controllers.get(page) === controller) {
+        controllers.delete(page);
         setRunning(false);
       }
     }
-  }, [onProgress, qi]);
+  }, [onProgress, qi, page, setRunning, setSteps]);
 
-  return { run, cancel, running, steps, historyId: historyIdRef, intel: qi.intel };
+  return { run, cancel, running, steps, historyId: historyIdRef, intel: qi.intel, setIntel: qi.setIntel };
 }

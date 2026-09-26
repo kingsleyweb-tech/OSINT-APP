@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { History, ExternalLink, Play, Trash2, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
+import { History, ExternalLink, Play, Trash2, ChevronDown, ChevronRight, FolderOpen, Eye } from 'lucide-react';
 import { ExplorePage, EmptyState } from '../../components/explore/ExploreKit';
 import { PlatformIcon } from '../../components/ui/PlatformIcon';
 import { useSession } from '../../context/SessionContext';
@@ -12,13 +12,18 @@ import type { SearchCategory, SearchHistoryEntry } from '../../types/user';
 
 const ORDER: SearchCategory[] = ['name', 'username', 'social', 'forums', 'news', 'images', 'videos', 'reverseImage', 'geo', 'trends'];
 
-function runAgainLink(e: SearchHistoryEntry): string {
+/**
+ * Link that reopens a search on its page. "view" shows the results saved with the search (no searches
+ * used; if none were saved it runs the search instead); "run" searches again for fresh results.
+ */
+function searchLink(e: SearchHistoryEntry, how: 'view' | 'run'): string {
   const params = new URLSearchParams(e.params || {});
   if (e.category === 'name' || e.category === 'username') {
     params.set('q', e.query);
     params.set('type', e.category === 'username' ? 'Username' : 'Name');
   }
-  params.set('run', '1');
+  if (how === 'view') params.set('restore', e.id);
+  else params.set('run', '1');
   return `${CATEGORY_PAGE[e.category]}?${params.toString()}`;
 }
 
@@ -94,7 +99,10 @@ export const SearchHistoryPage: React.FC = () => {
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                     {h.investigationId && <Link className="ex-btn ex-btn-ghost ex-btn-sm" to={`/investigations/${h.investigationId}`}><FolderOpen size={13} /> Open case</Link>}
-                    <button type="button" className="ex-btn ex-btn-ghost ex-btn-sm" onClick={() => navigate(runAgainLink(h))}><Play size={13} /> Run again</button>
+                    {h.hasResults && (
+                      <button type="button" className="ex-btn ex-btn-ghost ex-btn-sm" onClick={() => navigate(searchLink(h, 'view'))} title="Show the results this search found (no searches used)"><Eye size={13} /> View results</button>
+                    )}
+                    <button type="button" className="ex-btn ex-btn-ghost ex-btn-sm" onClick={() => navigate(searchLink(h, 'run'))} title="Search again for the latest results"><Play size={13} /> Run again</button>
                     <button type="button" className="ex-btn ex-btn-ghost ex-btn-sm" onClick={() => remove([h.id])} aria-label="Delete this search"><Trash2 size={13} /></button>
                   </div>
                 </div>
@@ -107,7 +115,7 @@ export const SearchHistoryPage: React.FC = () => {
                         <span className="ex-muted ex-small" style={{ whiteSpace: 'nowrap' }}>{r.source}</span>
                       </div>
                     ))}
-                    {h.resultCount > h.topResults.length && <div className="ex-muted ex-small" style={{ marginTop: 4 }}>Showing the top {h.topResults.length} of {h.resultCount}. Run it again to see all results.</div>}
+                    {h.resultCount > h.topResults.length && <div className="ex-muted ex-small" style={{ marginTop: 4 }}>Showing the top {h.topResults.length} of {h.resultCount}. {h.hasResults ? 'Choose View results to see them all.' : 'Run it again to see all results.'}</div>}
                   </div>
                 )}
               </div>

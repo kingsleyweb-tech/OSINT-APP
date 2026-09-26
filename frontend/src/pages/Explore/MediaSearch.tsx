@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Image as ImageIcon, Film, ScanSearch, ScanFace } from 'lucide-react';
+import React from 'react';
+import { Search, Image as ImageIcon, Film, ScanSearch, ScanFace, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { useSearchRun } from '../../components/explore/useSearchRun';
 import { usePageSearch } from '../../components/explore/usePageSearch';
@@ -8,7 +8,9 @@ import { recordSearch, topFromItems } from '../../lib/history';
 import { COUNTRY_OPTIONS, type ExploreResponse } from '../../lib/exploreClient';
 import { useQueryIntel, useSearchMode } from '../../components/search/useIntelligentSearch';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
-import { intelHistoryFields } from '../../lib/queryIntelClient';
+import { intelHistoryFields, type QueryIntel } from '../../lib/queryIntelClient';
+import { clearPageState, usePageState } from '../../lib/pageState';
+import { fmtDate } from '../../lib/workspace';
 import { useCases } from '../../components/explore/exploreHooks';
 
 type Tab = 'images' | 'videos' | 'reverseImage' | 'faces';
@@ -20,18 +22,25 @@ const TAB_INFO: Record<Exclude<Tab, 'faces'>, { cost: string; placeholder: strin
 };
 
 export const MediaSearchPage: React.FC = () => {
-  const { run, cancel, running, steps } = useSearchRun();
+  // Everything on this page is kept when you leave it (until "New search").
+  const { run, cancel, running, steps } = useSearchRun('media:run');
   const [searchMode, setSearchMode] = useSearchMode();
-  const qi = useQueryIntel();
+  const qi = useQueryIntel('media:qi');
   const { cases } = useCases();
-  const [tab, setTab] = useState<Tab>('images');
-  const [query, setQuery] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [country, setCountry] = useState('');
-  const [error, setError] = useState('');
-  const [response, setResponse] = useState<ExploreResponse | null>(null);
+  const [tab, setTab] = usePageState<Tab>('media:tab', 'images');
+  const [query, setQuery] = usePageState('media:query', '');
+  const [imageUrl, setImageUrl] = usePageState('media:imageUrl', '');
+  const [country, setCountry] = usePageState('media:country', '');
+  const [error, setError] = usePageState('media:error', '');
+  const [response, setResponse] = usePageState<ExploreResponse | null>('media:response', null);
+  const [restoredAt, setRestoredAt] = usePageState<string | null>('media:restoredAt', null);
 
-  const switchTab = (t: Tab) => { cancel(); setTab(t); setResponse(null); setError(''); };
+  const switchTab = (t: Tab) => { cancel(); setTab(t); setResponse(null); setError(''); setRestoredAt(null); };
+  const newSearch = () => {
+    qi.cancel();
+    cancel();
+    clearPageState('media');
+  };
 
   const search = async (o: { tab?: Tab; q?: string; url?: string; keepOriginal?: boolean; chosen?: string } = {}) => {
     const t = o.tab ?? tab;
@@ -39,6 +48,7 @@ export const MediaSearchPage: React.FC = () => {
     const q = (o.q ?? query).trim();
     const url = (o.url ?? imageUrl).trim();
     setError('');
+    setRestoredAt(null);
     if (t === 'reverseImage') {
       if (!/^https?:\/\/\S+$/i.test(url)) { setError('Paste a public image link starting with http:// or https://.'); return; }
     } else if (q.length < 2) { setError('Enter at least 2 characters.'); return; }
@@ -53,17 +63,22 @@ export const MediaSearchPage: React.FC = () => {
       ...intelHistoryFields(checked.intel), sources: out.r.engines.map(e => e.label),
       category: t, query: t === 'reverseImage' ? url : q, resultCount: out.r.items.length, searchesUsed: out.r.stats.searchesUsed, topResults: topFromItems(out.r.items),
       params: t === 'reverseImage' ? { tab: t, url } : { tab: t, q }
-    });
+    }, { page: 'media', payload: { response: out.r, tab: t, query: q, imageUrl: url, country, intel: checked.intel } });
   };
 
   usePageSearch(p => {
     const t = (p.get('tab') as Tab) || 'images';
     setTab(t); setQuery(p.get('q') || ''); setImageUrl(p.get('url') || '');
     search({ tab: t, q: p.get('q') || '', url: p.get('url') || '' });
+  }, (payload, savedAt) => {
+    const d = payload as { response: ExploreResponse; tab: Tab; query: string; imageUrl: string; country: string; intel: QueryIntel | null };
+    setResponse(d.response); setTab(d.tab); setQuery(d.query); setImageUrl(d.imageUrl); setCountry(d.country || '');
+    qi.setIntel(d.intel); setError(''); setRestoredAt(savedAt);
   });
 
   return (
-    <ExplorePage title="Media" subtitle="Find public images and videos, and see where an image is published online.">
+    <ExplorePage title="Media" subtitle="Find public images and videos, and see where an image is published online."
+      actions={response || running ? <button type="button" className="ex-btn ex-btn-ghost" onClick={newSearch}><RotateCcw size={15} /> New search</button> : undefined}>
       <Segmented<Tab> label="Media type" value={tab} onChange={switchTab} options={[
         { value: 'images', label: 'Images' },
         { value: 'videos', label: 'Videos' },
@@ -119,6 +134,7 @@ export const MediaSearchPage: React.FC = () => {
               {tab !== 'reverseImage' && <QueryIntelBanner intel={qi.intel} cases={cases} resultCount={response?.items.length} sources={response?.engines.map(e => e.label)}
         onSearch={q2 => { setQuery(q2); search({ q: q2, chosen: qi.intel?.corrections.some(c => c.query === q2) ? q2 : undefined }); }}
         onSearchOriginal={() => { if (qi.intel) search({ q: qi.intel.original, keepOriginal: true }); }} />}
+              {restoredAt && response && <div className="ex-notice">Saved results from {fmtDate(restoredAt, true)} — no searches were used. Search again for the latest results.</div>}
               <EngineStatus response={response} />
             </>
           )}

@@ -1,5 +1,5 @@
 import { auth } from '../firebase/config';
-import { addSearchHistoryInDb, updateSearchHistoryInDb } from '../firebase/firestore';
+import { addSearchHistoryInDb, saveSearchResultsInDb, updateSearchHistoryInDb } from '../firebase/firestore';
 import type { SearchCategory, SearchHistoryEntry, SearchHistoryResult } from '../types/user';
 import type { ExploreItem } from './exploreClient';
 
@@ -27,18 +27,31 @@ export function topFromItems(items: ExploreItem[], n = 8): SearchHistoryResult[]
 /**
  * Saves a search to the signed-in user's history in Firestore. Returns the entry id, or null when
  * nobody is signed in or saving failed (a failed history write never breaks the search itself).
+ * `results` (the page's full results) are stored beside the entry so History → "View results" can
+ * show them again without searching.
  */
-export async function recordSearch(entry: Omit<SearchHistoryEntry, 'id' | 'createdAt'>): Promise<string | null> {
+export async function recordSearch(
+  entry: Omit<SearchHistoryEntry, 'id' | 'createdAt'>,
+  results?: { page: string; payload: unknown }
+): Promise<string | null> {
   const uid = auth.currentUser?.uid;
   if (!uid) return null;
   const id = `h-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   try {
     await addSearchHistoryInDb(uid, { ...entry, id, createdAt: new Date().toISOString() });
-    return id;
   } catch (e) {
     console.error('Search history not saved:', e);
     return null;
   }
+  if (results) {
+    try {
+      const saved = await saveSearchResultsInDb(uid, id, results.page, results.payload);
+      if (saved) await updateSearchHistoryInDb(uid, id, { hasResults: true });
+    } catch (e) {
+      console.error('Search results not saved:', e);
+    }
+  }
+  return id;
 }
 
 export async function linkHistoryToCase(historyId: string | null, investigationId: string): Promise<void> {

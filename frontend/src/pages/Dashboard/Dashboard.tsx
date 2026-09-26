@@ -12,6 +12,7 @@ import { QueryIntelBanner, SearchModeToggle } from '../../components/search/Quer
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
 import { useProfilerSearch } from '../../components/search/useProfilerSearch';
 import { linkHistoryToCase } from '../../lib/history';
+import { clearPageState, usePageState } from '../../lib/pageState';
 import { PossibleIdentitiesView, type DiscoveredIdentity } from '../../components/search/PossibleIdentitiesView';
 import type { Investigation } from '../../types/investigation';
 import { subscribeToUserInvestigations, saveInvestigationToDb } from '../../firebase/firestore';
@@ -37,60 +38,29 @@ type SearchType = typeof SEARCH_TYPES[number];
 export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
   const { error: toastError } = useToast();
-  const profiler = useProfilerSearch();
+  const profiler = useProfilerSearch('dashboard');
   const [searchMode, setSearchMode] = useSearchMode();
   const { addNotification } = useNotifications();
   const { profile } = useSession();
   const searchDefaults = { ...DEFAULT_SEARCH_DEFAULTS, ...(profile?.searchDefaults || {}) };
   const [realInvestigations, setRealInvestigations] = useState<Investigation[]>([]);
 
-  const [searchType, setSearchType] = useState<SearchType>(() => {
-    return (sessionStorage.getItem('osint_dash_inv_type') as SearchType) || searchDefaults.type;
-  });
-  const [queryInput, setQueryInput] = useState(() => {
-    return sessionStorage.getItem('osint_dash_inv_query') || '';
-  });
+  // The search, its progress and its results are kept when you leave the page (until "New search").
+  const [searchType, setSearchType] = usePageState<SearchType>('dashboard:type', searchDefaults.type);
+  const [queryInput, setQueryInput] = usePageState('dashboard:query', '');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeQuery, setActiveQuery] = useState(() => {
-    return sessionStorage.getItem('osint_dash_inv_active_query') || '';
-  });
-  const [activeSearchType, setActiveSearchType] = useState<SearchType>(() => {
-    return (sessionStorage.getItem('osint_dash_inv_active_type') as SearchType) || 'Name';
-  });
-  useEffect(() => {
-    sessionStorage.setItem('osint_dash_inv_active_type', activeSearchType);
-  }, [activeSearchType]);
-  const [discoveredIdentities, setDiscoveredIdentities] = useState<DiscoveredIdentity[] | null>(() => {
-    const saved = sessionStorage.getItem('osint_dash_inv_identities');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return null;
-  });
+  const [activeQuery, setActiveQuery] = usePageState('dashboard:activeQuery', '');
+  const [activeSearchType, setActiveSearchType] = usePageState<SearchType>('dashboard:activeType', 'Name');
+  const [discoveredIdentities, setDiscoveredIdentities] = usePageState<DiscoveredIdentity[] | null>('dashboard:identities', null);
+  const newSearch = () => {
+    profiler.cancel();
+    clearPageState('dashboard');
+  };
   const [invLoading, setInvLoading] = useState(true);
 
   const userId = currentUser?.uid || '';
   const userName = currentUser?.displayName?.split(' ')[0] || 'Investigator';
 
-  useEffect(() => {
-    sessionStorage.setItem('osint_dash_inv_type', searchType);
-  }, [searchType]);
-
-  useEffect(() => {
-    sessionStorage.setItem('osint_dash_inv_query', queryInput);
-  }, [queryInput]);
-
-  useEffect(() => {
-    sessionStorage.setItem('osint_dash_inv_active_query', activeQuery);
-  }, [activeQuery]);
-
-  useEffect(() => {
-    if (discoveredIdentities) {
-      sessionStorage.setItem('osint_dash_inv_identities', JSON.stringify(discoveredIdentities));
-    } else {
-      sessionStorage.removeItem('osint_dash_inv_identities');
-    }
-  }, [discoveredIdentities]);
 
   useEffect(() => {
     if (!userId) {
@@ -243,7 +213,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
           query={activeQuery}
           identities={discoveredIdentities}
           onSelectIdentity={handleSelectIdentity}
-          onNewSearch={() => setDiscoveredIdentities(null)}
+          onNewSearch={newSearch}
         />
       </div>
     );

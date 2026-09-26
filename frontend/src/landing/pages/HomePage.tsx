@@ -216,12 +216,12 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
               </div>
               <div className="lp-editorial-body">
                 <p className="lp-editorial-desc">
-                  Probes over 30 leading public web services simultaneously for target handle existence, canonical profile URLs, and platform metadata.
+                  Checks 13 platforms directly for free and searches Google, DuckDuckGo and Yahoo — which also find the handle written with different punctuation — including TikTok accounts.
                 </p>
                 <div className="lp-editorial-grid-2">
                   <div className="lp-editorial-spec-item">
                     <strong>Platform Scope</strong>
-                    <p>GitHub, X, Instagram, Facebook, Medium, Reddit, YouTube, Behance, SoundCloud, Spotify.</p>
+                    <p>GitHub, Reddit, Mastodon, Bluesky, TikTok, Instagram, Facebook, X, Medium, Telegram, Twitch, YouTube.</p>
                   </div>
                   <div className="lp-editorial-spec-item">
                     <strong>Identity Disclaimer</strong>

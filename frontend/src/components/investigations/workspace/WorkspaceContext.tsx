@@ -4,10 +4,11 @@ import {
   indexSources, pipelineCounts, profileKey, urlKey, webByBucket, allAuditEvents, isSimilarProfile, isSimilarActivity, similarProfileKeys,
   type IndexedSource, type PipelineCounts, type WebBucket, type WebItem
 } from '../../../lib/workspace';
+import { allLocationRefs, summarise } from '../../../lib/locationEvidence';
 
 export type TabKey =
   | 'overview' | 'profiles' | 'activity' | 'associations' | 'sources'
-  | 'web' | 'news' | 'images' | 'metrics' | 'audit';
+  | 'web' | 'news' | 'images' | 'location' | 'metrics' | 'audit';
 
 export interface Derived {
   sources: IndexedSource[];
@@ -47,6 +48,8 @@ export function derive(inv: Investigation): Derived {
       web: buckets.web.length,
       news: buckets.news.length,
       images: (inv.imageResults || []).length,
+      // Places in the Location summary (references linked to this identity).
+      location: summarise(allLocationRefs(inv)).length,
       metrics: undefined,
       audit: auditCount
     }
