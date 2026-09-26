@@ -45,7 +45,9 @@ export class UrlValidator {
       const parsed = new URL(urlStr);
       const paramsToStrip = [
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-        'fbclid', 'gclid', 'igshid', 'ref', 'ref_src', 'ref_url', '_hsenc', '_hsmi'
+        'fbclid', 'gclid', 'igshid', 'igsh', 'ref', 'ref_src', 'ref_url', '_hsenc', '_hsmi',
+        // Display-language parameters (x.com/…?lang=en, tiktok.com/@…?lang=en) point at the same page
+        'lang', 'hl', 'locale', 'is_from_webapp', 'sender_device', '_t', '_r'
       ];
 
       paramsToStrip.forEach(p => parsed.searchParams.delete(p));
@@ -55,8 +57,12 @@ export class UrlValidator {
       if (pathname.length > 1 && pathname.endsWith('/')) {
         pathname = pathname.slice(0, -1);
       }
+      // A YouTube channel's tabs (/@name/videos, /channel/ID/about…) are the channel itself.
+      if (/(^|\.)youtube\.com$/i.test(parsed.hostname)) {
+        pathname = pathname.replace(/^(\/(?:@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+))\/(videos|featured|about|shorts|streams|playlists|community|podcasts)$/i, '$1');
+      }
 
-      urlStr = `${parsed.protocol}//${parsed.host}${pathname}${parsed.search}${parsed.hash}`;
+      urlStr =`${parsed.protocol}//${parsed.host}${pathname}${parsed.search}${parsed.hash}`;
     } catch (e) {}
 
     return urlStr;
@@ -143,6 +149,9 @@ export class UrlValidator {
       platformName = 'TikTok';
       if (lowerUrl.includes('/video/') || lowerUrl.includes('/v/')) {
         itemType = 'video';
+        // The account that posted it is named in the link (tiktok.com/@name/video/…); still a video, not a profile.
+        const owner = canonicalUrl.match(/tiktok\.com\/@([a-zA-Z0-9_\-\.]+)\/video\//i);
+        if (owner) extractedHandle = owner[1];
       } else if (lowerUrl.includes('/tag/') || lowerUrl.includes('/music/') || lowerUrl.includes('/discover')) {
         itemType = 'search_page';
       } else {
@@ -162,6 +171,9 @@ export class UrlValidator {
       platformName = 'X (Twitter)';
       if (lowerUrl.includes('/status/') || lowerUrl.includes('/statuses/')) {
         itemType = 'post';
+        // x.com/name/status/… names the account that posted it; still a post, not a profile.
+        const owner = canonicalUrl.match(/(?:x|twitter)\.com\/([a-zA-Z0-9_]+)\/status(?:es)?\//i);
+        if (owner && owner[1].toLowerCase() !== 'i') extractedHandle = owner[1];
       } else if (lowerUrl.includes('/hashtag/') || lowerUrl.includes('/search') || lowerUrl.includes('/explore') || lowerUrl.includes('/i/')) {
         itemType = 'search_page';
       } else {

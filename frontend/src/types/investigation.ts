@@ -83,6 +83,8 @@ export interface StreamProgressEvent {
 
 export interface IntelligenceActivity {
   id: string;
+  /** "similar": activity of an account whose handle only resembles the searched username (another person). */
+  relation?: 'subject' | 'similar';
   title: string;
   briefReport: string;
   date: string;
@@ -107,6 +109,7 @@ export interface IntelligenceAssociation {
 
 export interface IntelligenceSource {
   id: string;
+  relation?: 'subject' | 'similar';
   sourceName: string;
   title: string;
   website: string;
@@ -144,6 +147,8 @@ export interface SearchInput {
 
 export interface SocialProfile {
   platform: string;
+  /** "similar": an account whose handle only resembles the searched username (another person). */
+  relation?: 'subject' | 'similar';
   username: string;
   url: string;
   canonicalUrl?: string;
@@ -233,6 +238,19 @@ export interface SearchLogEntry {
   error?: string;
 }
 
+/** A picture of the subject found by image search: only the image, its page and its source. */
+export interface CaseImage {
+  id: string;
+  /** Page the image appears on. */
+  pageUrl: string;
+  imageUrl?: string;
+  thumbnail?: string;
+  title: string;
+  source: string;
+  engine: string;
+  foundAt: string;
+}
+
 export interface Investigation {
   id: string;
   name: string;
@@ -297,6 +315,11 @@ export interface Investigation {
   lastSearched?: string;
   lastUpdated?: string;
   isTracked?: boolean;
+  /** Pictures found by the Images tab (image search on the subject's exact name). */
+  imageResults?: CaseImage[];
+  imagesCheckedAt?: string;
+  /** When the News tab last searched the news engines for the subject. */
+  newsCheckedAt?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

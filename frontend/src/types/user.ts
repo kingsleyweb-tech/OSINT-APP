@@ -10,9 +10,49 @@ export interface NotificationPrefs {
   systemAlerts: boolean;
 }
 
+/** Kind of search, used to group the search history. */
+export type SearchCategory =
+  | 'name' | 'username' | 'social' | 'forums' | 'news' | 'images' | 'videos' | 'reverseImage' | 'geo' | 'trends';
+
+export interface SearchHistoryResult {
+  title: string;
+  url: string;
+  source: string;
+  thumbnail?: string;
+}
+
+/** One search the user ran, stored in users/{uid}.searchHistory (newest first, capped). */
+export interface SearchHistoryEntry {
+  id: string;
+  category: SearchCategory;
+  query: string;
+  /** Short description of the settings, e.g. "Ghana · Past week". */
+  detail?: string;
+  /** Page parameters to run the same search again. */
+  params?: Record<string, string>;
+  createdAt: string;
+  resultCount: number;
+  searchesUsed?: number;
+  topResults: SearchHistoryResult[];
+  /** Case created from this search, when there is one. */
+  investigationId?: string;
+  /** Search intelligence: the query actually searched when a correction was applied, and how sure it was. */
+  correctedQuery?: string;
+  correctionConfidence?: 'high' | 'medium' | 'low';
+  /** Other spellings that were suggested. */
+  variants?: string[];
+  /** Engines / sources that ran. */
+  sources?: string[];
+  mode?: SearchMode;
+}
+
+export type SearchMode = 'intelligent' | 'precise';
+
 export interface SearchDefaults {
   type: 'Name' | 'Username';
   depth: SearchDepthPref;
+  /** Intelligent (default): checks spelling and suggests corrections. Precise: searches exactly what is typed. */
+  mode?: SearchMode;
 }
 
 /**
@@ -33,6 +73,8 @@ export interface UserProfile {
   dateFormat?: DateFormatPref;
   searchDefaults?: SearchDefaults;
   notificationPrefs?: NotificationPrefs;
+  /** Recent searches of every kind (History page). */
+  searchHistory?: SearchHistoryEntry[];
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;

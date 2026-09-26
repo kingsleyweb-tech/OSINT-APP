@@ -446,9 +446,9 @@ const NotificationsSection: React.FC = () => {
 // ─── Search defaults ────────────────────────────────────────────────────────
 
 const DEPTHS: Array<{ key: SearchDefaults['depth']; title: string; text: string }> = [
-  { key: 'quick', title: 'Quick', text: 'About 4–5 SerpApi searches per name search and up to about 17 per username search.' },
-  { key: 'standard', title: 'Standard', text: 'About 8–10 SerpApi searches per name search and up to about 37 per username search.' },
-  { key: 'deep', title: 'Deep', text: 'About 8–11 SerpApi searches per name search and up to about 71 per username search. Best coverage.' }
+  { key: 'quick', title: 'Quick', text: 'About 4–5 SerpApi searches per name search and 5 per username search.' },
+  { key: 'standard', title: 'Standard', text: 'About 9–11 SerpApi searches per name search and 10 per username search.' },
+  { key: 'deep', title: 'Deep', text: 'About 9–13 SerpApi searches per name search and 13 per username search. Best coverage.' }
 ];
 
 const SearchSection: React.FC = () => {
@@ -457,7 +457,7 @@ const SearchSection: React.FC = () => {
   const saved: SearchDefaults = { ...DEFAULT_SEARCH_DEFAULTS, ...(profile?.searchDefaults || {}) };
   const [form, setForm] = useState(saved);
   const [saving, setSaving] = useState(false);
-  const dirty = form.type !== saved.type || form.depth !== saved.depth;
+  const dirty = form.type !== saved.type || form.depth !== saved.depth || (form.mode || 'intelligent') !== (saved.mode || 'intelligent');
 
   const save = async () => {
     setSaving(true);
@@ -490,6 +490,18 @@ const SearchSection: React.FC = () => {
             <option value="Username">Username</option>
           </select>
         </label>
+      </div>
+      <div className="st-field" style={{ marginTop: 18 }}><span>Search mode</span></div>
+      <div className="st-options">
+        {([
+          ['intelligent', 'Intelligent', 'Checks the spelling first (1 extra SerpApi search, cached for 12 hours), suggests corrections such as "Kingley Anab" → "Kingsley Anaab", and searches a correction only when it is highly confident. The original stays visible.'],
+          ['precise', 'Precise', 'Searches exactly what you type. No spelling check and no extra search.']
+        ] as const).map(([key, title, text]) => (
+          <label key={key} className={`st-option${(form.mode || 'intelligent') === key ? ' on' : ''}`}>
+            <input type="radio" name="mode" checked={(form.mode || 'intelligent') === key} onChange={() => setForm({ ...form, mode: key })} />
+            <div><b>{title}</b><span>{text}</span></div>
+          </label>
+        ))}
       </div>
       <div className="st-field" style={{ marginTop: 18 }}><span>Search depth</span></div>
       <div className="st-options">

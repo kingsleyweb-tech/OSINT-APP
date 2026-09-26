@@ -696,3 +696,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Links to the other search pages under the hero search */
+.dash-other-searches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 14px; font-size: 0.85rem; color: var(--text-muted); }
+.dash-other-searches a { color: var(--accent-warm); font-weight: 600; }
+.dash-other-searches a:hover { text-decoration: underline; }

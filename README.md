@@ -72,6 +72,72 @@ Supported:
 
 **Not part of the application:** email search, domain search, domain/WHOIS/DNS lookups, phone search. The code for these was removed (see [Cleanup Performed](#34-cleanup-performed)). If the API receives any other search type, it answers `400 Only name and username searches are supported.`
 
+### Explore and analysis pages
+
+Besides the name and username investigations, the sidebar has these pages. They call `POST /api/explore` (backend `services/explore/`), never SerpApi directly, and they only run when the user presses a button.
+
+| Page | Route | SerpApi engines | Searches per run |
+|---|---|---|---|
+| Social search: social platforms | `/search/social` | `google`, one query per selected platform with the site filter first (`site:facebook.com "…"`), like the name search. A single query with many `site:` filters made Google ignore the keywords and return unrelated pages, so only one name ("Adjoa Tee") happened to work. Plain multi-word keywords are sent as an exact phrase; if a platform returns nothing relevant, it retries over any time (with a date filter) or without quotes | 1 per platform (default 6), +1 per platform that needs a retry |
+| Social search: forums | `/search/social` | `google` with Google's Forums filter (`udm=18`); if it fails or is empty, `google` restricted to Reddit, Quora, Stack Exchange and Stack Overflow. (The separate `google_forums` engine timed out in every test, so it is not used.) | 1–2 |
+| News | `/search/news` | `google_news`; with a country selected it uses that country's Google News edition (`gl`), and the time filter is Google News's own `when:` operator so results stay in the edition. `bing_news` is added when no country is selected or the country is one of Bing's markets (US, GB, CA, AU, IN, DE, FR); for other countries (e.g. Ghana) it is left out so the list stays country-specific | 1–2 |
+| Media: images | `/search/media` | `google_images` + `bing_images` | 2 |
+| Media: videos | `/search/media` | `youtube` + `google_videos` | 2 |
+| Media: reverse image | `/search/media` | `google_lens` (`type=visual_matches`) + `google_reverse_image`; needs a public image URL | 2 |
+| Web (used by Geo and Trends) | — | `google` web search; `bing` if Google returns nothing | 1–2 |
+| Media: facial recognition | `/search/media` | none. Shown as "Coming soon — API required"; no requests are sent | 0 |
+| Geo search | `/search/geo` | Runs together: `google_maps` (places; the selected country is written into the query, because Google Maps has no country filter and "osu" alone matched Ohio State University), `google_news` + `bing_news`, `google` on social sites, `google` web search, and the events block of `google` search (the separate `google_events` engine is rejected by SerpApi as unsupported). With **Any country**, `google_maps_autocomplete` (world view) also lists places with the same or a similar name in other countries. Reviews load on request with `google_maps_reviews` | 6 (7 with Any country; +1 per place's reviews) |
+| Trends | `/search/trends` | `google_trends` (interest over time; related queries for a single term) together with news, social and web searches for the first term, so a topic with too little Trends data still returns information, and `google_trends_trending_now` for the selected country (the page says whether the topic is among the searches trending there now) | about 11 (Trends 2, News 1–2, Social 6, Web 1, Trending now 1) |
+| Network | `/analyse/network` | none. Built from the user's saved cases | 0 |
+| Content analysis | `/analyse/content` | none. Built from the user's saved cases | 0 |
+
+The case workspace's News tab also has **Find more news** (2 searches), and the workspace menu has **Export CSV**.
+
+How Explore results are handled:
+
+- **Engine catalogue.** `engineCatalog.ts` is the only place that decides which engines and parameters each capability uses.
+- **Normalisation.** Each engine's JSON is converted into one `ExploreItem` shape (`normalize.ts`). Every item keeps the engine that returned it. Fields the engine did not return stay empty.
+- **De-duplication.** Results are de-duplicated by URL, with host and tracking parameters normalised.
+- **Relevance scoring.** News, images, videos, social and forum results are scored against the query text (`relevance.ts`). Results whose returned text contains none of the query terms, or fewer than 60% of them for multi-word searches, are hidden, and the count of hidden results is shown. Labels are "Strong match", "Partial match" and "Weak match", and describe only how well the text matches.
+- **Reverse image results.** These are labelled "Visual match" and are never presented as identifying a person.
+- **Engine isolation.** Engines run concurrently with a 40-second timeout each. One failing engine never fails the request; each engine's status (ok, cached, empty, error, quota) is shown on the page.
+- **Saving to a case.** Results can be saved to any of the user's cases (`frontend/src/lib/caseSave.ts`):
+  - news goes to the News tab;
+  - posts and videos go to the Activity tab;
+  - other pages go to the Web tab;
+  - everything is also listed in Sources, and a "Results saved" event is added to Audit;
+  - a profile link is saved only as a "Possible Match" that requires verification.
+- **Quota.** `GET /api/quota` reads the free SerpApi account endpoint and does not use a search. Identical requests within `SERPAPI_CACHE_TTL_HOURS` are served from cache.
+- **Rate limit.** `POST /api/explore` allows 40 requests per 5 minutes per client.
+
+
+### Search intelligence (typo-tolerant search)
+
+Every search page and the Profiler have a **Search mode** switch (default in Settings → Search defaults):
+
+- **Intelligent** (default) — before searching, `POST /api/query-intel` (`backend/src/services/queryIntel/`) runs one Google "probe" for the query as typed (1 SerpApi search, cached 12 h; repeats are free). It learns the likely intended spelling from **Google's own "Did you mean"** (`search_information.spelling_fix` / `showing_results_for`) and from **how the top results spell each word** (Damerau-Levenshtein, Jaro-Winkler, repeated-letter collapse, sound-alike key). Each suggestion has a confidence:
+  - **High** — Google's suggestion, or ≥3 results agreeing with high similarity → the corrected query is searched and the page says *"Showing results for X · Search instead for Y"*. The original's top results stay viewable under **Search path**.
+  - **Medium / Low** — only *"Did you mean X?"* buttons; nothing is searched until the investigator clicks. Competing spellings are shown as choices, never picked automatically.
+- **Precise** — searches exactly what is typed; no probe, no extra search.
+- **Never corrected:** usernames, quoted phrases, queries with operators (`site:`, `OR`), styled handles (`xX_Kingsley_Xx`), words with digits/`_`/`.`, acronyms, words under 3 letters.
+- **Result-based learning (no extra search):** after a search, if the results consistently spell the words another way (e.g. searched "Kingsley Anab", profiles say "Kingsley Anaab"; searched "galemsey", news says "galamsey"; username "adjoate_", results show "@_adjoatee"), the banner offers it as a suggestion.
+- **Similar ≠ same:** name search keeps profiles whose name is only *spelled similarly* (e.g. "Kingsley Anaaba") as **Similar Match** (`relation: "similar"`) in a separate "other people" section; username search does the same for handles 1–2 characters away and for posts/videos by such handles. They never feed the subject's counts, activity or associations.
+- **News by exact phrase:** multi-word news searches are sent as an exact phrase. News engines match it in the article body, so an article whose headline does not name it is still kept ("Named in the article, not in the headline", ranked below headline matches) instead of being hidden as unrelated. If the phrase finds nothing, a looser query runs.
+- **No dead ends:** when a search's own sources return nothing relevant, the banner lists the Google web results the spelling check already fetched (no extra search).
+- **Fuzzy relevance:** Explore results that use a close spelling of a search word count at reduced weight ("Similar spelling of …"). Duplicates are merged by URL and, on the same site, by near-identical title.
+- **Investigation memory:** a Profiler search for a name/username already searched in the last 24 h offers to open that case instead (no searches used). The banner also points to one of your own cases with the same or a similar name (only your own cases are compared).
+- **Feedback & grouping:** result lists have *Relevant / Possible match / Not relevant* buttons (ordering and hiding within the list; saved with a result when it is saved to a case) and *Group by account*.
+- **History:** entries record the corrected query, its confidence, suggested spellings, sources and mode.
+- **Failure-safe:** if the probe fails or the quota is exhausted, the banner says so and the original query is searched as before.
+
+### Search progress, history and cases
+
+- **One loader for every search.** Name and username searches use `POST /api/search/stream`, which streams a progress event as each query finishes and then the same response as `POST /api/search`. Explore searches run each engine as its own request (`POST /api/explore/plan` lists them, then `POST /api/explore` with `callIndex`). The loader's percentage only moves when a source really finishes. Every search can be cancelled. Each SerpApi request gives up after 30 seconds (`SERPAPI_TIMEOUT_MS`) and is retried once (SerpApi serves the repeat from its own cache without using a search), so a search never hangs.
+- **Search history.** Every search (name, username, social, forums, news, images, videos, reverse image, geo, trends) is saved to `users/{uid}.searchHistory` in Firestore: newest first, capped at 100, with its settings, result count and top results. The **Search history** page groups them by kind and can run a search again or open the case made from it. Stored in the user's own document, it needs no Firestore rule change.
+- **Saving results.** "Save to case" works without a Profiler search. With no case chosen, a new case named after the search is created in Firestore and the results are saved into it.
+- **Case Images and News tabs.** On first open, the Images tab searches Google Images and Bing Images for the subject's exact name, and the News tab searches Google News and Bing News. Only items whose title or summary names the subject are kept automatically; other news articles are listed for review. Results are stored in the case (`imageResults`, `imagesCheckedAt`, `newsCheckedAt`), so later visits use no searches.
+- **Opening a person** from the search results opens the case at once; saving it to Firestore continues in the background.
+
 ## 4. Technology Stack
 
 | Layer | Technology (from `package.json` files) |
@@ -415,7 +481,7 @@ Three different limits apply. Keep them separate:
 
 | Concept | Value in this application |
 |---|---|
-| **Requests per search** | Name search (default): **8–11**. Username search (default): up to **about 71** (35 queries × Google + Bing, plus 1 YouTube). See the table below. |
+| **Requests per search** | Name search (default): **9–12**. Username search (default): **13**. See the table below. |
 | **Concurrent requests** | Name search: up to **8** at once. Username search: up to **3** at once. The app sets no global concurrency limit across users. |
 | **Monthly quota** | Set by the SerpApi plan. The current plan is the **Free Plan: 250 searches per month**. The account endpoint also reports an hourly limit of 250 searches. |
 
@@ -423,13 +489,14 @@ Three different limits apply. Keep them separate:
 |---|---|---|
 | Name | quick | 4 (+1 if the Bing fallback runs) |
 | Name | standard | 8 + up to 1 confirmation (+1 fallback) |
-| **Name** | **deep (what the UI uses)** | **8 + up to 2 confirmations (+1 fallback) = 8–11** |
-| Username | quick | up to about 17 |
-| Username | standard | up to about 37 |
-| **Username** | **deep (what the UI uses)** | **up to about 71** (measured in testing: 35 queries, 70 Google/Bing requests + YouTube) |
+| **Name** | **deep (what the UI uses)** | **9 (includes a second page of Facebook results) + up to 3 profile checks (2 Facebook, 1 Instagram) (+1 fallback) = 9–13** |
+| Username | quick | 5 (+ free direct platform checks) |
+| Username | standard | 10 (+ free direct platform checks) |
+| **Username** | **deep (what the UI uses)** | **13**: Google queries covering the username and its common spellings (`99_name` also searched as `99.name`, `99name`, `name99`) for the web, Facebook, Instagram, X, TikTok, LinkedIn and Threads/GitHub/Reddit/Medium; DuckDuckGo restricted to TikTok (it finds TikTok handles with other punctuation that Google misses); DuckDuckGo and Yahoo with the plain username (through the API they find handles written with other punctuation, e.g. `@99.humblechild_` for `99_humblechild`, which Google and Bing did not); YouTube; and the SerpApi Facebook and Instagram profile endpoints — all in parallel, plus free direct platform checks. Results are labelled: exact handle, same handle with different punctuation ("Likely Match"), or similar handle on a real profile page — containing the username's main word, or, for usernames with a number, the same number and the word's first 6+ letters ("Possible Match", "Similar username (likely a different account)") |
 | Re-run searches on an investigation | deep | same as a new search of that type |
+| Explore pages (news, media, social, geo, trends) | — | 1–2 per run; see [Current Scope](#3-current-scope) |
 
-**What 250 per month means in practice:** about **22–31 name searches**, *or* about **3 username searches**, *or* a mix. The application itself does **not** limit users, count usage, or warn before a search that would use up the quota.
+**What 250 per month means in practice:** about **19–27 name searches**, *or* about **25 username searches**, *or* a mix. The application itself does **not** limit users, count usage, or warn before a search that would use up the quota.
 
 SerpApi's own documentation says that only successful searches count toward the quota, and that searches served from SerpApi's own short-lived cache are free. Check the current terms on serpapi.com; the application does not depend on this.
 

@@ -2,7 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-export type SerpEngine = 'google' | 'bing' | 'youtube' | 'facebook_profile' | 'instagram_profile';
+export type SerpEngine =
+  | 'google' | 'bing' | 'youtube' | 'facebook_profile' | 'instagram_profile'
+  // Explore capabilities (see services/explore/engineCatalog.ts)
+  | 'google_news' | 'bing_news' | 'google_images' | 'bing_images' | 'google_videos'
+  | 'google_lens' | 'google_reverse_image' | 'google_forums'
+  | 'google_maps' | 'google_maps_reviews' | 'google_events'
+  | 'google_trends' | 'google_trends_trending_now' | 'google_maps_autocomplete'
+  | 'duckduckgo' | 'yahoo';
 
 export interface SerpCallResult {
   engine: SerpEngine;
@@ -77,6 +84,14 @@ export class SerpApiProvider {
    *  - explicit error reporting (quota exhaustion, "no results", HTTP errors) instead of silently returning null
    */
   public async request(engine: SerpEngine, params: Record<string, string | number>): Promise<SerpCallResult> {
+    const first = await this.requestOnce(engine, params);
+    // SerpApi keeps identical searches cached for an hour and serves them free, so one retry after a
+    // timeout usually returns quickly without using another search.
+    if (first.error === 'Timed out waiting for SerpApi') return this.requestOnce(engine, params);
+    return first;
+  }
+
+  private async requestOnce(engine: SerpEngine, params: Record<string, string | number>): Promise<SerpCallResult> {
     const apiKey = this.getApiKey();
     const cacheKey = buildCacheKey(engine, params);
 
@@ -94,9 +109,13 @@ export class SerpApiProvider {
     qs.set('api_key', apiKey);
 
     try {
+      // A hung request must never stall a whole search: give up after SERPAPI_TIMEOUT_MS (default 30s).
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Number(process.env.SERPAPI_TIMEOUT_MS) || 30_000);
       const res = await fetch(`https://serpapi.com/search.json?${qs.toString()}`, {
-        headers: { 'User-Agent': 'OSINT-Platform-Bot/1.0' }
-      });
+        headers: { 'User-Agent': 'OSINT-Platform-Bot/1.0' },
+        signal: controller.signal
+      }).finally(() => clearTimeout(timer));
       const data: any = await res.json().catch(() => null);
       const apiError: string | null = data?.error || (!res.ok ? `HTTP ${res.status}` : null);
       const quotaExhausted = res.status === 429 || /run out of searches|plan searches|exceeded/i.test(apiError || '');
@@ -112,7 +131,8 @@ export class SerpApiProvider {
       return { engine, params, data: null, error: apiError || 'Unknown SerpApi error', fromCache: false, quotaExhausted };
     } catch (e: any) {
       console.warn(`[SerpApiProvider] ${engine} fetch error for ${JSON.stringify(params)}:`, e);
-      return { engine, params, data: null, error: e?.message || 'Network error', fromCache: false, quotaExhausted: false };
+      const message = e?.name === 'AbortError' ? 'Timed out waiting for SerpApi' : (e?.message || 'Network error');
+      return { engine, params, data: null, error: message, fromCache: false, quotaExhausted: false };
     }
   }
 
@@ -126,6 +146,16 @@ export class SerpApiProvider {
   /**
    * Fetch a Bing Search page via SerpApi
    */
+  /** DuckDuckGo web results (organic_results). Matches handles with punctuation well. */
+  public async fetchDuckDuckGoPage(queryStr: string): Promise<any> {
+    return (await this.request('duckduckgo', { q: queryStr })).data;
+  }
+
+  /** Yahoo web results (organic_results); Yahoo's query parameter is "p". */
+  public async fetchYahooPage(queryStr: string): Promise<any> {
+    return (await this.request('yahoo', { p: queryStr })).data;
+  }
+
   public async fetchBingPage(queryStr: string, first: number = 1): Promise<any> {
     return (await this.request('bing', { q: queryStr, first })).data;
   }

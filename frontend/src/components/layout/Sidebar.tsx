@@ -1,15 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Search, 
-  FolderSearch, 
-  Users, 
-  Globe, 
-  Settings, 
-  HelpCircle,
-  LogOut
-} from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { NAV_SECTIONS, isNavActive } from './navItems';
 import appLogo from '../../assets/images/icon.png';
 import '../../styles/Sidebar.css';
 
@@ -35,16 +27,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onSignOut?.();
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/new-investigation', label: 'New Investigation', icon: Search },
-    { path: '/investigations', label: 'Investigations', icon: FolderSearch },
-    { path: '/people', label: 'People', icon: Users },
-    { path: '/sources', label: 'Sources', icon: Globe },
-    { path: '/help', label: 'Help & Docs', icon: HelpCircle },
-    { path: '/settings', label: 'Settings', icon: Settings },
-  ];
-
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -58,23 +40,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav className="sidebar-nav">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || 
-            (item.path === '/new-investigation' && location.pathname === '/search') ||
-            (item.path === '/investigations' && location.pathname.startsWith('/investigations/'));
-
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-            >
-              <Icon className="nav-icon" />
-              <span className="nav-label">{item.label}</span>
-            </NavLink>
-          );
-        })}
+        {NAV_SECTIONS.map((section, si) => (
+          <React.Fragment key={section.title || si}>
+            {section.title && <div className="nav-section-title">{section.title}</div>}
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={`nav-item ${isNavActive(item.path, location.pathname) ? 'active' : ''}`}
+                >
+                  <Icon className="nav-icon" />
+                  <span className="nav-label">{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </React.Fragment>
+        ))}
       </nav>
 
       <div className="sidebar-user-wrapper">

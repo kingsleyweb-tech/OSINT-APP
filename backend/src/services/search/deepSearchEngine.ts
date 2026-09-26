@@ -1,3 +1,4 @@
+import type { ProgressCallback } from '../../types/progress';
 import { OSINTQuery, NormalizedResultItem } from '../../types/search';
 import { PLATFORM_REGISTRY, PlatformEntry } from './platformRegistry';
 import { SerpApiProvider } from './serpApiProvider';
@@ -9,6 +10,7 @@ export interface DeepSearchOptions {
   searchDepth?: 'quick' | 'standard' | 'deep';
   maxPagesPerQuery?: number;
   apiBudget?: number;
+  onProgress?: ProgressCallback;
 }
 
 export interface AuditStepInfo {
@@ -155,6 +157,12 @@ export class DeepSearchEngine {
 
         seenUrls.add(canonicalUrl);
 
+        // How the handle relates to the searched username (coverage 100 = exact, 75 = other spelling, 50 = similar).
+        const coverage = assessment.matchDetails?.tokenCoveragePercent ?? 0;
+        const usernameMatch = !isUsername ? undefined : coverage >= 100 ? 'exact' : coverage >= 75 ? 'spelling' : 'similar';
+        const usernameNote = usernameMatch === 'spelling' ? 'Same username with different punctuation. '
+          : usernameMatch === 'similar' ? 'Similar username (likely a different account). ' : '';
+
         let sourceType: any = 'Websites & News';
         if (assessment.itemType === 'profile') {
           if (category === 'developer' || assessment.domain.includes('github.com')) {
@@ -181,7 +189,7 @@ export class DeepSearchEngine {
           source: platformName !== 'General Web Search' ? platformName : `SerpApi (${assessment.domain})`,
           sourceType,
           title: item.title || `Public Result for ${target}`,
-          description: item.snippet || item.snippet_highlighted_words?.join(' ') || `Public finding for ${target}`,
+          description: `${usernameNote}${item.snippet || item.snippet_highlighted_words?.join(' ') || `Public finding for ${target}`}`,
           url: canonicalUrl,
           possibleName: target,
           location: query.location,
@@ -195,7 +203,9 @@ export class DeepSearchEngine {
             itemType: assessment.itemType,
             isVerifiedProfileUrl: assessment.isVerifiedProfileUrl,
             confidenceLabel: assessment.confidenceLabel,
-            nameMatched: assessment.nameMatched
+            nameMatched: assessment.nameMatched,
+            ...(usernameMatch ? { usernameMatch } : {}),
+            ...(typeof item.thumbnail === 'string' && /^https?:/.test(item.thumbnail) ? { thumbnail: item.thumbnail } : {})
           }
         });
         acceptedCount++;
@@ -203,6 +213,172 @@ export class DeepSearchEngine {
       return acceptedCount;
     };
 
+    const getPlatformById = (id: string) => PLATFORM_REGISTRY.find(p => p.id === id);
+
+    // ─── USERNAME SEARCH (fast path) ───
+    // A short plan of exact-username queries run in parallel, free direct platform checks, and the
+    // SerpApi Facebook/Instagram profile endpoints. quick: 4 queries, standard: 7, deep: 10 (was up to ~71 sequential calls).
+    if (isUsername) {
+      const u = target.replace(/^@/, '');
+      // Handles are often written with other separators (99_name → 99.name_, 99name, name99), so every
+      // query covers the common spellings; results with a different spelling are labelled as similar.
+      const variants = usernameSpellings(u);
+      const q = variants.length > 1 ? `(${variants.map(v => `"${v}"`).join(' OR ')})` : `"${u}"`;
+      const gen = getPlatformById('gen-broad') || PLATFORM_REGISTRY[0];
+      type Step = { id: string; label: string; run: () => Promise<{ items: any[]; platform: PlatformEntry; queryStr: string } | null> };
+      const google = (id: string, label: string, queryStr: string, platformId: string): Step => ({
+        id, label,
+        run: async () => {
+          const data = await serpApi.fetchSerpPage(queryStr, 0);
+          totalQueriesExecuted++;
+          totalPagesReviewed++;
+          return data ? { items: data.organic_results || [], platform: getPlatformById(platformId) || gen, queryStr } : null;
+        }
+      });
+      const profileApi = (id: string, label: string, engine: 'facebook_profile' | 'instagram_profile', platformId: string): Step => ({
+        id, label,
+        run: async () => {
+          const res = await serpApi.request(engine, { profile_id: u });
+          totalQueriesExecuted++;
+          const p = res.data?.profile_results;
+          // An error other than quota means the account does not exist (the endpoint reports "no results").
+          if (!res.data) return res.quotaExhausted ? null : { items: [], platform: getPlatformById(platformId) || gen, queryStr: `${engine}:${u}` };
+          if (!p) return { items: [], platform: getPlatformById(platformId) || gen, queryStr: `${engine}:${u}` };
+          // The endpoint confirms the account exists; its URL is built from the username the API returned.
+          const handle = String(p.username || u);
+          const url = typeof p.url === 'string' && /^https?:/.test(p.url) ? p.url
+            : engine === 'instagram_profile' ? `https://www.instagram.com/${handle}/` : `https://www.facebook.com/${handle}`;
+          const name = p.full_name || p.name || handle;
+          const facts = [
+            p.followers != null ? `${p.followers} followers` : '',
+            p.is_private ? 'private account' : '',
+            p.biography || p.intro || ''
+          ].filter(Boolean).join(' · ');
+          return {
+            items: [{ title: `${name} (@${handle})`, link: url, snippet: facts || `Account @${handle} exists`, thumbnail: p.profile_picture || p.profile_pic_url || p.serpapi_profile_pic_url }],
+            platform: getPlatformById(platformId) || gen,
+            queryStr: `${engine}:${u}`
+          };
+        }
+      });
+
+      const steps: Step[] = [
+        google('g-broad', 'Google · username and spellings', q, 'gen-broad'),
+        {
+          // DuckDuckGo matches handles written with other punctuation (it finds @99.humblechild_ for
+          // "99_humblechild"); Google and Bing through the API did not.
+          id: 'ddg', label: 'DuckDuckGo · username',
+          run: async () => {
+            const data = await serpApi.fetchDuckDuckGoPage(u);
+            totalQueriesExecuted++;
+            totalPagesReviewed++;
+            return data ? { items: data.organic_results || [], platform: gen, queryStr: `duckduckgo:${u}` } : null;
+          }
+        },
+        google('g-fb', 'Facebook', `site:facebook.com ${q}`, 'soc-facebook'),
+        google('g-ig', 'Instagram', `site:instagram.com ${q}`, 'soc-instagram'),
+        google('g-x', 'X (Twitter)', `(site:x.com OR site:twitter.com) ${q}`, 'soc-x')
+      ];
+      if (searchDepth !== 'quick') {
+        steps.push(
+          {
+            id: 'yahoo', label: 'Yahoo · username',
+            run: async () => {
+              const data = await serpApi.fetchYahooPage(u);
+              totalQueriesExecuted++;
+              totalPagesReviewed++;
+              return data ? { items: data.organic_results || [], platform: gen, queryStr: `yahoo:${u}` } : null;
+            }
+          },
+          google('g-tt', 'TikTok', `site:tiktok.com ${q}`, 'soc-tiktok'),
+          {
+            // DuckDuckGo finds TikTok handles written with other punctuation (e.g. @.name_) that Google misses.
+            id: 'ddg-tt', label: 'TikTok (DuckDuckGo)',
+            run: async () => {
+              const data = await serpApi.fetchDuckDuckGoPage(`site:tiktok.com ${u}`);
+              totalQueriesExecuted++;
+              totalPagesReviewed++;
+              return data ? { items: data.organic_results || [], platform: getPlatformById('soc-tiktok') || gen, queryStr: `duckduckgo:site:tiktok.com ${u}` } : null;
+            }
+          },
+          google('g-li', 'LinkedIn', `site:linkedin.com ${q}`, 'prof-linkedin'),
+          {
+            id: 'yt', label: 'YouTube',
+            run: async () => {
+              const data = await serpApi.fetchYouTubeSearch(u);
+              totalQueriesExecuted++;
+              return data ? { items: data.organic_results || [], platform: getPlatformById('vid-youtube') || gen, queryStr: `youtube:${u}` } : null;
+            }
+          }
+        );
+      }
+      if (searchDepth === 'deep') {
+        steps.push(
+          google('g-dev', 'Threads, GitHub, Reddit & Medium', `(site:threads.net OR site:github.com OR site:reddit.com OR site:medium.com) ${q}`, 'dev-github'),
+          profileApi('fbp', 'Facebook profile lookup', 'facebook_profile', 'soc-facebook'),
+          profileApi('igp', 'Instagram profile lookup', 'instagram_profile', 'soc-instagram')
+        );
+      }
+
+      options.onProgress?.({ type: 'plan', steps: [{ id: 'direct', label: 'Direct platform checks (free)' }, ...steps.map(s => ({ id: s.id, label: s.label }))] });
+
+      const direct = (async () => {
+        try {
+          const finished: any[] = [];
+          const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 15000));
+          const out: any = await Promise.race([usernameDiscovery.discoverUsernames(u, (item: any) => finished.push(item)), timeout]);
+          const items: any[] = out?.items || finished;
+          let found = 0;
+          items.forEach((it: any) => {
+            if (it.status !== 'found' || !it.profileUrl || it.isVariation) return;
+            const canonical = UrlValidator.normalizeUrl(it.profileUrl);
+            if (!canonical || seenUrls.has(canonical)) return;
+            seenUrls.add(canonical);
+            found++;
+            allResults.push({
+              id: `res-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              source: it.source || 'Direct Username Discovery',
+              sourceType: 'Social Media',
+              title: `${it.displayName || u} on ${it.source}`,
+              description: `The platform confirms an account with the exact username @${u}. The same username on different platforms does not prove they belong to one person.`,
+              url: canonical,
+              possibleName: u,
+              discoveredAt: new Date().toISOString(),
+              confidence: 90,
+              confidenceLevel: 'High',
+              metadata: { platform: it.source, category: it.category || 'social', domain: it.domain || 'social', itemType: 'profile', isVerifiedProfileUrl: true, confidenceLabel: 'Exact Match', nameMatched: true }
+            });
+            platformsCheckedSet.add(it.source);
+          });
+          options.onProgress?.({ type: 'step', id: 'direct', status: found ? 'done' : 'empty', count: found, note: `${found} account${found === 1 ? '' : 's'} confirmed` });
+        } catch (e) {
+          console.warn('[DeepSearchEngine] direct username checks failed:', e);
+          options.onProgress?.({ type: 'step', id: 'direct', status: 'failed', note: 'Checks unavailable' });
+        }
+      })();
+
+      const outcomes = await Promise.all(steps.map(async s => {
+        try {
+          const r = await s.run();
+          return { s, r };
+        } catch (e) {
+          console.warn(`[DeepSearchEngine] ${s.label} failed:`, e);
+          return { s, r: null };
+        }
+      }));
+      await direct;
+
+      outcomes.forEach(({ s, r }) => {
+        if (!r) {
+          options.onProgress?.({ type: 'step', id: s.id, status: 'failed', note: 'Search failed' });
+          return;
+        }
+        platformsCheckedSet.add(r.platform.name);
+        const accepted = r.items.length ? processOrganicItems(r.items, r.platform.name, r.platform.category, 1, r.queryStr) : 0;
+        auditTrail.push({ stage: 1, stageName: 'Exact Username Discovery', query: r.queryStr, platformName: r.platform.name, resultsFound: r.items.length, newRelevantAccepted: accepted });
+        options.onProgress?.({ type: 'step', id: s.id, status: accepted ? 'done' : 'empty', count: accepted, note: `${accepted} kept of ${r.items.length}` });
+      });
+    } else {
     // ─── STAGE 1: EXACT IDENTITY DISCOVERY ───
     console.log(`[DeepSearchEngine] Executing STAGE 1: Exact Identity Discovery...`);
     const stage1Queries: Array<{ queryStr: string; platform: PlatformEntry }> = [];
@@ -491,6 +667,8 @@ export class DeepSearchEngine {
       }
     }
 
+    } // end of the non-username stages
+
     // Sort all results: Exact Match -> Strong Match -> Possible Match -> Related
     allResults.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 
@@ -543,4 +721,22 @@ export class DeepSearchEngine {
       }
     };
   }
+}
+
+/**
+ * Common spellings of a username: the same letters and digits with "_", "." or nothing between
+ * the parts, and a leading number moved to the end (99_name → name99). At most 5, original first.
+ */
+export function usernameSpellings(username: string): string[] {
+  const u = username.trim().replace(/^@/, '').toLowerCase();
+  const parts = u.split(/[._-]+/).filter(Boolean);
+  const out = new Set<string>([u]);
+  if (parts.length > 1) {
+    out.add(parts.join('_'));
+    out.add(parts.join('.'));
+  }
+  out.add(parts.join(''));
+  const m = parts.join('').match(/^(\d+)([a-z].*)$/) || parts.join('').match(/^([a-z].*?)(\d+)$/);
+  if (m) out.add(/^\d/.test(m[1]) ? `${m[2]}${m[1]}` : `${m[2]}${m[1]}`);
+  return Array.from(out).filter(v => v.length >= 3).slice(0, 5);
 }

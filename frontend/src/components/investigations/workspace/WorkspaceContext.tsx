@@ -1,13 +1,13 @@
 import { createContext, useContext } from 'react';
 import type { AuditEvent, EvidenceLevel, Investigation } from '../../../types/investigation';
 import {
-  indexSources, pipelineCounts, profileKey, urlKey, webByBucket, allAuditEvents,
+  indexSources, pipelineCounts, profileKey, urlKey, webByBucket, allAuditEvents, isSimilarProfile, isSimilarActivity, similarProfileKeys,
   type IndexedSource, type PipelineCounts, type WebBucket, type WebItem
 } from '../../../lib/workspace';
 
 export type TabKey =
   | 'overview' | 'profiles' | 'activity' | 'associations' | 'sources'
-  | 'web' | 'news' | 'metrics' | 'audit';
+  | 'web' | 'news' | 'images' | 'metrics' | 'audit';
 
 export interface Derived {
   sources: IndexedSource[];
@@ -26,7 +26,8 @@ export function derive(inv: Investigation): Derived {
   const webByKey = new Map<string, WebItem>();
   (inv.webAndNews || []).forEach(w => webByKey.set(urlKey(w.url), w));
   const auditCount = allAuditEvents(inv).length;
-  const profiles = inv.socialProfiles || [];
+  const profiles = (inv.socialProfiles || []).filter(p => !isSimilarProfile(p));
+  const similarKeys = similarProfileKeys(inv);
 
   return {
     sources: list,
@@ -40,11 +41,12 @@ export function derive(inv: Investigation): Derived {
     counts: {
       overview: undefined,
       profiles: profiles.length + buckets.page.length,
-      activity: (inv.activities || []).length,
+      activity: (inv.activities || []).filter(a => !isSimilarActivity(a, similarKeys)).length,
       associations: (inv.associations || []).length,
       sources: list.length,
       web: buckets.web.length,
       news: buckets.news.length,
+      images: (inv.imageResults || []).length,
       metrics: undefined,
       audit: auditCount
     }

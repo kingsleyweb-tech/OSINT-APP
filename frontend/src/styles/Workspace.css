@@ -945,3 +945,24 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
 .ws-tl-title .ws-glyph svg, .ws-tl-title .ws-glyph img,
 .ws-webcard-meta .ws-glyph svg, .ws-webcard-meta .ws-glyph img,
 .ws-cov-row .ws-glyph svg, .ws-cov-row .ws-glyph img { width: 16px !important; height: 16px !important; }
+
+/* Images tab */
+.ws-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.ws-image { margin: 0; border: 1px solid var(--ws-border); border-radius: 10px; overflow: hidden; background: var(--ws-surface, var(--bg-card)); display: flex; flex-direction: column; }
+.ws-image-frame { display: block; aspect-ratio: 4 / 3; background: var(--ws-sunken, var(--bg-hover)); }
+.ws-image-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ws-image figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 12.5px; }
+.ws-image-source { color: var(--ws-text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ws-image-links { display: inline-flex; gap: 10px; flex-shrink: 0; }
+.ws-image-links a { color: var(--accent-warm); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+@media (max-width: 640px) { .ws-images { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+
+/* Similar accounts (other people with a similar username) */
+.ws-similar { margin-top: 28px; border: 1px dashed var(--ws-border); border-radius: 10px; background: var(--ws-sunken, var(--bg-hover)); }
+.ws-similar-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: transparent; color: var(--ws-text); text-align: left; font-size: 14.5px; }
+.ws-similar-head svg { flex-shrink: 0; color: var(--ws-muted, var(--text-muted)); }
+.ws-similar-list { border-top: 1px dashed var(--ws-border); }
+.ws-similar-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--ws-border); color: var(--ws-text); text-decoration: none; opacity: 0.85; }
+.ws-similar-row:last-child { border-bottom: 0; }
+.ws-similar-row:hover { opacity: 1; background: var(--bg-card); }
+.ws-similar-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }

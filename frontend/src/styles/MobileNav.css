@@ -342,3 +342,36 @@
     display: none;
   }
 }
+
+
+/* Grouped links for the Search / Analyse / Watch pages */
+.brutalist-menu-content { overflow-y: auto; }
+.brutalist-menu-list { flex: 0 0 auto; }
+.brutalist-menu-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 18px 24px;
+  padding: 4px 0 28px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
+}
+.brutalist-menu-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.brutalist-menu-section-links { display: flex; flex-direction: column; gap: 2px; }
+.brutalist-menu-sublink {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.brutalist-menu-sublink:hover,
+.brutalist-menu-sublink.active { color: var(--accent-warm); }

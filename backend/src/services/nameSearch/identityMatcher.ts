@@ -1,3 +1,4 @@
+import { isTypoOf } from '../queryIntel/fuzzy';
 /**
  * Name / identity evidence helpers for name searches.
  *
@@ -7,7 +8,7 @@
 
 const HONORIFICS = new Set(['dr', 'mr', 'mrs', 'ms', 'miss', 'prof', 'professor', 'rev', 'hon', 'sir', 'eng', 'engr', 'esq', 'jr', 'sr', 'phd', 'mba', 'nana', 'lady', 'madam']);
 
-export type NameMatchLevel = 'exact' | 'reordered' | 'contains_full' | 'partial' | 'none';
+export type NameMatchLevel = 'exact' | 'reordered' | 'contains_full' | 'similar' | 'partial' | 'none';
 
 export function normalizeText(text: string): string {
   return (text || '')
@@ -37,6 +38,10 @@ export function compareName(targetTokens: string[], candidate: string): NameMatc
   const matched = targetTokens.filter(t => candSet.has(t)).length;
   // A middle name or an initial may be present, but a long title is not a name.
   if (matched === targetTokens.length && cand.length <= targetTokens.length + 2) return 'contains_full';
+  // Every word of the name has a close respelling (Kingsley Anaaba for Kingsley Anaab): a similar name,
+  // which is usually a different person and is never treated as the same one.
+  if (targetTokens.length >= 2 && cand.length <= targetTokens.length + 1 &&
+      targetTokens.every(t => candSet.has(t) || cand.some(c => isTypoOf(t, c).related))) return 'similar';
   return matched > 0 ? 'partial' : 'none';
 }
 

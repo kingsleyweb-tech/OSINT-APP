@@ -15,35 +15,82 @@ export class SearchError extends Error {
   }
 }
 
+/** A progress event from the streamed search (see backend types/progress.ts). */
+export type SearchProgressEvent =
+  | { type: 'plan'; steps: Array<{ id: string; label: string }> }
+  | { type: 'step'; id: string; status: 'done' | 'empty' | 'failed' | 'cached'; count?: number; note?: string }
+  | { type: 'add'; steps: Array<{ id: string; label: string }> };
+
+export interface RunSearchOptions {
+  onProgress?: (e: SearchProgressEvent) => void;
+  signal?: AbortSignal;
+}
+
+/** Reads the newline-delimited JSON stream from POST /search/stream. Returns null when streaming is unavailable. */
+async function fetchStreamed(body: string, signal: AbortSignal, onProgress?: RunSearchOptions['onProgress']): Promise<{ status: number; body: any } | null> {
+  const res = await fetch(`${getApiBase()}/search/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal });
+  if (res.status === 404 || !res.body) return null;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result: { status: number; body: any } | null = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!line) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.type === 'progress') onProgress?.(msg.event);
+        else if (msg.type === 'result') result = { status: msg.status, body: msg.body };
+      } catch { /* partial or malformed line */ }
+    }
+  }
+  if (!result && buffer.trim()) {
+    try { const msg = JSON.parse(buffer); if (msg.type === 'result') result = { status: msg.status, body: msg.body }; } catch { /* ignore */ }
+  }
+  if (!result) throw new SearchError('The search connection closed before results arrived. Please try again.', 'Search interrupted');
+  return result;
+}
+
 /**
  * Runs a search against the backend. Never fabricates results: on failure it throws a
- * SearchError describing what went wrong so the page can tell the user.
+ * SearchError describing what went wrong so the page can tell the user. Progress events are
+ * reported while the sources run; the search can be cancelled with options.signal.
  */
-export async function runSearch(query: string, searchType: 'Name' | 'Username', searchDepth?: 'quick' | 'standard' | 'deep'): Promise<DiscoveredIdentity[]> {
+export async function runSearch(query: string, searchType: 'Name' | 'Username', searchDepth?: 'quick' | 'standard' | 'deep', options: RunSearchOptions = {}): Promise<DiscoveredIdentity[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+  const onAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onAbort);
+  const body = JSON.stringify({ query, type: searchType.toLowerCase(), ...(searchDepth ? { searchDepth } : {}) });
 
   let data: any;
   try {
-    const response = await fetch(`${getApiBase()}/search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, type: searchType.toLowerCase(), ...(searchDepth ? { searchDepth } : {}) }),
-      signal: controller.signal
-    });
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new SearchError(errData.error || `The search service returned HTTP ${response.status}.`, 'Search failed');
+    let streamed = await fetchStreamed(body, controller.signal, options.onProgress);
+    if (!streamed) {
+      // Older backend without streaming: plain request.
+      const response = await fetch(`${getApiBase()}/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
+      streamed = { status: response.status, body: await response.json().catch(() => ({})) };
     }
-    data = await response.json();
+    if (streamed.status !== 200) {
+      throw new SearchError(streamed.body?.error || `The search service returned HTTP ${streamed.status}.`, 'Search failed');
+    }
+    data = streamed.body;
   } catch (err: any) {
     if (err instanceof SearchError) throw err;
     if (err?.name === 'AbortError') {
+      if (options.signal?.aborted) throw new SearchError('The search was cancelled.', 'Search cancelled');
       throw new SearchError('The search took longer than 2 minutes and was stopped. Please try again.', 'Search timed out');
     }
     throw new SearchError('The search service could not be reached. Check that the backend is running.', 'Search unavailable');
   } finally {
     clearTimeout(timeoutId);
+    options.signal?.removeEventListener('abort', onAbort);
   }
 
   const stats = data.deepStats || {};

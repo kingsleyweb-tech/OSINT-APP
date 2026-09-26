@@ -31,6 +31,29 @@ function isWebItem(r: NormalizedResultItem): boolean {
   return r.sourceType === 'Websites & News' || r.sourceType === 'Knowledge & Wikipedia' || !r.sourceType;
 }
 
+
+/**
+ * Username searches also return accounts with a similar (not the same) handle. They belong to other
+ * people, so they are tagged relation: "similar" and are not counted as the subject's profiles or
+ * activity; the pages list them separately.
+ */
+const urlKeyOf = (u?: string) => (u || '').replace(/^https?:\/\/(www\.|m\.)?/i, '').replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();
+
+function tagSimilarAccounts(inv: any, similar: Set<string>): { own: number; similarCount: number; ownActivities: number; ownPlatforms: string[] } {
+  const isSim = (u?: string) => similar.has(urlKeyOf(u));
+  inv.socialProfiles = (inv.socialProfiles || []).map((p: any) => (isSim(p.url) || isSim(p.profileUrl)
+    ? { ...p, relation: 'similar', confidence: Math.min(p.confidence || 0, 40), confidenceLevel: 'Low', confidenceLabel: 'Possible Match' }
+    : p));
+  inv.activities = (inv.activities || []).map((a: any) => (isSim(a.sourceUrl) ? { ...a, relation: 'similar' } : a));
+  if (Array.isArray(inv.recentActivities)) inv.recentActivities = inv.recentActivities.filter((a: any) => !isSim(a.url));
+  inv.sources = (inv.sources || []).map((s: any) => (isSim(s.url) ? { ...s, relation: 'similar', usedFor: ['Similar account (not the subject)'] } : s));
+  if (Array.isArray(inv.webAndNews)) inv.webAndNews = inv.webAndNews.map((w: any) => (isSim(w.url) ? { ...w, metadata: { ...(w.metadata || {}), relation: 'similar' } } : w));
+  const ownProfiles = inv.socialProfiles.filter((p: any) => p.relation !== 'similar');
+  const ownActivities = inv.activities.filter((a: any) => a.relation !== 'similar').length;
+  if (inv.resultsCount) inv.resultsCount = { ...inv.resultsCount, profiles: ownProfiles.length, activities: ownActivities };
+  return { own: ownProfiles.length, similarCount: inv.socialProfiles.length - ownProfiles.length, ownActivities, ownPlatforms: Array.from(new Set(ownProfiles.map((p: any) => p.platform))) as string[] };
+}
+
 export const handleOSINTSearch = async (req: Request, res: Response): Promise<void> => {
   try {
     const searchDepth = req.body?.searchDepth || 'deep';
@@ -50,7 +73,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
     console.log(`[OSINT Engine] Search requested [Type: ${query.searchType}, Depth: ${searchDepth}]: "${searchTargetStr}"`);
 
     if (query.searchType === 'name') {
-      const nameOutput = await NameSearchEngine.execute(query, { searchDepth });
+      const nameOutput = await NameSearchEngine.execute(query, { searchDepth, onProgress: (req as any).onProgress });
       const identities = nameOutput.identities.map(identity => buildIdentityPayload(query, identity, nameOutput, searchDepth));
       const primary = identities[0];
       const investigation = buildNameInvestigation(query, nameOutput.identities[0], nameOutput, searchDepth, (req as any).user?.uid);
@@ -71,7 +94,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
     }
 
     // Username search
-    const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth });
+    const deepOutput = await DeepSearchEngine.executeDeepSearch(query, { searchDepth, onProgress: (req as any).onProgress });
     const allResults = deepOutput.allResults;
     const searchCoverage = deepOutput.searchCoverage;
     const deepStats = deepOutput.stats;
@@ -85,6 +108,16 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
 
     const targetName = analyzedProfile.fullName;
     const targetInitials = targetName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OS';
+
+    const similarKeys = new Set(allResults.filter(r => r.metadata?.usernameMatch === 'similar').map(r => urlKeyOf(r.url)));
+    possibleIdentities.forEach((identity: any) => {
+      if (!identity.investigation) return;
+      const t = tagSimilarAccounts(identity.investigation, similarKeys);
+      identity.profilesCount = t.own;
+      identity.activitiesCount = t.ownActivities;
+      identity.similarAccountsCount = t.similarCount;
+      identity.matchingPlatforms = t.ownPlatforms;
+    });
 
     const nowIso = new Date().toISOString();
     const investigationId = `inv-${Date.now()}`;
@@ -156,6 +189,8 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
       createdAt: nowIso,
       updatedAt: nowIso
     };
+
+    tagSimilarAccounts(formattedInvestigation, similarKeys);
 
     res.status(200).json({
       success: true,
@@ -259,6 +294,8 @@ export const handleRescanInvestigation = async (req: Request, res: Response): Pr
       updatedAt: nowIso
     };
 
+    tagSimilarAccounts(updatedInvestigation, new Set(allResults.filter(r => r.metadata?.usernameMatch === 'similar').map(r => urlKeyOf(r.url))));
+
     res.json({
       success: true,
       newFindingsCount: newItemsCount,
@@ -270,4 +307,33 @@ export const handleRescanInvestigation = async (req: Request, res: Response): Pr
     console.error('[Rescan Error]:', err);
     res.status(500).json({ error: 'Failed to rescan investigation.' });
   }
+};
+
+/**
+ * Same search as POST /api/search, streamed as newline-delimited JSON: progress events while the
+ * sources run, then {"type":"result","status":<http status>,"body":<the /api/search response>}.
+ */
+export const handleOSINTSearchStream = async (req: Request, res: Response): Promise<void> => {
+  res.status(200);
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  const write = (obj: unknown) => { try { res.write(`${JSON.stringify(obj)}
+`); } catch { /* client gone */ } };
+
+  const collector: any = {
+    statusCode: 200,
+    body: null,
+    status(code: number) { this.statusCode = code; return this; },
+    json(body: unknown) { this.body = body; return this; }
+  };
+  (req as any).onProgress = (event: unknown) => write({ type: 'progress', event });
+  const heartbeat = setInterval(() => write({ type: 'ping' }), 10_000);
+  try {
+    await handleOSINTSearch(req, collector);
+  } finally {
+    clearInterval(heartbeat);
+  }
+  write({ type: 'result', status: collector.statusCode, body: collector.body });
+  res.end();
 };

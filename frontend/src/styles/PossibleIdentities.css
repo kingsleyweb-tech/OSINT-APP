@@ -725,3 +725,55 @@
     align-items: flex-start;
   }
 }
+
+/* ─── Compact possible-people cards ─── */
+.pi-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(520px, 100%), 1fr)); gap: 12px; }
+.pi-card {
+  display: flex; align-items: center; gap: 16px; padding: 14px 16px;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pi-card:hover { border-color: var(--accent-warm-border); box-shadow: var(--shadow-sm); }
+.pi-avatar {
+  position: relative; width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; overflow: hidden;
+  background: var(--accent-warm-subtle); color: var(--text-warm); display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1rem; border: 2px solid var(--accent-warm-border);
+}
+.pi-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pi-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pi-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pi-name { font-size: 1.02rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+.pi-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--text-secondary); }
+.pi-meta span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.pi-meta svg { color: var(--accent-warm); flex-shrink: 0; }
+.pi-summary {
+  margin: 2px 0 0; font-size: 0.84rem; line-height: 1.45; color: var(--text-secondary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pi-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.pi-platforms { display: inline-flex; gap: 4px; }
+.pi-plat { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-color); display: inline-flex; align-items: center; justify-content: center; background: var(--bg-card); }
+.pi-counts { font-size: 0.78rem; color: var(--text-muted); }
+.pi-counts b { color: var(--text-primary); font-weight: 700; }
+.pi-view {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+  border-radius: 9px; background: var(--accent-warm); color: #fff; font-size: 0.85rem; font-weight: 600;
+}
+.pi-view:hover { background: var(--accent-warm-hover); }
+.pi-profile-photo { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; }
+.pi-news-thumb { width: 96px; height: 68px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--bg-hover); }
+@media (max-width: 640px) {
+  .pi-card { flex-wrap: wrap; align-items: flex-start; }
+  .pi-view { width: 100%; justify-content: center; }
+  .pi-news-thumb { width: 72px; height: 54px; }
+}
+
+/* Similar accounts: other people with a resembling username */
+.pi-similar-block { opacity: 0.92; }
+.pi-similar-list { display: flex; flex-direction: column; border: 1px dashed var(--border-color); border-radius: 12px; overflow: hidden; }
+.pi-similar-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); text-decoration: none; }
+.pi-similar-row:last-child { border-bottom: 0; }
+.pi-similar-row:hover { background: var(--bg-hover); }
+.pi-similar-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi-similar-platform { color: var(--text-muted); font-size: 0.82rem; flex: 1; }
+.pi-similar-tag { font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--bg-hover); color: var(--text-secondary); border: 1px solid var(--border-color); }

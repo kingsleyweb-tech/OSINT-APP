@@ -1,3 +1,4 @@
+import type { ProgressCallback } from '../../types/progress';
 import { OSINTQuery, NormalizedResultItem } from '../../types/search';
 import { PLATFORM_REGISTRY } from '../search/platformRegistry';
 import { SerpApiProvider, SerpCallResult, SerpEngine } from '../search/serpApiProvider';
@@ -38,6 +39,8 @@ export type LinkStatus = 'unchecked' | 'reachable' | 'unavailable' | 'unverifiab
 
 export interface DiscoveredProfile {
   id: string;
+  /** "similar": the profile name only resembles the searched name (usually another person). */
+  relation?: 'similar';
   platform: string;
   platformId: string;
   category: 'Social' | 'Professional' | 'Developer' | 'Video & Streaming';
@@ -168,6 +171,9 @@ function buildPlan(name: string, query: OSINTQuery, depth: string): PlannedCall[
   } else {
     plan.push(google(['prof-linkedin'], 'LinkedIn profiles'));
     plan.push(google(['soc-facebook'], 'Facebook profiles'));
+    // Facebook holds the most public profile information; read a second page of its results.
+    const fbMore = google(['soc-facebook'], 'Facebook profiles (page 2)');
+    plan.push({ ...fbMore, params: { ...fbMore.params, start: 10 } });
     plan.push(google(['soc-instagram'], 'Instagram profiles'));
     plan.push(google(['soc-x'], 'X (Twitter) profiles'));
     plan.push(google(['soc-tiktok', 'soc-threads'], 'TikTok & Threads profiles'));
@@ -276,6 +282,7 @@ const LEVEL_TEXT: Record<NameMatchLevel, string> = {
   exact: 'is exactly',
   reordered: 'matches (different word order)',
   contains_full: 'contains the full name',
+  similar: 'is spelled similarly to',
   partial: 'only partly matches',
   none: 'does not match'
 };
@@ -317,7 +324,7 @@ function scoreProfile(
   if (primary.channelNameFromApi) nameCandidates.unshift(primary.channelNameFromApi);
   if (cand.classified.urlDisplayName) nameCandidates.push(cand.classified.urlDisplayName);
 
-  const order: NameMatchLevel[] = ['exact', 'reordered', 'contains_full', 'partial', 'none'];
+  const order: NameMatchLevel[] = ['exact', 'reordered', 'contains_full', 'similar', 'partial', 'none'];
   let best: { level: NameMatchLevel; text: string } = { level: 'none', text: '' };
   nameCandidates.forEach(nc => {
     const level = compareName(tokens, nc);
@@ -332,7 +339,8 @@ function scoreProfile(
 
   // A profile must carry the searched name itself: as its display name, or as its username
   // together with the full name in the result text. Mentions inside someone else's profile do not count.
-  if (!strongName && !(handleLevel === 'full' && snippetFull)) {
+  const similarName = best.level === 'similar';
+  if (!strongName && !similarName && !(handleLevel === 'full' && snippetFull)) {
     return {
       profile: null,
       rejectReason: best.level === 'partial'
@@ -348,6 +356,10 @@ function scoreProfile(
   if (strongName) {
     score += best.level === 'exact' ? 40 : best.level === 'reordered' ? 36 : 30;
     evidence.push({ code: 'name', text: `Profile name on ${platform} ${LEVEL_TEXT[best.level]} "${best.text}"` });
+  }
+  if (similarName) {
+    score += 20;
+    evidence.push({ code: 'similar_name', text: `Profile name "${best.text}" is spelled similarly to "${targetName}" but not the same: likely another person` });
   }
   if (handleLevel === 'full') {
     score += 15;
@@ -381,7 +393,7 @@ function scoreProfile(
   }
 
   const attributes = extractAttributes(cand.classified.platformId, title, snippet, primary.raw.extensions);
-  const displayName = strongName ? best.text : undefined;
+  const displayName = strongName || similarName ? best.text : undefined;
   const sourceHit = cand.hits.find(h => h.sourcePageUrl);
 
   const profile: DiscoveredProfile = {
@@ -418,6 +430,14 @@ function scoreProfile(
     raw: cand.hits.map(h => h.raw)
   };
   finalizeScore(profile, score, strongName && best.level !== 'contains_full');
+  if (similarName) {
+    // Similar name ≠ same person: kept apart from the subject at low confidence.
+    profile.relation = 'similar';
+    profile.confidence = Math.min(profile.confidence, 40);
+    profile.confidenceLabel = 'Possible Match';
+    profile.confidenceLevel = 'Low';
+    profile.isVerified = false;
+  }
   return { profile };
 }
 
@@ -447,19 +467,26 @@ async function confirmProfiles(
   tokens: string[],
   profiles: DiscoveredProfile[],
   maxCalls: number,
-  auditTrail: SerpCallAudit[]
+  auditTrail: SerpCallAudit[],
+  onStep?: (status: 'done' | 'failed') => void
 ): Promise<{ calls: SerpCallResult[]; rejectedIds: string[]; rejected: NameSearchOutput['rejected'] }> {
   const out = { calls: [] as SerpCallResult[], rejectedIds: [] as string[], rejected: [] as NameSearchOutput['rejected'] };
 
   // Highest-scoring candidate per platform that exposes a username in its URL.
   const targets: Array<{ profile: DiscoveredProfile; engine: SerpEngine }> = [];
   (['soc-facebook', 'soc-instagram'] as const).forEach(pid => {
-    const best = profiles.filter(p => p.platformId === pid && p.username).sort((a, b) => b.confidence - a.confidence)[0];
-    if (best) targets.push({ profile: best, engine: pid === 'soc-facebook' ? 'facebook_profile' : 'instagram_profile' });
+    const ranked = profiles.filter(p => p.platformId === pid && p.username).sort((a, b) => b.confidence - a.confidence);
+    ranked.slice(0, pid === 'soc-facebook' ? 2 : 1)
+      .forEach(best => targets.push({ profile: best, engine: pid === 'soc-facebook' ? 'facebook_profile' : 'instagram_profile' }));
   });
 
-  for (const { profile, engine } of targets.slice(0, maxCalls)) {
-    const res = await serp.request(engine, { profile_id: profile.username });
+  const picked = targets.slice(0, maxCalls);
+  // Profile checks are independent; run them together.
+  const responses = await Promise.all(picked.map(t => serp.request(t.engine, { profile_id: t.profile.username })));
+  for (let i = 0; i < picked.length; i++) {
+    const { profile, engine } = picked[i];
+    const res = responses[i];
+    onStep?.(res.data ? 'done' : 'failed');
     out.calls.push(res);
     const data = res.data?.profile_results;
     auditTrail.push({
@@ -723,7 +750,8 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export class NameSearchEngine {
-  public static async execute(query: OSINTQuery, options: { searchDepth?: string } = {}): Promise<NameSearchOutput> {
+  public static async execute(query: OSINTQuery, options: { searchDepth?: string; onProgress?: ProgressCallback } = {}): Promise<NameSearchOutput> {
+    const progress = options.onProgress;
     const targetName = (query.name || query.queryValue || '').trim().replace(/^["']|["']$/g, '');
     const tokens = nameTokens(targetName);
     const depth = options.searchDepth || 'deep';
@@ -733,7 +761,16 @@ export class NameSearchEngine {
     const plan = buildPlan(targetName, query, depth);
     console.log(`[NameSearchEngine] "${targetName}" — ${plan.length} planned SerpApi calls (${depth})`);
 
-    const results: SerpCallResult[] = await Promise.all(plan.map(c => serp.request(c.engine, c.params)));
+    progress?.({ type: 'plan', steps: [
+      ...plan.map((c, i) => ({ id: `q${i}`, label: c.purpose })),
+      { id: 'confirm', label: 'Facebook & Instagram profile checks' }
+    ] });
+    const results: SerpCallResult[] = await Promise.all(plan.map(async (c, i) => {
+      const r = await serp.request(c.engine, c.params);
+      const n = extractHits(c, r.data).length;
+      progress?.({ type: 'step', id: `q${i}`, status: !r.data ? 'failed' : n === 0 ? 'empty' : r.fromCache ? 'cached' : 'done', count: n, note: !r.data ? (r.error || 'Failed') : `${n} result${n === 1 ? '' : 's'}` });
+      return r;
+    }));
 
     // Bing fallback for the broad query only, and only when Google failed for a reason other than quota.
     const broad = results[0];
@@ -842,15 +879,18 @@ export class NameSearchEngine {
               : PAGE_KIND_LABELS[kind],
           date: cand.hits.find(h => h.raw.date)?.raw.date,
           foundVia: SOURCE_LABEL[primary.resultType],
+          thumbnail: cand.hits.find(h => typeof h.raw.thumbnail === 'string' && /^https?:/.test(h.raw.thumbnail))?.raw.thumbnail,
           raw: cand.hits.map(h => h.raw)
         }
       });
     });
 
     // Confirmation stage: ask SerpApi's profile endpoints about the top Facebook/Instagram candidates.
-    const confirmCalls = depth === 'deep' ? 2 : depth === 'standard' ? 1 : 0;
+    const confirmCalls = depth === 'deep' ? 3 : depth === 'standard' ? 1 : 0;
     if (confirmCalls > 0 && !quotaExhausted) {
-      const confirmed = await confirmProfiles(serp, targetName, tokens, profiles, confirmCalls, auditTrail);
+      let checked = 0;
+      const confirmed = await confirmProfiles(serp, targetName, tokens, profiles, confirmCalls, auditTrail, () => { checked++; });
+      progress?.({ type: 'step', id: 'confirm', status: confirmed.calls.length ? 'done' : 'empty', count: checked, note: confirmed.calls.length ? `${checked} profile${checked === 1 ? '' : 's'} checked` : 'No Facebook/Instagram accounts to check' });
       confirmed.rejected.forEach(r => rejected.push(r));
       confirmed.rejectedIds.forEach(id => {
         const idx = profiles.findIndex(p => p.id === id);
@@ -859,9 +899,14 @@ export class NameSearchEngine {
       results.push(...confirmed.calls);
     }
 
+    if (!(confirmCalls > 0 && !quotaExhausted)) progress?.({ type: 'step', id: 'confirm', status: 'empty', note: 'Skipped' });
+
     linkOwnContent(profiles, webItems);
     profiles.sort((a, b) => b.confidence - a.confidence);
-    const identities = clusterIdentities(targetName, profiles, webItems);
+    // Similar-name profiles are other people: not clustered into anyone, listed alongside for checking.
+    const similarProfiles = profiles.filter(p => p.relation === 'similar');
+    const identities = clusterIdentities(targetName, profiles.filter(p => p.relation !== 'similar'), webItems);
+    identities.forEach(i => { i.profiles = [...i.profiles, ...similarProfiles]; });
     profiles.sort((a, b) => b.confidence - a.confidence);
 
     const platformsChecked = new Set<string>();

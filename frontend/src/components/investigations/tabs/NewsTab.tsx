@@ -1,15 +1,110 @@
-import React from 'react';
-import { Image as ImageIcon } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Image as ImageIcon, Newspaper } from 'lucide-react';
+import type { ExploreItem } from '../../../lib/exploreClient';
+import { mergeItemsIntoCase, subjectQuery } from '../../../lib/caseSave';
+import { useSearchRun } from '../../explore/useSearchRun';
+import { SearchLoader } from '../../ui/SearchLoader';
 import { hostOf, levelOf, openUrl, parseLooseDate, fmtDate, shortUrl, urlKey, type WebItem } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { Empty, LevelBadge, LevelPicker, SectionHead, SourceLogo } from '../workspace/ui';
 import { relevanceText } from './WebTab';
 
 function thumbnailOf(w: WebItem): string | undefined {
+  if (typeof w.metadata?.thumbnail === 'string' && /^https?:/.test(w.metadata.thumbnail)) return w.metadata.thumbnail;
   const raw = w.metadata?.raw;
   if (Array.isArray(raw)) return raw.find((r: any) => typeof r?.thumbnail === 'string' && /^https?:/.test(r.thumbnail))?.thumbnail;
   return undefined;
 }
+
+/**
+ * Gathers news about the subject from Google News and Bing News. Runs by itself the first time the
+ * tab is opened; articles whose headline or summary names the subject are added to the case, the
+ * rest are listed for the investigator to review.
+ */
+const NewsGatherer: React.FC = () => {
+  const { inv, commit } = useWorkspace();
+  const { run, cancel, running, steps } = useSearchRun();
+  const [review, setReview] = useState<{ items: ExploreItem[]; picked: Set<string>; query: string; added: number } | null>(null);
+  const [error, setError] = useState('');
+  const started = useRef(false);
+
+  const gather = useCallback(async () => {
+    setError('');
+    setReview(null);
+    const query = subjectQuery(inv);
+    const out = await run([{ key: 'news', label: 'News', capability: 'news', query }]).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : 'The news search failed.');
+      return null;
+    });
+    if (!out) return;
+    const inCase = new Set((inv.webAndNews || []).map(w => urlKey(w.url)));
+    const fresh = out.news.items.filter(i => !inCase.has(urlKey(i.url)));
+    const confirmed = fresh.filter(i => i.relevance.label === 'Strong match');
+    const others = fresh.filter(i => i.relevance.label !== 'Strong match');
+    const now = new Date().toISOString();
+    commit(current => ({
+      ...(confirmed.length ? mergeItemsIntoCase(current, confirmed, 'News search', query).updated : current),
+      newsCheckedAt: now
+    }));
+    setReview({ items: others, picked: new Set(), query, added: confirmed.length });
+    if (out.news.engines.every(e => e.status === 'error' || e.status === 'quota')) setError(out.news.notices[0] || 'The news engines could not be reached.');
+  }, [inv, run, commit]);
+
+  useEffect(() => {
+    if (started.current || inv.newsCheckedAt) return undefined;
+    started.current = true;
+    const t = setTimeout(() => { gather(); }, 0);
+    return () => clearTimeout(t);
+  }, [inv.newsCheckedAt, gather]);
+
+  const addPicked = () => {
+    if (!review) return;
+    const chosen = review.items.filter(i => review.picked.has(i.id));
+    if (chosen.length === 0) return;
+    commit(current => mergeItemsIntoCase(current, chosen, 'News search (reviewed)', review.query).updated);
+    setReview({ ...review, items: review.items.filter(i => !review.picked.has(i.id)), picked: new Set(), added: review.added + chosen.length });
+  };
+
+  if (running) return <SearchLoader title={`Gathering news about ${subjectQuery(inv)}`} steps={steps} onCancel={cancel} />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button type="button" className="ws-btn" onClick={gather}><Newspaper size={15} /> Check for new articles</button>
+        <span className="ws-sub">
+          {inv.newsCheckedAt ? `Last checked ${fmtDate(inv.newsCheckedAt, true)} · ` : ''}Google News and Bing News (2 searches). Only articles naming {subjectQuery(inv)} are added automatically.
+        </span>
+      </div>
+      {error && <span style={{ color: '#b45309', fontSize: 14 }}>{error}</span>}
+      {review && (
+        <div className="ws-empty" style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <b>{review.added} article{review.added === 1 ? '' : 's'} naming the subject added{review.items.length ? ` · ${review.items.length} other article${review.items.length === 1 ? '' : 's'} to review` : ''}</b>
+          {review.items.length > 0 && (
+            <>
+              <span className="ws-sub">These articles only partly match the name. Add the ones that are about this person.</span>
+              <div style={{ maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {review.items.map(i => (
+                  <label key={i.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14.5, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={review.picked.has(i.id)} style={{ marginTop: 4, accentColor: 'var(--accent-warm)' }}
+                      onChange={() => setReview(r => { if (!r) return r; const n = new Set(r.picked); if (n.has(i.id)) n.delete(i.id); else n.add(i.id); return { ...r, picked: n }; })} />
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <a href={i.url} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: 'var(--ws-text)' }}>{i.title}</a>
+                      <span className="ws-sub">{i.author || i.domain}{i.publishedAt ? ` · ${fmtDate(i.publishedAt)}` : i.publishedText ? ` · ${i.publishedText}` : ''} · {i.relevance.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <button type="button" className="ws-btn ws-btn-primary" onClick={addPicked} disabled={review.picked.size === 0}>Add {review.picked.size} to case</button>
+                <button type="button" className="ws-btn" onClick={() => setReview({ ...review, items: [] })}>Dismiss</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const NewsTab: React.FC = () => {
   const { inv, d, setLevel, goTab } = useWorkspace();
@@ -27,7 +122,8 @@ export const NewsTab: React.FC = () => {
     <div className="ws-with-rail">
       <div>
         <SectionHead title="News & articles" count={items.length} noRule right={<span className="ws-sub">Newest first</span>} />
-        {items.length === 0 && <Empty title="No news coverage was kept">No news article naming the subject was returned by the searches.</Empty>}
+        <div style={{ margin: '4px 0 18px' }}><NewsGatherer /></div>
+        {items.length === 0 && <Empty title="No news coverage was kept">No news article naming the subject has been found yet.</Empty>}
         {items.map(w => {
           const key = urlKey(w.url);
           const sid = d.sourceByKey.get(key)?.sid;

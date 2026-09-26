@@ -1,0 +1,50 @@
+/* Search intelligence: mode switch and "Did you mean / Showing results for" banner. Uses the app theme tokens. */
+.qi-mode { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg-hover); border: 1px solid var(--border-color); }
+.qi-mode button { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600; }
+.qi-mode button.on { background: var(--bg-card); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.qi-mode button.on svg { color: var(--accent-warm); }
+
+.qi-banner { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border: 1px solid var(--accent-warm-border); background: var(--accent-warm-subtle); border-radius: var(--radius-lg, 12px); font-size: 0.9rem; color: var(--text-primary); }
+.qi-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.qi-icon { color: var(--accent-warm); flex-shrink: 0; }
+.qi-muted { color: var(--text-muted); font-size: 0.85rem; }
+.qi-link { background: none; padding: 0; color: var(--accent-warm); font-weight: 600; text-decoration: underline; font-size: inherit; }
+.qi-suggest { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 0.88rem; }
+.qi-suggest.first { border-color: var(--accent-warm-border); color: var(--text-warm); }
+.qi-suggest:hover { border-color: var(--accent-warm); }
+.qi-pill { display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; text-transform: capitalize; }
+.qi-high { background: rgba(16, 185, 129, 0.15); color: #047857; }
+.qi-medium { background: rgba(245, 158, 11, 0.18); color: #92400e; }
+.qi-low { background: var(--bg-hover); color: var(--text-muted); }
+:root:not([data-theme="light"]) .qi-high { color: #34d399; }
+:root:not([data-theme="light"]) .qi-medium { color: #fbbf24; }
+.qi-reason { font-size: 0.8rem; color: var(--text-secondary); padding-left: 23px; }
+.qi-warn { color: #b45309; font-size: 0.84rem; }
+.qi-case { font-size: 0.86rem; }
+.qi-case svg { color: var(--accent-warm); }
+.qi-related { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qi-chip { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; }
+.qi-chip:hover { color: var(--text-primary); border-color: var(--accent-warm-border); }
+.qi-toggle { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; background: none; padding: 0; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600; }
+.qi-path { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.qi-path ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.qi-path li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 2px 12px; padding: 6px 0 6px 14px; border-left: 2px solid var(--accent-warm-border); position: relative; font-size: 0.84rem; }
+.qi-path li::before { content: ''; position: absolute; left: -5px; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-warm); }
+.qi-path li span { color: var(--text-muted); }
+.qi-path li b { overflow-wrap: anywhere; }
+.qi-path li em { grid-column: 2; font-style: normal; color: var(--text-muted); font-size: 0.78rem; }
+.qi-evidence { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; }
+.qi-evidence a { color: var(--text-primary); overflow-wrap: anywhere; }
+.qi-evidence a:hover { color: var(--accent-warm); }
+@media (max-width: 640px) {
+  .qi-path li { grid-template-columns: minmax(0, 1fr); }
+  .qi-path li em { grid-column: 1; }
+}
+
+/* Web results shown when the main search came back empty */
+.qi-web { display: flex; flex-direction: column; gap: 2px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
+.qi-web-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border-color); color: var(--text-primary); text-decoration: none; font-size: 0.86rem; }
+.qi-web-row:last-child { border-bottom: 0; }
+.qi-web-row:hover b { color: var(--accent-warm); }
+.qi-web-row img { width: 56px; height: 42px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.qi-web-snippet { display: block; color: var(--text-secondary); font-size: 0.8rem; margin-top: 2px; }

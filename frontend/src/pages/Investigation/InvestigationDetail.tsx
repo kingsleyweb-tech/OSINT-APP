@@ -8,7 +8,7 @@ import { useToast } from '../../components/ui/Toast';
 import { useNotifications } from '../../context/NotificationContext';
 import { getApiBase } from '../../lib/searchClient';
 import {
-  downloadFile, fmtDate, fmtTime, LEVEL_LABEL, newAuditEvent, ownerName, safeFileName, searchLogFromTrail
+  downloadFile, toCsv, fmtDate, fmtTime, LEVEL_LABEL, newAuditEvent, ownerName, safeFileName, searchLogFromTrail
 } from '../../lib/workspace';
 import { WorkspaceContext, derive, type TabKey, type WorkspaceApi } from '../../components/investigations/workspace/WorkspaceContext';
 import { OverviewTab } from '../../components/investigations/tabs/OverviewTab';
@@ -18,6 +18,8 @@ import { AssociationsTab } from '../../components/investigations/tabs/Associatio
 import { SourcesTab } from '../../components/investigations/tabs/SourcesTab';
 import { WebTab } from '../../components/investigations/tabs/WebTab';
 import { NewsTab } from '../../components/investigations/tabs/NewsTab';
+import { ImagesTab } from '../../components/investigations/tabs/ImagesTab';
+import { SearchLoader } from '../../components/ui/SearchLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
 import '../../styles/Workspace.css';
@@ -30,6 +32,7 @@ const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 
   { key: 'sources', label: 'Sources', group: 'Evidence' },
   { key: 'web', label: 'Web', group: 'Evidence' },
   { key: 'news', label: 'News', group: 'Evidence' },
+  { key: 'images', label: 'Images', group: 'Evidence' },
   { key: 'metrics', label: 'Metrics', group: 'Record' },
   { key: 'audit', label: 'Audit', group: 'Record' }
 ];
@@ -130,6 +133,9 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     );
   }, [commit]);
 
+  // Cases created from a search (not a name/username search) have nothing to re-run.
+  const canRerun = Boolean(investigation?.searchInputs?.searchType || investigation?.searchType);
+
   const rerun = useCallback(async () => {
     const current = invRef.current;
     if (!current) return;
@@ -169,6 +175,18 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
       setIsRescanning(false);
     }
   }, [persist, toast, addNotification]);
+
+  /** One CSV with every saved profile, web/news result, activity, association and source. */
+  const exportCsv = () => {
+    if (!investigation) return;
+    const rows: Array<Array<string | number>> = [['Section', 'Title', 'Platform / source', 'URL', 'Published', 'Discovered', 'Detail']];
+    (investigation.socialProfiles || []).forEach(p => rows.push(['Profile', p.profileName || p.title || p.username, p.platform, p.profileUrl || p.url, '', p.discoveredAt || '', p.confidenceLabel || p.confidenceLevel]));
+    (investigation.webAndNews || []).forEach(w => rows.push(['Web & news', w.title, w.source, w.url, String(w.metadata?.publishedAt || w.metadata?.date || ''), w.discoveredAt || '', w.sourceType]));
+    (investigation.activities || []).forEach(a => rows.push(['Activity', a.title, a.sourceName, a.sourceUrl, a.date, a.foundAt || '', a.category]));
+    (investigation.associations || []).forEach(a => rows.push(['Association', a.name, a.sourceName || '', a.sourceUrl || '', '', '', `${a.category} · ${a.evidenceState}`]));
+    (investigation.sources || []).forEach(s => rows.push(['Source', s.title, s.sourceName, s.url, s.publishedDate || '', s.discoveredDate, s.sourceType]));
+    downloadFile(`OSINT-${safeFileName(investigation.name)}-${Date.now()}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
+  };
 
   const exportJson = () => {
     if (!investigation) return;
@@ -275,9 +293,9 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           <div className="ws-actions">
             <button type="button" className="ws-btn hide-mobile" onClick={exportJson}><Download size={16} /> Export</button>
-            <button type="button" className="ws-btn hide-mobile" onClick={rerun} disabled={isRescanning}>
+            {canRerun && <button type="button" className="ws-btn hide-mobile" onClick={rerun} disabled={isRescanning}>
               {isRescanning ? <Loader2 size={16} className="spinning" /> : <RotateCw size={16} />} {isRescanning ? 'Re-running…' : 'Re-run searches'}
-            </button>
+            </button>}
             <button type="button" className="ws-btn ws-icon-btn" onClick={() => setMenuOpen(o => !o)} aria-label="More actions" aria-expanded={menuOpen}>
               <MoreHorizontal size={18} />
             </button>
@@ -287,7 +305,8 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
             {menuOpen && (
               <div className="ws-menu" onMouseLeave={() => setMenuOpen(false)}>
                 <button type="button" onClick={toggleTrack}><Bookmark size={15} /> {investigation.isTracked ? 'Stop tracking' : 'Track person'}</button>
-                <button type="button" onClick={() => { setMenuOpen(false); rerun(); }} disabled={isRescanning}><RotateCw size={15} /> Re-run searches</button>
+                {canRerun && <button type="button" onClick={() => { setMenuOpen(false); rerun(); }} disabled={isRescanning}><RotateCw size={15} /> Re-run searches</button>}
+                <button type="button" onClick={() => { setMenuOpen(false); exportCsv(); }}><Download size={15} /> Export CSV (spreadsheet)</button>
                 <button type="button" onClick={() => { setMenuOpen(false); exportJson(); }}><Download size={15} /> Export JSON</button>
                 <button type="button" onClick={() => { setMenuOpen(false); copyId(); }}><Copy size={15} /> Copy investigation ID</button>
               </div>
@@ -316,13 +335,15 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           {currentTab === 'associations' && <AssociationsTab />}
           {currentTab === 'sources' && <SourcesTab />}
           {currentTab === 'web' && <WebTab />}
+          {isRescanning && <SearchLoader overlay title={`Re-running searches for ${investigation.name}`} />}
           {currentTab === 'news' && <NewsTab />}
+          {currentTab === 'images' && <ImagesTab />}
           {currentTab === 'metrics' && <MetricsTab />}
           {currentTab === 'audit' && <AuditTab />}
         </div>
 
         <div className="ws-mobile-bar">
-          <button type="button" className="ws-btn" onClick={rerun} disabled={isRescanning}>{isRescanning ? 'Re-running…' : 'Re-run searches'}</button>
+          {canRerun && <button type="button" className="ws-btn" onClick={rerun} disabled={isRescanning}>{isRescanning ? 'Re-running…' : 'Re-run searches'}</button>}
           <button type="button" className={`ws-btn${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack}>{investigation.isTracked ? 'Tracked ✓' : 'Track person'}</button>
         </div>
 

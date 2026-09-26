@@ -3,7 +3,8 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { LevelBadge, SectionHead, SourceLogo } from '../workspace/ui';
 import {
-  assocKey, fmtDate, fmtShortDate, levelOf, parseLooseDate, profileKey, profileTypeLabel, shortUrl
+  assocKey, fmtDate, fmtShortDate, levelOf, parseLooseDate, profileKey, profileTypeLabel, shortUrl,
+  isSimilarProfile, isSimilarActivity, similarProfileKeys
 } from '../../../lib/workspace';
 import type { EvidenceLevel } from '../../../types/investigation';
 
@@ -11,8 +12,9 @@ const LEVEL_RANK: Record<EvidenceLevel, number> = { validated: 2, relevant: 1, r
 
 export const OverviewTab: React.FC = () => {
   const { inv, d, goTab } = useWorkspace();
-  const profiles = inv.socialProfiles || [];
-  const activities = inv.activities || [];
+  const similarKeys = similarProfileKeys(inv);
+  const profiles = (inv.socialProfiles || []).filter(p => !isSimilarProfile(p));
+  const activities = (inv.activities || []).filter(a => !isSimilarActivity(a, similarKeys));
   const associations = inv.associations || [];
   const ref = inv.lastSearched || inv.createdAt;
 

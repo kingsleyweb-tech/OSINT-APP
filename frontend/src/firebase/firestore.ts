@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from './config';
 import type { Investigation } from '../types/investigation';
-import type { UserProfile } from '../types/user';
+import type { UserProfile, SearchHistoryEntry } from '../types/user';
 
 /**
  * Firestore layout (every document belongs to exactly one user):
@@ -270,4 +270,38 @@ export async function deleteAllUserDataFromDb(uid: string): Promise<void> {
   await deleteAllInvestigationsFromDb(uid);
   await deleteAllNotificationsFromDb(uid);
   await deleteDoc(doc(db, USERS, uid));
+}
+
+// ─── Search history (users/{uid}.searchHistory) ──────────────────────────────
+
+const MAX_HISTORY = 100;
+
+/** Adds a search to the front of the user's history (keeps the newest MAX_HISTORY). */
+export async function addSearchHistoryInDb(uid: string, entry: SearchHistoryEntry): Promise<void> {
+  const ref = doc(db, USERS, uid);
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const current: SearchHistoryEntry[] = (snap.exists() ? (snap.data() as UserProfile).searchHistory : undefined) || [];
+    const next = [clean(entry), ...current.filter(e => e.id !== entry.id)].slice(0, MAX_HISTORY);
+    if (snap.exists()) tx.update(ref, { searchHistory: next });
+    else tx.set(ref, { searchHistory: next }, { merge: true });
+  });
+}
+
+export async function updateSearchHistoryInDb(uid: string, id: string, patch: Partial<SearchHistoryEntry>): Promise<void> {
+  const ref = doc(db, USERS, uid);
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const current: SearchHistoryEntry[] = (snap.exists() ? (snap.data() as UserProfile).searchHistory : undefined) || [];
+    tx.update(ref, { searchHistory: current.map(e => (e.id === id ? clean({ ...e, ...patch }) : e)) });
+  });
+}
+
+export async function removeSearchHistoryInDb(uid: string, ids: string[] | 'all'): Promise<void> {
+  const ref = doc(db, USERS, uid);
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const current: SearchHistoryEntry[] = (snap.exists() ? (snap.data() as UserProfile).searchHistory : undefined) || [];
+    tx.update(ref, { searchHistory: ids === 'all' ? [] : current.filter(e => !ids.includes(e.id)) });
+  });
 }

@@ -60,7 +60,10 @@ export function buildNameInvestigation(
 ): any {
   const nowIso = new Date().toISOString();
   const name = (query.name || query.queryValue || '').trim();
-  const profiles = identity?.profiles || [];
+  const allProfiles = identity?.profiles || [];
+  // Similar-name profiles (other people) are listed but never feed the subject's activity, associations or counts.
+  const profiles = allProfiles.filter(p => p.relation !== 'similar');
+  const similarProfiles = allProfiles.filter(p => p.relation === 'similar');
   const webItems = identity?.webItems || [];
 
   const analyzed = EntityAnalyzer.analyze(query, [...webItems, ...profiles.map(profileAsResultItem)]);
@@ -112,7 +115,7 @@ export function buildNameInvestigation(
       activities: activities.length,
       associations: associations.length
     },
-    socialProfiles: profiles,
+    socialProfiles: [...profiles, ...similarProfiles],
     webAndNews: webItems,
     recentActivities: activities.map(a => ({ type: a.category.toLowerCase(), title: a.title, platform: a.sourceName, timestamp: a.date, url: a.sourceUrl })),
     activities,
@@ -150,11 +153,12 @@ export function buildIdentityPayload(query: OSINTQuery, identity: IdentityCluste
     confidenceScore: identity.confidenceScore,
     confidenceLabel: identity.confidenceLabel,
     evidenceChecklist: identity.evidenceChecklist,
-    profilesCount: investigation.socialProfiles.length,
+    profilesCount: investigation.socialProfiles.filter((p: any) => p.relation !== 'similar').length,
+    similarAccountsCount: investigation.socialProfiles.filter((p: any) => p.relation === 'similar').length,
     sourcesCount: investigation.sources.length,
     activitiesCount: investigation.activities.length,
     associationsCount: investigation.associations.length,
-    matchingPlatforms: Array.from(new Set(identity.profiles.map(p => p.platform))),
+    matchingPlatforms: Array.from(new Set(identity.profiles.filter(p => p.relation !== 'similar').map(p => p.platform))),
     investigation
   };
 }

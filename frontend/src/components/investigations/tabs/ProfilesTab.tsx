@@ -5,8 +5,9 @@ import { checkLinkHealth } from '../../../lib/searchClient';
 import { openProfile, UNAVAILABLE_MESSAGE } from '../../../lib/profileDisplay';
 import {
   fmtDate, fmtShortDate, hostOf, kindLabel, kindOf, levelOf, openUrl, profileEvidence, profileKey, profileTypeLabel,
-  shortUrl, urlKey, type WebItem
+  shortUrl, urlKey, isSimilarProfile, type WebItem
 } from '../../../lib/workspace';
+import { SimilarAccounts } from '../workspace/SimilarAccounts';
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { Chips, Empty, LevelBadge, LevelPicker, LinkStatus, SectionHead, SourceLogo } from '../workspace/ui';
 
@@ -36,7 +37,10 @@ const GROUPS: Array<{ kinds: RowKind[]; title: string }> = [
 
 export const ProfilesTab: React.FC = () => {
   const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
-  const profiles = inv.socialProfiles || [];
+  const allProfiles = useMemo(() => inv.socialProfiles || [], [inv.socialProfiles]);
+  // Similar accounts are other people: listed separately below, not as this person's profiles.
+  const profiles = useMemo(() => allProfiles.filter(p => !isSimilarProfile(p)), [allProfiles]);
+  const similar = useMemo(() => allProfiles.filter(isSimilarProfile), [allProfiles]);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('any');
@@ -117,8 +121,15 @@ export const ProfilesTab: React.FC = () => {
     else openUrl(r.url);
   };
 
+  const similarList = <SimilarAccounts what="profiles" items={similar.map(p => ({ key: profileKey(p), title: p.profileName || (p.username ? `@${p.username}` : p.platform), platform: p.platform, url: (p.profileUrl || p.url) as string }))} />;
+
   if (rows.length === 0 && d.buckets.social.length === 0) {
-    return <Empty title="No profiles were found">The searches returned no profile pages that carry this name or username.</Empty>;
+    return (
+      <>
+        <Empty title="No profiles were found">The searches returned no profile pages that carry this name or username.</Empty>
+        {similarList}
+      </>
+    );
   }
 
   return (
@@ -179,6 +190,8 @@ export const ProfilesTab: React.FC = () => {
               </table>
             </div>
           )}
+
+          {similarList}
 
           {d.buckets.social.length > 0 && (
             <div className="ws-section" style={{ marginTop: 32 }}>

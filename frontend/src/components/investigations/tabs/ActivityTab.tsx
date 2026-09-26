@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import type { EvidenceLevel, IntelligenceActivity } from '../../../types/investigation';
 import {
-  ACTIVITY_TYPE_GROUPS, activityType, fmtDate, hostOf, levelOf, openUrl, parseLooseDate, shortUrl, urlKey, type ActivityType
+  ACTIVITY_TYPE_GROUPS, activityType, fmtDate, hostOf, levelOf, openUrl, parseLooseDate, shortUrl, urlKey, isSimilarActivity, similarProfileKeys, type ActivityType
 } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { Chips, Empty, LevelBadge, SourceLogo } from '../workspace/ui';
+import { SimilarAccounts } from '../workspace/SimilarAccounts';
 
 interface Item {
   a: IntelligenceActivity;
@@ -19,7 +20,11 @@ const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).pad
 
 export const ActivityTab: React.FC = () => {
   const { inv, d, goTab } = useWorkspace();
-  const activities = inv.activities || [];
+  // Activity of similar accounts (other people) is listed separately, not in this person's timeline.
+  const similarKeys = useMemo(() => similarProfileKeys(inv), [inv]);
+  const activities = useMemo(() => (inv.activities || []).filter(a => !isSimilarActivity(a, similarKeys)), [inv.activities, similarKeys]);
+  const similarActivities = useMemo(() => (inv.activities || []).filter(a => isSimilarActivity(a, similarKeys)), [inv.activities, similarKeys]);
+  const similarList = <SimilarAccounts what="activity" items={similarActivities.map(a => ({ key: a.id, title: a.title, platform: a.sourceName, url: a.sourceUrl }))} />;
   const ref = inv.lastSearched || inv.createdAt;
   const [typeFilter, setTypeFilter] = useState('all');
   const [platforms, setPlatforms] = useState<Set<string>>(new Set());
@@ -83,7 +88,12 @@ export const ActivityTab: React.FC = () => {
   const allDated = items.filter(i => i.date).map(i => i.date!.getTime());
 
   if (activities.length === 0) {
-    return <Empty title="No activity was found">No posts, videos, articles or mentions were kept for this investigation.</Empty>;
+    return (
+      <>
+        <Empty title="No activity was found for this person">No posts, videos, articles or mentions of this person were kept.</Empty>
+        {similarList}
+      </>
+    );
   }
 
   const renderItem = (i: Item) => {
@@ -133,6 +143,7 @@ export const ActivityTab: React.FC = () => {
             {m.items.map(renderItem)}
           </div>
         ))}
+        {similarList}
       </div>
 
       <aside className="ws-rail">

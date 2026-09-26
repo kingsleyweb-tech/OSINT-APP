@@ -374,3 +374,21 @@ export function toCsv(rows: Array<Array<string | number>>): string {
 }
 
 export const safeFileName = (s: string) => s.replace(/[^\w.-]+/g, '_').slice(0, 60);
+
+// ─── Similar accounts (other people) ─────────────────────────────────────────
+
+const SIMILAR_TEXT = /^similar username/i;
+
+/** A profile whose handle only resembles the searched username: another person. */
+export function isSimilarProfile(p: SocialProfile): boolean {
+  return p.relation === 'similar' || SIMILAR_TEXT.test(p.bio || '') || SIMILAR_TEXT.test(p.snippet || '');
+}
+
+/** Activity that belongs to a similar account rather than the subject. */
+export function isSimilarActivity(a: IntelligenceActivity, similarKeys?: Set<string>): boolean {
+  return a.relation === 'similar' || SIMILAR_TEXT.test(a.briefReport || '') || Boolean(similarKeys?.has(urlKey(a.sourceUrl)));
+}
+
+export function similarProfileKeys(inv: Investigation): Set<string> {
+  return new Set((inv.socialProfiles || []).filter(isSimilarProfile).map(p => urlKey(p.profileUrl || p.url)));
+}

@@ -1,3 +1,4 @@
+import { editDistance } from '../queryIntel/fuzzy';
 import { OSINTQuery } from '../../types/search';
 import { UrlValidator, ResultItemType } from './urlValidator';
 
@@ -128,26 +129,56 @@ export class RelevanceEngine {
       return { isExactMatch: false, isVariationMatch: false, isPartialMatch: false };
     }
 
+    // Exact means the same characters, punctuation included; the same letters/digits with different
+    // punctuation (99_name vs 99.name_) is a spelling variation.
+    const rawTarget = targetUsername.trim().replace(/^@+/, '').toLowerCase();
+    const alnum = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+
     // 1. Check extracted handle
-    if (normHandle) {
-      if (normHandle === normTarget) {
+    if (normHandle && extractedHandle) {
+      if (extractedHandle.replace(/^@+/, '').toLowerCase() === rawTarget) {
         return { isExactMatch: true, isVariationMatch: false, isPartialMatch: false };
       }
-      // Check normalized variation (ignoring underscores/dots)
-      if (normHandle.replace(/[^a-z0-9]/g, '') === normTarget.replace(/[^a-z0-9]/g, '')) {
+      if (alnum(extractedHandle) === alnum(rawTarget)) {
         return { isExactMatch: false, isVariationMatch: true, isPartialMatch: false };
       }
     }
 
     // 2. Check in text
-    if (normText.includes(normTarget)) {
+    const escaped = rawTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`(^|[^a-z0-9_.])@?${escaped}($|[^a-z0-9_])`, 'i').test(text)) {
       return { isExactMatch: true, isVariationMatch: false, isPartialMatch: false };
     }
-
-    const cleanTarget = normTarget.replace(/[^a-z0-9]/g, '');
-    const cleanText = normText.replace(/[^a-z0-9]/g, '');
-    if (cleanTarget.length > 3 && cleanText.includes(cleanTarget)) {
+    // Same username with different punctuation, written as a handle in the text (@99.name_ for 99_name).
+    // A plain word is not enough: "Adjoate Street" is not the account "adjoate_".
+    const textHandles = Array.from(text.matchAll(/@([\w.]+)/g)).map(m => alnum(m[1]));
+    if (alnum(rawTarget).length >= 4 && textHandles.includes(alnum(rawTarget))) {
       return { isExactMatch: false, isVariationMatch: true, isPartialMatch: false };
+    }
+
+    // 3. Similar handle: the account handle contains the username's main word (letters only, 6+),
+    //    e.g. "humbledchild99" or "humblechild.co" for "99_humblechild". A different account.
+    const core = normTarget.replace(/[^a-z]/g, '');
+    if (normHandle && core.length >= 6 && normHandle.replace(/[^a-z]/g, '').includes(core)) {
+      return { isExactMatch: false, isVariationMatch: false, isPartialMatch: true };
+    }
+    // A handle one or two characters away from the username (a typo or near-miss) is similar.
+    if (normHandle && extractedHandle) {
+      const h = alnum(extractedHandle), t = alnum(rawTarget);
+      const allowed = t.length >= 10 ? 2 : t.length >= 6 ? 1 : 0;
+      if (allowed > 0 && Math.abs(h.length - t.length) <= allowed && editDistance(h, t) <= allowed) {
+        return { isExactMatch: false, isVariationMatch: false, isPartialMatch: true };
+      }
+    }
+    // Usernames with a number: a handle with the same number and the first 6+ letters of the word
+    // (e.g. "humble99" for "99_humblechild") is also similar.
+    const digits = normTarget.replace(/[^0-9]/g, '');
+    if (normHandle && digits && core.length >= 6) {
+      const hLetters = normHandle.replace(/[^a-z]/g, '');
+      const hDigits = normHandle.replace(/[^0-9]/g, '');
+      if (hDigits === digits && hLetters.includes(core.slice(0, 6))) {
+        return { isExactMatch: false, isVariationMatch: false, isPartialMatch: true };
+      }
     }
 
     return { isExactMatch: false, isVariationMatch: false, isPartialMatch: false };
@@ -192,6 +223,7 @@ export class RelevanceEngine {
     let urlMatchScore = 0;
     let contextMatchScore = 0;
     let tokenCoverage = 0;
+    let similarUsername = false;
 
     if (isUsernameSearch) {
       // USERNAME SEARCH SCORING
@@ -210,6 +242,14 @@ export class RelevanceEngine {
         snippetMatchScore = 15;
         urlMatchScore = urlValidation.isVerifiedProfileUrl ? 20 : 10;
         tokenCoverage = 75;
+      } else if (uUrlMatch.isPartialMatch && (urlValidation.isVerifiedProfileUrl || urlValidation.extractedHandle)) {
+        // A profile, or a post/video whose account handle is similar (e.g. tiktok.com/@name/video/…).
+        // A real profile whose handle is similar: kept at low confidence, labelled "Similar username".
+        titleMatchScore = 15;
+        snippetMatchScore = 10;
+        urlMatchScore = 10;
+        tokenCoverage = 50;
+        similarUsername = true;
       } else {
         // Penalty if username target not found
         titleMatchScore = 0;
@@ -273,6 +313,10 @@ export class RelevanceEngine {
 
     // Cap score range [0, 99]
     score = Math.min(99, Math.max(0, Math.round(score)));
+
+    // A similar (not exact) handle is never scored above "Possible Match".
+    // Kept (at the lowest accepted score for posts) but never above "Possible Match".
+    if (similarUsername) score = Math.min(Math.max(score, 50), 60);
 
     // Rejection Threshold (< 50)
     let accepted = score >= 50;

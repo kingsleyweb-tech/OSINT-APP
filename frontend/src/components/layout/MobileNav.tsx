@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import '../../styles/MobileNav.css';
+import { NAV_SECTIONS, isNavActive } from './navItems';
 
 interface MobileNavProps {
   isOpen?: boolean;
@@ -92,6 +93,27 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               </NavLink>
             );
           })}
+        </nav>
+
+        {/* Search and analysis pages, grouped compactly under the main links */}
+        <nav className="brutalist-menu-sections" aria-label="Search and analyse">
+          {NAV_SECTIONS.filter(s => s.title && s.title !== 'More').map(section => (
+            <div key={section.title} className="brutalist-menu-section">
+              <div className="brutalist-menu-section-title">{section.title}</div>
+              <div className="brutalist-menu-section-links">
+                {section.items.map(item => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={`brutalist-menu-sublink ${isNavActive(item.path, location.pathname) ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Footer Section with User Profile Badge & Logout */}

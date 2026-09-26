@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowUpRight, 
   ChevronRight, 
@@ -7,12 +7,16 @@ import {
   Loader2
 } from 'lucide-react';
 import { PlatformIcon } from '../../components/ui/PlatformIcon';
-import { CoilingSnakeLoader } from '../../components/search/CoilingSnakeLoader';
+import { SearchLoader } from '../../components/ui/SearchLoader';
+import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
+import { useSearchMode } from '../../components/search/useIntelligentSearch';
+import { useProfilerSearch } from '../../components/search/useProfilerSearch';
+import { linkHistoryToCase } from '../../lib/history';
 import { PossibleIdentitiesView, type DiscoveredIdentity } from '../../components/search/PossibleIdentitiesView';
 import type { Investigation } from '../../types/investigation';
 import { subscribeToUserInvestigations, saveInvestigationToDb } from '../../firebase/firestore';
 import { useToast } from '../../components/ui/Toast';
-import { runSearch, identityToInvestigation, SearchError } from '../../lib/searchClient';
+import { identityToInvestigation, SearchError } from '../../lib/searchClient';
 import { useNotifications } from '../../context/NotificationContext';
 import { useSession } from '../../context/SessionContext';
 import { DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
@@ -33,6 +37,8 @@ type SearchType = typeof SEARCH_TYPES[number];
 export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
   const { error: toastError } = useToast();
+  const profiler = useProfilerSearch();
+  const [searchMode, setSearchMode] = useSearchMode();
   const { addNotification } = useNotifications();
   const { profile } = useSession();
   const searchDefaults = { ...DEFAULT_SEARCH_DEFAULTS, ...(profile?.searchDefaults || {}) };
@@ -164,9 +170,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     }
   };
 
-  const handleSearchSubmit = async (e?: React.FormEvent) => {
+  const handleSearchSubmit = async (e?: React.FormEvent, opts: { q?: string; keepOriginal?: boolean; chosen?: string } = {}) => {
     if (e) e.preventDefault();
-    const query = queryInput.trim();
+    const query = (opts.q ?? queryInput).trim();
     if (!query) {
       toastError('Input required', 'Please enter a target name or username.');
       return;
@@ -178,9 +184,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     setDiscoveredIdentities(null);
 
     try {
-      const identities = await runSearch(query, searchType, searchDefaults.depth);
+      const outcome = await profiler.run(query, searchType, searchDefaults.depth, { mode: searchMode, cases: realInvestigations, keepOriginal: opts.keepOriginal, chosen: opts.chosen });
+      if (outcome.openCaseId) {
+        navigate(`/investigations/${outcome.openCaseId}`);
+        return;
+      }
+      const identities = outcome.identities;
+      // A confident correction was searched: the case is named after what was actually searched.
+      setActiveQuery(outcome.searchQuery);
       setDiscoveredIdentities(identities);
     } catch (err: any) {
+      if (err instanceof SearchError && err.title === 'Search cancelled') return;
       toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
     } finally {
       setIsLoading(false);
@@ -196,18 +210,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
       searchDepth: searchDefaults.depth
     });
 
-    try {
-      await saveInvestigationToDb(invData);
-      sessionStorage.setItem(`osint_inv_${invData.id}`, JSON.stringify(invData));
-      addNotification({
+    // Open the case at once; saving to Firestore continues in the background.
+    try { sessionStorage.setItem(`osint_inv_${invData.id}`, JSON.stringify(invData)); } catch { /* storage full */ }
+    linkHistoryToCase(profiler.historyId.current, invData.id);
+    saveInvestigationToDb(invData)
+      .then(() => addNotification({
         type: 'investigation_saved',
         title: 'Identity Confirmed',
         message: `Investigation created for "${invData.name}".`,
         targetInvestigationId: invData.id
+      }))
+      .catch(err => {
+        console.error('Save investigation error:', err);
+        toastError('Case not saved', 'The case opened, but it could not be saved to your account. Check your connection.');
       });
-    } catch (err) {
-      console.error("Save investigation error:", err);
-    }
 
     setRealInvestigations(prev => [invData, ...prev.filter(i => i.id !== invData.id)]);
     navigate(`/investigations/${invData.id}`, { state: { investigation: invData } });
@@ -216,7 +232,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   if (discoveredIdentities) {
     return (
       <div className="dashboard-command-center">
-        {isLoading && <CoilingSnakeLoader query={activeQuery || queryInput} searchType={searchType} />}
+        {profiler.running && <SearchLoader overlay query={activeQuery || queryInput} steps={profiler.steps} onCancel={profiler.cancel} />}
+        <div style={{ marginBottom: 16 }}>
+          <QueryIntelBanner intel={profiler.intel} cases={realInvestigations}
+            resultCount={discoveredIdentities.reduce((n, i) => n + i.profilesCount, 0)}
+            onSearch={q2 => { setQueryInput(q2); handleSearchSubmit(undefined, { q: q2, chosen: profiler.intel?.corrections.some(c => c.query === q2) ? q2 : undefined }); }}
+            onSearchOriginal={() => { if (profiler.intel) { setQueryInput(profiler.intel.original); handleSearchSubmit(undefined, { q: profiler.intel.original, keepOriginal: true }); } }} />
+        </div>
         <PossibleIdentitiesView
           query={activeQuery}
           identities={discoveredIdentities}
@@ -229,7 +251,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
 
   return (
     <div className="dashboard-command-center">
-      {isLoading && <CoilingSnakeLoader query={activeQuery || queryInput} searchType={searchType} />}
+      {profiler.running && <SearchLoader overlay query={activeQuery || queryInput} steps={profiler.steps} onCancel={profiler.cancel} />}
 
       <div className="dash-hero-search-section">
         <div className="dash-hero-search-card">
@@ -249,6 +271,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
                   {t}
                 </button>
               ))}
+            {searchType === 'Name' && <SearchModeToggle mode={searchMode} onChange={setSearchMode} />}
             </div>
 
             <form className="hero-search-form" onSubmit={handleSearchSubmit}>
@@ -277,6 +300,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
                 </button>
               </div>
             </form>
+
+            <nav className="dash-other-searches" aria-label="Other searches">
+              <span>Other searches:</span>
+              <Link to="/search/social">Social posts</Link>
+              <Link to="/search/news">News</Link>
+              <Link to="/search/media">Images &amp; videos</Link>
+              <Link to="/search/geo">Places near a location</Link>
+              <Link to="/search/trends">Trends</Link>
+            </nav>
           </div>
 
           <div className="dash-hero-right">
