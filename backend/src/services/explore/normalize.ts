@@ -245,6 +245,8 @@ function mapsUrl(r: Raw): string | undefined {
   if (r.place_id) return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(r.place_id)}`;
   const g = r.gps_coordinates;
   if (g?.latitude != null && g?.longitude != null) return `https://www.google.com/maps/search/?api=1&query=${g.latitude},${g.longitude}`;
+  if (r.link) return r.link;
+  if (r.title || r.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([r.title, r.address].filter(Boolean).join(' '))}`;
   return undefined;
 }
 

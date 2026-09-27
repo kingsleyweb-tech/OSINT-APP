@@ -155,16 +155,23 @@ export function subjectMatcher(inv: Investigation): { label: string; find: (text
       find: text => Array.from(text.matchAll(re)).map(m => (m.index || 0) + m[0].length)
     };
   }
-  const name = (inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name).replace(/"/g, '').trim();
-  const words = name.split(/\s+/).filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  // Full name in order, or reordered "Surname, Given".
+  const rawName = (inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name || '').replace(/"/g, '').trim();
+  const cleanName = rawName.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = cleanName.split(/\s+/).filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (words.length === 0) {
+    return { label: rawName, find: () => [] };
+  }
   const forward = new RegExp(words.join('\\s+'), 'gi');
   const reversed = words.length > 1 ? new RegExp([...words].reverse().join(',?\\s+'), 'gi') : null;
+  // Match main 2-word phrase if search name has trailing qualifiers (e.g. "Soko Aerial" from "Soko Aerial, Ghana")
+  const mainPhrase = words.length > 2 ? new RegExp(words.slice(0, 2).join('\\s+'), 'gi') : null;
+
   return {
-    label: name,
+    label: cleanName || rawName,
     find: text => [
       ...Array.from(text.matchAll(forward)).map(m => (m.index || 0) + m[0].length),
-      ...(reversed ? Array.from(text.matchAll(reversed)).map(m => (m.index || 0) + m[0].length) : [])
+      ...(reversed ? Array.from(text.matchAll(reversed)).map(m => (m.index || 0) + m[0].length) : []),
+      ...(mainPhrase ? Array.from(text.matchAll(mainPhrase)).map(m => (m.index || 0) + m[0].length) : [])
     ]
   };
 }
@@ -387,9 +394,11 @@ export function refsFromOrganizationPlaces(org: string, items: ExploreItem[]): L
 
 /** City-level place from a listing address ("12 Oxford St, Osu, Accra, Ghana" → "Accra, Ghana"). */
 function cityOfAddress(address: string): string | null {
+  if (!address || !address.trim()) return null;
   const parts = address.split(',').map(x => x.trim()).filter(x => x && !/\d/.test(x) && !/^[A-Z0-9]{4}\+[A-Z0-9]{2,}/.test(x));
-  if (parts.length === 0) return null;
-  return cleanPlace(parts.slice(-2).join(', '));
+  if (parts.length === 0) return cleanPlace(address);
+  const place = cleanPlace(parts.slice(-2).join(', ')) || cleanPlace(parts[parts.length - 1]);
+  return place || cleanPlace(address);
 }
 
 /**
@@ -418,6 +427,9 @@ export function refsFromSearch(inv: Investigation, items: ExploreItem[]): Locati
     else {
       const hit = context.find(c => lower.includes(c.term));
       if (hit) linkedBy = `the page also mentions ${hit.label}`;
+      else if (subject(i.title).length > 0 || subject(text).length > 0) {
+        linkedBy = `the page matches ${matcher.label}`;
+      }
     }
     const linked = Boolean(linkedBy);
     const engine = i.engine;
@@ -437,13 +449,14 @@ export function refsFromSearch(inv: Investigation, items: ExploreItem[]): Locati
 
     // Google Maps listing whose name contains the person's name or handle.
     if (i.kind === 'place' || i.kind === 'location') {
-      const place = i.location?.address ? cityOfAddress(i.location.address) : null;
-      if (place && subject(i.title).length > 0) {
+      const place = i.location?.address ? cityOfAddress(i.location.address) : (i.title ? cleanPlace(i.title) : null);
+      if (place && (subject(i.title).length > 0 || subject(text).length > 0 || linked)) {
         refs.push({
-          id: `${urlKey(i.url)}|${placeKey(place)}|listing`, place, key: placeKey(place), type: 'listing', status: linked ? 'mentioned' : 'unconfirmed',
-          sourceKind: 'Google Maps listing', sourceName: 'Google Maps', url: i.url, engine, linkedBy,
-          evidence: `Listing “${i.title}”${i.metadata?.type ? ` (${i.metadata.type})` : ''} at ${i.location?.address}`,
-          relationship: relationshipText('listing', linked ? 'mentioned' : 'unconfirmed', false)
+          id: `${urlKey(i.url)}|${placeKey(place)}|listing`, place, key: placeKey(place), type: 'listing',
+          status: 'reported',
+          sourceKind: 'Google Maps listing', sourceName: 'Google Maps', url: i.url, engine, linkedBy: linkedBy || `Google Maps listing matches ${matcher.label}`,
+          evidence: `Listing “${i.title}”${i.metadata?.type ? ` (${i.metadata.type})` : ''}${i.location?.address ? ` at ${i.location.address}` : ''}`,
+          relationship: relationshipText('listing', 'reported', false)
         });
       }
       return;
