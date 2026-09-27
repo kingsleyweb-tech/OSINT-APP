@@ -20,6 +20,7 @@ import { SearchHistoryPage } from './pages/History/SearchHistory';
 import { AuthPage } from './pages/Auth/AuthPages';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { ToastProvider } from './components/ui/Toast';
+import { ConfirmProvider } from './components/ui/ConfirmModal';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { SessionProvider, useSession } from './context/SessionContext';
@@ -129,9 +130,11 @@ function App() {
       <SessionProvider>
         <NotificationProvider>
           <ToastProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
+            <ConfirmProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ConfirmProvider>
           </ToastProvider>
         </NotificationProvider>
       </SessionProvider>

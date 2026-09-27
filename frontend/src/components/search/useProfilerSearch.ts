@@ -6,6 +6,7 @@ import { runSearch, SearchError, type SearchProgressEvent } from '../../lib/sear
 import { recordSearch } from '../../lib/history';
 import { intelHistoryFields } from '../../lib/queryIntelClient';
 import { useQueryIntel } from './useIntelligentSearch';
+import { useConfirm } from '../ui/ConfirmModal';
 import type { SearchHistoryResult, SearchMode } from '../../types/user';
 
 export interface ProfilerRunOptions {
@@ -42,6 +43,7 @@ export function useProfilerSearch(page = 'profiler') {
     get current(): string | null { return getPageState<string | null>(`${page}:historyId`) ?? null; }
   }), [page]);
   const qi = useQueryIntel(`${page}:qi`);
+  const confirm = useConfirm();
 
   const onProgress = useCallback((e: SearchProgressEvent) => {
     if (e.type === 'plan' || e.type === 'add') {
@@ -77,9 +79,19 @@ export function useProfilerSearch(page = 'profiler') {
         norm(c.name).replace(/^@/, '') === norm(query).replace(/^@/, '') &&
         (!c.searchType || c.searchType === kind) &&
         Date.now() - Date.parse(c.lastSearched || c.createdAt || '') < DAY_MS);
-      if (recent && window.confirm(`You already searched "${recent.name}" in the last 24 hours.\n\nOK: open that case (no searches used)\nCancel: search again`)) {
-        controllers.delete(page);
-        return { identities: [], searchQuery: query, openCaseId: recent.id };
+      if (recent) {
+        const openCase = await confirm({
+          title: 'Existing Case Found',
+          message: `You already searched <strong>"${recent.name}"</strong> in the last 24 hours.<br/>Would you like to open that case instead of using another search?`,
+          confirmLabel: 'Open Existing Case',
+          cancelLabel: 'Search Again',
+          hint: 'Opening the existing case won\'t use any searches.',
+          variant: 'info',
+        });
+        if (openCase) {
+          controllers.delete(page);
+          return { identities: [], searchQuery: query, openCaseId: recent.id };
+        }
       }
     }
 
@@ -136,7 +148,7 @@ export function useProfilerSearch(page = 'profiler') {
         setRunning(false);
       }
     }
-  }, [onProgress, qi, page, setRunning, setSteps]);
+  }, [onProgress, qi, page, setRunning, setSteps, confirm]);
 
   return { run, cancel, running, steps, historyId: historyIdRef, intel: qi.intel, setIntel: qi.setIntel };
 }

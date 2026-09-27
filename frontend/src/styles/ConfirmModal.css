@@ -1,0 +1,169 @@
+/* ─── Confirm Modal ─── */
+.cm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  animation: cm-fade 0.18s ease-out;
+}
+:root[data-theme="light"] .cm-backdrop { background: rgba(28, 25, 23, 0.45); }
+
+.cm-modal {
+  width: 100%;
+  max-width: 430px;
+  padding: 28px;
+  border-radius: 16px;
+  background: var(--bg-card, #080808);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #fff);
+  box-shadow: var(--shadow-xl, 0 24px 80px rgba(0, 0, 0, 0.6));
+  animation: cm-rise 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ─── Icon ─── */
+.cm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  background: var(--accent-warm-subtle, rgba(140, 75, 39, 0.2));
+  color: var(--accent-warm, #8c4b27);
+  border: 1px solid var(--accent-warm-border, rgba(140, 75, 39, 0.45));
+}
+
+/* ─── Content ─── */
+.cm-modal h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary, #fff);
+}
+
+.cm-body {
+  margin: 0 0 4px;
+  color: var(--text-secondary, #a3a3a3);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.cm-body strong {
+  color: var(--accent-warm, #8c4b27);
+  font-weight: 600;
+}
+
+/* ─── Buttons ─── */
+.cm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--text-primary, #fff);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.cm-btn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.cm-btn:active {
+  transform: scale(0.97);
+}
+
+.cm-btn-primary {
+  background: var(--accent-warm, #8c4b27);
+  border-color: var(--accent-warm, #8c4b27);
+  color: #fff;
+}
+
+.cm-btn-primary:hover {
+  background: var(--accent-warm-hover, #753b1e);
+  border-color: var(--accent-warm-hover, #753b1e);
+}
+
+/* ─── Divider hint ─── */
+.cm-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  color: var(--text-muted, #737373);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.cm-hint svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* ─── Animations ─── */
+@keyframes cm-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes cm-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Exit animation */
+.cm-backdrop-exit {
+  animation: cm-fade-out 0.15s ease-in forwards;
+}
+
+.cm-backdrop-exit .cm-modal {
+  animation: cm-drop 0.15s ease-in forwards;
+}
+
+@keyframes cm-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes cm-drop {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 480px) {
+  .cm-modal {
+    padding: 22px 18px;
+    max-width: none;
+  }
+  .cm-actions {
+    flex-direction: column-reverse;
+  }
+  .cm-btn {
+    justify-content: center;
+    height: 46px;
+    width: 100%;
+  }
+}
