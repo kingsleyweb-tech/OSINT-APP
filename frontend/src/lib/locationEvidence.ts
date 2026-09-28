@@ -155,25 +155,36 @@ export function subjectMatcher(inv: Investigation): { label: string; find: (text
       find: text => Array.from(text.matchAll(re)).map(m => (m.index || 0) + m[0].length)
     };
   }
-  const rawName = (inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name || '').replace(/"/g, '').trim();
-  const cleanName = rawName.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim();
-  const words = cleanName.split(/\s+/).filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  if (words.length === 0) {
-    return { label: rawName, find: () => [] };
-  }
-  const forward = new RegExp(words.join('\\s+'), 'gi');
+  const name = subjectName(inv);
+  const words = name.split(/\s+/).filter(w => w.length > 1).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (words.length === 0) return { label: name, find: () => [] };
+  // Full name in order, or reordered "Surname, Given".
+  // Separators optional: "Soko Aerial", "Soko-Aerial" and the handle-style "SokoAerial" are the same name.
+  const forward = new RegExp(words.join('[\\s._-]*'), 'gi');
   const reversed = words.length > 1 ? new RegExp([...words].reverse().join(',?\\s+'), 'gi') : null;
-  // Match main 2-word phrase if search name has trailing qualifiers (e.g. "Soko Aerial" from "Soko Aerial, Ghana")
-  const mainPhrase = words.length > 2 ? new RegExp(words.slice(0, 2).join('\\s+'), 'gi') : null;
-
   return {
-    label: cleanName || rawName,
+    label: name,
     find: text => [
       ...Array.from(text.matchAll(forward)).map(m => (m.index || 0) + m[0].length),
-      ...(reversed ? Array.from(text.matchAll(reversed)).map(m => (m.index || 0) + m[0].length) : []),
-      ...(mainPhrase ? Array.from(text.matchAll(mainPhrase)).map(m => (m.index || 0) + m[0].length) : [])
+      ...(reversed ? Array.from(text.matchAll(reversed)).map(m => (m.index || 0) + m[0].length) : [])
     ]
   };
+}
+
+/**
+ * The subject's name without qualifiers: "Soko Aerial, Ghana" → "Soko Aerial". Text after a comma is
+ * context the investigator added (a place, an organisation), not part of the name.
+ */
+export function subjectName(inv: Investigation): string {
+  const raw = (inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name || '').replace(/"/g, '').trim();
+  return raw.split(/[,;|]/)[0].replace(/\s+/g, ' ').trim() || raw;
+}
+
+/** The qualifier after the name, if any ("Soko Aerial, Ghana" → "Ghana"). */
+function subjectQualifier(inv: Investigation): string {
+  const raw = (inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name || '').replace(/"/g, '').trim();
+  const parts = raw.split(/[,;|]/);
+  return parts.slice(1).join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /** The sentence around a position, for the evidence quote. */
@@ -416,26 +427,27 @@ export function refsFromSearch(inv: Investigation, items: ExploreItem[]): Locati
     ...(inv.webAndNews || []).map(w => urlKey(w.url))
   ]);
   const handles = new Set((inv.socialProfiles || []).filter(p => !isSimilarProfile(p)).map(p => (p.username || '').toLowerCase()).filter(Boolean));
+  const searchedHandle = inv.searchType === 'username' ? (inv.searchInputs?.username || inv.name).replace(/^@/, '').toLowerCase() : '';
   const refs: LocationRef[] = [];
 
   items.forEach(i => {
     const text = [i.title, i.snippet, i.author].filter(Boolean).join('. ');
     const lower = `${text} ${i.url} ${i.authorUrl || ''}`.toLowerCase();
+    const handle = (i.username || handleFromUrl(i.url) || '').toLowerCase();
+    // Cross-check: linked to this identity only by something beyond the name itself.
     let linkedBy: string | undefined;
     if (linkedKeys.has(urlKey(i.url))) linkedBy = 'the page is one of this person’s profiles or saved pages';
-    else if (i.username && handles.has(i.username.toLowerCase())) linkedBy = `it was posted by @${i.username}, one of this person’s accounts`;
+    else if (handle && handles.has(handle)) linkedBy = `it belongs to @${handle}, one of this person’s accounts`;
+    else if (searchedHandle && handle === searchedHandle) linkedBy = `it is the @${handle} account (the searched username)`;
     else {
       const hit = context.find(c => lower.includes(c.term));
       if (hit) linkedBy = `the page also mentions ${hit.label}`;
-      else if (subject(i.title).length > 0 || subject(text).length > 0) {
-        linkedBy = `the page matches ${matcher.label}`;
-      }
     }
     const linked = Boolean(linkedBy);
     const engine = i.engine;
 
     // A subject's own profile result: "Location: Accra" in its details is the profile's stated location.
-    if (linkedKeys.has(urlKey(i.url))) {
+    if (linked) {
       const m = text.match(/\bLocation\s*:\s*([^·|\n]{2,80})/u);
       const loc = m && cleanPlace(m[1]);
       if (loc) {
@@ -447,31 +459,85 @@ export function refsFromSearch(inv: Investigation, items: ExploreItem[]): Locati
       }
     }
 
-    // Google Maps listing whose name contains the person's name or handle.
+    // Google Maps listing whose name contains the name or handle: a listing, never a residence.
     if (i.kind === 'place' || i.kind === 'location') {
-      const place = i.location?.address ? cityOfAddress(i.location.address) : (i.title ? cleanPlace(i.title) : null);
-      if (place && (subject(i.title).length > 0 || subject(text).length > 0 || linked)) {
+      const place = i.location?.address ? cityOfAddress(i.location.address) : null;
+      if (place && subject(i.title).length > 0) {
+        // A listing whose name contains the full name is shown as a (weak) listing reference — never a
+        // residence; its relationship text says it may be a business named after someone else with the name.
+        const status: LocationStatus = 'mentioned';
         refs.push({
-          id: `${urlKey(i.url)}|${placeKey(place)}|listing`, place, key: placeKey(place), type: 'listing',
-          status: 'reported',
-          sourceKind: 'Google Maps listing', sourceName: 'Google Maps', url: i.url, engine, linkedBy: linkedBy || `Google Maps listing matches ${matcher.label}`,
-          evidence: `Listing “${i.title}”${i.metadata?.type ? ` (${i.metadata.type})` : ''}${i.location?.address ? ` at ${i.location.address}` : ''}`,
-          relationship: relationshipText('listing', 'reported', false)
+          id: `${urlKey(i.url)}|${placeKey(place)}|listing`, place, key: placeKey(place), type: 'listing', status,
+          sourceKind: 'Google Maps listing', sourceName: 'Google Maps', url: i.url, engine, linkedBy,
+          evidence: `Listing “${i.title}”${i.metadata?.type ? ` (${i.metadata.type})` : ''} at ${i.location?.address}`,
+          relationship: relationshipText('listing', status, false)
         });
       }
       return;
     }
 
+    // A social profile page of an account with this name/username: its bio (where locations are often
+    // pinned, e.g. "📍 Accra") is the account holder's own text.
+    const isProfilePage = i.kind === 'profile' || (Boolean(i.platform) && Boolean(handle) && !/\/(status|p|reel|video|posts?|watch)\//i.test(i.url));
+    const ownAccount = isProfilePage && (subject(i.title || '').length > 0 || (Boolean(searchedHandle) && handle === searchedHandle));
+
     const kind = i.kind === 'news' ? 'News article' : i.kind === 'video' ? 'Video' : i.kind === 'image' ? 'Image page'
-      : i.kind === 'post' ? `${i.platform || 'Social'} post` : i.platform ? `${i.platform} page` : 'Web page';
+      : ownAccount ? `${i.platform || 'Social'} profile` : i.kind === 'post' ? `${i.platform || 'Social'} post` : i.platform ? `${i.platform} page` : 'Web page';
     refsFromText({
-      text, ownProfile: false, isPost: i.kind === 'post', sourceKind: kind, sourceName: i.platform || i.author || i.domain, url: i.url, linked, date: i.publishedAt
+      text: ownAccount ? (i.snippet || '') : text, ownProfile: ownAccount, isPost: i.kind === 'post',
+      sourceKind: kind, sourceName: i.platform || i.author || i.domain, url: i.url, linked, date: i.publishedAt
     }, subject).forEach(r => refs.push({
       ...r, engine, linkedBy,
-      relationship: linkedBy && !linkedKeys.has(urlKey(i.url)) ? `${r.relationship} Linked to this identity because ${linkedBy}.` : r.relationship
+      relationship: !linked ? r.relationship
+        : ownAccount && searchedHandle ? `The location on the @${handle} account’s own profile. It belongs to that account: the same username on another platform may be a different person.`
+        : !linkedKeys.has(urlKey(i.url)) ? `${r.relationship} Linked to this identity because ${linkedBy}.` : r.relationship
     }));
   });
   return dedupe(refs);
+}
+
+/** Account handle in a social profile address (instagram.com/name, x.com/name, tiktok.com/@name, facebook.com/name). */
+function handleFromUrl(url: string): string | null {
+  const m = url.match(/^https?:\/\/(?:www\.|m\.)?(?:instagram\.com|x\.com|twitter\.com|tiktok\.com|facebook\.com|threads\.net|youtube\.com|github\.com|linkedin\.com\/in)\/@?([\w.]{2,40})\/?(?:[?#].*)?$/i);
+  return m && !/^(explore|p|reel|watch|search|hashtag|pages|groups|events|share|profile\.php)$/i.test(m[1]) ? m[1] : null;
+}
+
+/** One search result as the Location tab lists it under "Results checked". */
+export interface CheckedResult {
+  source: string;
+  engine?: string;
+  title: string;
+  url: string;
+  snippet?: string;
+  address?: string;
+  kind: string;
+  /** Location references found in it, and whether it is tied to this identity. */
+  places: string[];
+  linked: boolean;
+  note: string;
+}
+
+/** Every result a location search returned, with what was found in it (so the investigator sees all of them). */
+export function checkedResults(inv: Investigation, source: string, items: ExploreItem[], refs: LocationRef[]): CheckedResult[] {
+  const subject = subjectMatcher(inv).find;
+  return items.slice(0, 20).map(i => {
+    const mine = refs.filter(r => urlKey(r.url) === urlKey(i.url));
+    const named = subject([i.title, i.snippet].filter(Boolean).join('. ')).length > 0;
+    const note = mine.some(r => r.type === 'listing') ? 'Google Maps listing whose name contains the searched name — not verified to be this person or organisation'
+      : mine.some(r => r.status !== 'unconfirmed') ? 'Location found and tied to this identity'
+      : mine.length ? 'Location found, but nothing ties this page to this identity (same name only)'
+      : (i.kind === 'place' || i.kind === 'location') ? (named ? 'Listing without an address' : 'The listing’s name does not contain the searched name')
+      : named ? 'Names the subject but does not state a location next to the name'
+      : 'Does not name the subject in its title or summary';
+    return {
+      source, engine: i.engine, title: (i.title || '').slice(0, 200), url: i.url, kind: i.kind,
+      ...(i.snippet ? { snippet: i.snippet.slice(0, 200) } : {}),
+      ...(i.location?.address ? { address: i.location.address } : {}),
+      places: Array.from(new Set(mine.map(r => r.place))),
+      linked: mine.some(r => r.status !== 'unconfirmed'),
+      note
+    };
+  });
 }
 
 /** Every location reference of a case: its own data plus the Location tab's saved search. */
@@ -486,9 +552,11 @@ export function allLocationRefs(inv: Investigation): LocationRef[] {
 function dedupe(refs: LocationRef[]): LocationRef[] {
   const seen = new Map<string, LocationRef>();
   refs.forEach(r => { if (!seen.has(r.id)) seen.set(r.id, r); });
-  // "lives in Toronto, Canada" also matches the generic "in <place>" rule: keep only the stronger reading.
-  const stronger = new Set(Array.from(seen.values()).filter(r => r.type !== 'mentioned').map(r => `${urlKey(r.url)}|${r.key}`));
-  return Array.from(seen.values()).filter(r => r.type !== 'mentioned' || !stronger.has(`${urlKey(r.url)}|${r.key}`));
+  // "based in Accra, Ghana, received the award" also matches the generic "in <place>" rule (read as an
+  // event or mention): when one source gives a stronger reading of the same place, keep only that.
+  const weak = (t: LocationRefType) => t === 'mentioned' || t === 'event' || t === 'post';
+  const stronger = new Set(Array.from(seen.values()).filter(r => !weak(r.type)).map(r => `${urlKey(r.url)}|${r.key}`));
+  return Array.from(seen.values()).filter(r => !weak(r.type) || !stronger.has(`${urlKey(r.url)}|${r.key}`));
 }
 
 const TYPE_RANK: Record<LocationRefType, number> = { residence: 0, profile: 1, hometown: 2, workplace: 3, organization: 4, event: 5, post: 6, listing: 7, mentioned: 8 };
@@ -521,7 +589,9 @@ export function summarise(refs: LocationRef[]): LocationSummary[] {
       key, place: [...sorted].sort((a, b) => b.place.length - a.place.length)[0].place, refs: sorted, best: sorted[0],
       types: Array.from(new Set(sorted.map(r => r.type))).sort((a, b) => TYPE_RANK[a] - TYPE_RANK[b]),
       sources: new Set(sorted.map(r => urlKey(r.url))).size,
-      sites: Array.from(new Set(sorted.map(r => siteOf(r.url)))),
+      // Independent websites supporting the place. A listing that only uses the name does not corroborate
+      // other sources (it is counted only when it is the sole kind of reference for the place).
+      sites: Array.from(new Set((sorted.some(r => r.type !== 'listing') ? sorted.filter(r => r.type !== 'listing') : sorted).map(r => siteOf(r.url)))),
       agreeing: unconfirmed.filter(u => u.key === key)
     };
   }).sort((a, b) => STATUS_RANK[a.best.status] - STATUS_RANK[b.best.status] || b.sites.length - a.sites.length || TYPE_RANK[a.best.type] - TYPE_RANK[b.best.type]);
@@ -551,23 +621,27 @@ export interface LocationSearchTask {
  *  - more (8 searches, on request): YouTube + Google Videos, Google Images + Bing Images, X, Instagram, TikTok, Threads posts
  */
 export function locationSearchPlan(inv: Investigation, level: LocationSearchLevel): LocationSearchTask[] {
+  const qualifier = inv.searchType === 'username' ? '' : subjectQualifier(inv);
   const q = inv.searchType === 'username'
     ? `"${(inv.searchInputs?.username || inv.name).replace(/^@/, '')}"`
-    : `"${(inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name).replace(/"/g, '').trim()}"`;
+    : `"${subjectName(inv)}"${qualifier ? ` ${qualifier}` : ''}`;
+  const plain = inv.searchType === 'username' ? q.replace(/"/g, '') : `${subjectName(inv)}${qualifier ? ` ${qualifier}` : ''}`;
   if (level === 'core') {
     return [
       { key: 'web', label: 'Google web', capability: 'web', query: q },
       { key: 'bing', label: 'Bing web', capability: 'webBing', query: q },
       { key: 'news', label: 'News', capability: 'news', query: q },
-      { key: 'maps', label: 'Google Maps', capability: 'places', query: q.replace(/"/g, '') },
+      { key: 'maps', label: 'Google Maps', capability: 'places', query: plain },
+      // Social profiles often have the location pinned in the bio.
+      { key: 'social', label: 'Social media', capability: 'social', query: q, options: { platforms: ['facebook', 'instagram', 'x', 'tiktok'] } },
       // Where the person's organisations are (an organisation location, never a residence).
       ...identityOrganizations(inv).map((org, n) => ({ key: `org${n}`, label: `Google Maps · ${org}`, capability: 'places' as const, query: org, organization: org }))
     ];
   }
   return [
+    { key: 'social2', label: 'More social media', capability: 'social', query: q, options: { platforms: ['linkedin', 'threads', 'youtube', 'reddit'] } },
     { key: 'videos', label: 'Videos', capability: 'videos', query: q },
-    { key: 'images', label: 'Images', capability: 'images', query: q },
-    { key: 'social', label: 'Social posts', capability: 'social', query: q, options: { platforms: ['x', 'instagram', 'tiktok', 'threads'] } }
+    { key: 'images', label: 'Images', capability: 'images', query: q }
   ];
 }
 

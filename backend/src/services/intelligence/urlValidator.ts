@@ -62,6 +62,13 @@ export class UrlValidator {
         pathname = pathname.replace(/^(\/(?:@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+))\/(videos|featured|about|shorts|streams|playlists|community|podcasts)$/i, '$1');
       }
 
+      // Snapchat profiles have several addresses (/add/name, /@name, story.snapchat.com/@name, /s/name):
+      // all become https://www.snapchat.com/add/name so one account is listed once.
+      if (/(^|\.)snapchat\.com$/i.test(parsed.hostname)) {
+        const prof = pathname.match(/^\/(?:add\/|@|s\/)([A-Za-z0-9][A-Za-z0-9._-]{1,30})$/);
+        if (prof) return `https://www.snapchat.com/add/${prof[1]}`;
+      }
+
       urlStr =`${parsed.protocol}//${parsed.host}${pathname}${parsed.search}${parsed.hash}`;
     } catch (e) {}
 
@@ -152,6 +159,11 @@ export class UrlValidator {
         // The account that posted it is named in the link (tiktok.com/@name/video/…); still a video, not a profile.
         const owner = canonicalUrl.match(/tiktok\.com\/@([a-zA-Z0-9_\-\.]+)\/video\//i);
         if (owner) extractedHandle = owner[1];
+      } else if (lowerUrl.includes('/photo/')) {
+        // Photo posts (tiktok.com/@name/photo/…) are posts by that account, not its profile.
+        itemType = 'post';
+        const owner = canonicalUrl.match(/tiktok\.com\/@([a-zA-Z0-9_\-\.]+)\/photo\//i);
+        if (owner) extractedHandle = owner[1];
       } else if (lowerUrl.includes('/tag/') || lowerUrl.includes('/music/') || lowerUrl.includes('/discover')) {
         itemType = 'search_page';
       } else {
@@ -163,6 +175,27 @@ export class UrlValidator {
         } else {
           itemType = 'reel';
         }
+      }
+    }
+
+    // 3b. SNAPCHAT
+    else if (domain.includes('snapchat.com')) {
+      platformName = 'Snapchat';
+      const prof = canonicalUrl.match(/snapchat\.com\/add\/([A-Za-z0-9][A-Za-z0-9._-]{1,30})$/i);
+      const owned = canonicalUrl.match(/snapchat\.com\/@([A-Za-z0-9][A-Za-z0-9._-]{1,30})\/(spotlight|highlight|story|saved-story)/i);
+      if (prof) {
+        itemType = 'profile';
+        isVerifiedProfileUrl = true;
+        extractedHandle = prof[1];
+      } else if (owned) {
+        // Spotlight / story content: posted by that account, still content rather than the profile.
+        itemType = 'video';
+        extractedHandle = owned[1];
+      } else if (/\/spotlight\//i.test(lowerUrl)) {
+        itemType = 'video';
+      } else {
+        // Lenses, discover pages, share links (/t/…), help and marketing pages are not profiles.
+        itemType = 'search_page';
       }
     }
 

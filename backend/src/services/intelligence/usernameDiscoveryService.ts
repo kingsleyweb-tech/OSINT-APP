@@ -18,8 +18,120 @@ interface CacheEntry {
 const DISCOVERY_CACHE = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+
+/** Fetches a public page with a browser user agent and a time limit. Returns null when it cannot be reached. */
+async function fetchPublicPage(url: string): Promise<{ status: number; html: string } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': BROWSER_UA, 'Accept-Language': 'en', Accept: 'text/html' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000)
+    });
+    return { status: res.status, html: res.status === 200 ? await res.text() : '' };
+  } catch {
+    return null;
+  }
+}
+
+/** JSON inside a <script id="…"> tag of a page. */
+function scriptJson(html: string, id: string): any | null {
+  const m = html.match(new RegExp(`<script[^>]*id="${id}"[^>]*>([\\s\\S]*?)</script>`));
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch { return null; }
+}
+
+const fmtCount = (n: unknown): string | undefined => {
+  const v = typeof n === 'string' ? Number(n) : n;
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v.toLocaleString('en-US') : undefined;
+};
+
+/**
+ * TikTok: the public profile page embeds the account data. statusCode 0 = the account exists; the
+ * account is accepted only when its uniqueId is exactly the username searched. The page's "region"
+ * field is the VIEWER's country (it appears even for accounts that do not exist), so it is never
+ * used as the account's location — TikTok does not publish one.
+ */
+async function checkTikTok(username: string): Promise<Partial<DiscoveryResultItem>> {
+  const page = await fetchPublicPage(`https://www.tiktok.com/@${encodeURIComponent(username)}`);
+  if (!page) return { status: 'provider_unavailable', source: 'TikTok public profile', confidence: 'unconfirmed' };
+  if (page.status === 404) return { status: 'no_match', source: 'TikTok public profile', confidence: 'unconfirmed' };
+  const data = page.status === 200 ? scriptJson(page.html, '__UNIVERSAL_DATA_FOR_REHYDRATION__') : null;
+  const detail = data?.__DEFAULT_SCOPE__?.['webapp.user-detail'];
+  if (!detail) return { status: 'provider_unavailable', source: 'TikTok public profile', confidence: 'unconfirmed' };
+  const user = detail.userInfo?.user;
+  if (detail.statusCode !== 0 || !user?.uniqueId) return { status: 'no_match', source: 'TikTok public profile', confidence: 'unconfirmed' };
+  if (String(user.uniqueId).toLowerCase() !== username.toLowerCase()) {
+    return { status: 'no_match', source: 'TikTok public profile', confidence: 'unconfirmed' };
+  }
+  const stats = detail.userInfo?.stats || {};
+  return {
+    status: 'found',
+    displayName: user.nickname || user.uniqueId,
+    profileUrl: `https://www.tiktok.com/@${user.uniqueId}`,
+    profileImage: user.avatarLarger || user.avatarMedium || undefined,
+    confidence: 'confirmed',
+    source: 'TikTok public profile',
+    metadata: {
+      bio: user.signature || undefined,
+      followers: fmtCount(stats.followerCount),
+      following: fmtCount(stats.followingCount),
+      likes: fmtCount(stats.heart ?? stats.heartCount),
+      videos: fmtCount(stats.videoCount),
+      verified: Boolean(user.verified),
+      private: Boolean(user.privateAccount),
+      organization: Boolean(user.isOrganization),
+      ...(user.bioLink?.link ? { website: String(user.bioLink.link) } : {})
+    }
+  };
+}
+
+/**
+ * Snapchat: snapchat.com/add/<username> is 404 for accounts that do not exist. Public profiles embed
+ * their public data (name, bio, subscribers, picture, website, and an address only when the owner
+ * published one); other accounts only show a display name.
+ */
+async function checkSnapchat(username: string): Promise<Partial<DiscoveryResultItem>> {
+  const page = await fetchPublicPage(`https://www.snapchat.com/add/${encodeURIComponent(username)}`);
+  if (!page) return { status: 'provider_unavailable', source: 'Snapchat public profile', confidence: 'unconfirmed' };
+  if (page.status === 404) return { status: 'no_match', source: 'Snapchat public profile', confidence: 'unconfirmed' };
+  const data = page.status === 200 ? scriptJson(page.html, '__NEXT_DATA__') : null;
+  const profile = data?.props?.pageProps?.userProfile;
+  if (!profile) return { status: 'provider_unavailable', source: 'Snapchat public profile', confidence: 'unconfirmed' };
+  const info = profile.publicProfileInfo || profile.userInfo || {};
+  const handle = String(info.username || '').toLowerCase();
+  if (!handle || handle !== username.toLowerCase()) return { status: 'no_match', source: 'Snapchat public profile', confidence: 'unconfirmed' };
+  const isPublic = Boolean(profile.publicProfileInfo);
+  const address = typeof info.address === 'string' ? info.address.trim() : '';
+  return {
+    status: 'found',
+    displayName: info.title || info.displayName || info.username,
+    profileUrl: `https://www.snapchat.com/add/${info.username}`,
+    profileImage: info.profilePictureUrl || info.bitmoji3d?.avatarImage?.url || undefined,
+    confidence: 'confirmed',
+    source: 'Snapchat public profile',
+    metadata: {
+      bio: info.bio || undefined,
+      // Snapchat shows 0 when the count is hidden, so only a positive count is kept.
+      subscribers: Number(info.subscriberCount) > 0 ? fmtCount(info.subscriberCount) : undefined,
+      publicProfile: isPublic,
+      ...(info.websiteUrl ? { website: String(info.websiteUrl) } : {}),
+      // Only an address the account owner published on the profile.
+      ...(address ? { location: address } : {})
+    }
+  };
+}
+
+/** Platforms checked directly (above); the web-engine check for them runs only if the direct check is inconclusive. */
+const DIRECT_SOCIAL_CHECKS: Record<string, string> = { tiktok: 'tiktok-profile', snapchat: 'snapchat-profile' };
+
 export class UsernameDiscoveryService {
   private platforms: PlatformConfig[] = [
+    // ----------------------------------------------------
+    // SOCIAL PROFILES READ FROM THEIR PUBLIC PAGES
+    // ----------------------------------------------------
+    { id: 'tiktok-profile', name: 'TikTok', category: 'Social Media', domain: 'tiktok.com', checker: checkTikTok },
+    { id: 'snapchat-profile', name: 'Snapchat', category: 'Social Media', domain: 'snapchat.com', checker: checkSnapchat },
     // ----------------------------------------------------
     // DEVELOPER PLATFORMS
     // ----------------------------------------------------
@@ -508,7 +620,10 @@ export class UsernameDiscoveryService {
     const nowIso = new Date().toISOString();
 
     // 1. Prepare initial items for direct API platforms
+    const directResults = new Map<string, Promise<Partial<DiscoveryResultItem> | null>>();
     const tasks = this.platforms.map(async (platform) => {
+      let settle: (r: Partial<DiscoveryResultItem> | null) => void = () => undefined;
+      directResults.set(platform.id, new Promise(resolve => { settle = resolve; }));
       const initItem: DiscoveryResultItem = {
         id: `${platform.id}-${cleanUser}`,
         platformId: platform.id,
@@ -524,6 +639,7 @@ export class UsernameDiscoveryService {
 
       try {
         const checkResult = await platform.checker(cleanUser);
+        settle(checkResult);
         const updatedItem: DiscoveryResultItem = {
           ...initItem,
           ...checkResult,
@@ -532,6 +648,7 @@ export class UsernameDiscoveryService {
         allDiscoveredItems.push(updatedItem);
         onProgress(updatedItem);
       } catch (err) {
+        settle(null);
         const errorItem: DiscoveryResultItem = {
           ...initItem,
           status: 'error',
@@ -545,6 +662,13 @@ export class UsernameDiscoveryService {
 
     // 2. Prepare Web Engine Search tasks for complex social platforms
     const socialTasks = this.socialMediaSearchConfigs.map(async (platform) => {
+      // TikTok and Snapchat are read directly from their public pages; the web-engine check is only a
+      // fallback when that was inconclusive (page blocked or unreachable).
+      const directId = DIRECT_SOCIAL_CHECKS[platform.id];
+      if (directId) {
+        const direct = await directResults.get(directId);
+        if (direct && (direct.status === 'found' || direct.status === 'no_match')) return;
+      }
       const initItem: DiscoveryResultItem = {
         id: `${platform.id}-${cleanUser}`,
         platformId: platform.id,

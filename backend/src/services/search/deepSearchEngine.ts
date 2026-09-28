@@ -291,6 +291,8 @@ export class DeepSearchEngine {
             }
           },
           google('g-tt', 'TikTok', `site:tiktok.com ${q}`, 'soc-tiktok'),
+          // Snapchat public profiles, Spotlight videos and stories indexed by Google.
+          google('g-sc', 'Snapchat', `site:snapchat.com ${q}`, 'soc-snapchat'),
           {
             // DuckDuckGo finds TikTok handles written with other punctuation (e.g. @.name_) that Google misses.
             id: 'ddg-tt', label: 'TikTok (DuckDuckGo)',
@@ -340,7 +342,19 @@ export class DeepSearchEngine {
               source: it.source || 'Direct Username Discovery',
               sourceType: 'Social Media',
               title: `${it.displayName || u} on ${it.source}`,
-              description: `The platform confirms an account with the exact username @${u}. The same username on different platforms does not prove they belong to one person.`,
+              description: [
+                `The platform confirms an account with the exact username @${u}. The same username on different platforms does not prove they belong to one person.`,
+                // Public profile facts the platform shows (TikTok / Snapchat pages, platform APIs).
+                [
+                  it.metadata?.followers ? `${it.metadata.followers} followers` : '',
+                  it.metadata?.subscribers ? `${it.metadata.subscribers} subscribers` : '',
+                  it.metadata?.videos ? `${it.metadata.videos} videos` : '',
+                  it.metadata?.likes ? `${it.metadata.likes} likes` : '',
+                  it.metadata?.verified ? 'verified account' : '',
+                  it.metadata?.private ? 'private account' : '',
+                  it.metadata?.website ? `website ${it.metadata.website}` : ''
+                ].filter(Boolean).join(' · ')
+              ].filter(Boolean).join(' '),
               url: canonical,
               possibleName: u,
               discoveredAt: new Date().toISOString(),
@@ -351,7 +365,8 @@ export class DeepSearchEngine {
                 // Fields the platform's API returns for the account (as set by its owner), for the Location tab.
                 ...(it.metadata?.location ? { statedLocation: String(it.metadata.location).slice(0, 120) } : {}),
                 ...(it.metadata?.bio ? { profileBio: String(it.metadata.bio).slice(0, 500) } : {}),
-                ...(it.metadata?.company ? { statedOrganization: String(it.metadata.company).replace(/^@/, '').slice(0, 120) } : {})
+                ...(it.metadata?.company ? { statedOrganization: String(it.metadata.company).replace(/^@/, '').slice(0, 120) } : {}),
+                ...(it.profileImage ? { profileImage: it.profileImage } : {})
               }
             });
             platformsCheckedSet.add(it.source);

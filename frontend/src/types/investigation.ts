@@ -336,6 +336,8 @@ export interface Investigation {
       /** Set when the search could not be run at all (network, rate limit, sign-in). */
       error?: string;
       refs: import('../lib/locationEvidence').LocationRef[];
+      /** Every result the sources returned, with what was found in it (shown under "Results checked"). */
+      results?: import('../lib/locationEvidence').CheckedResult[];
     }>>;
   };
   createdBy: string;

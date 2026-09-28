@@ -4,8 +4,9 @@ import { useSearchRun } from '../../explore/useSearchRun';
 import { SearchLoader } from '../../ui/SearchLoader';
 import { fmtDate, hostOf, newAuditEvent, openUrl, shortUrl, urlKey } from '../../../lib/workspace';
 import {
-  locationSearchCost, STATUS_LABEL, TYPE_LABEL, allLocationRefs, locationSearchPlan, mapSearchUrl, refsFromSearch, sortRefs,
-  engineLabel, subjectMatcher, summarise, type LocationRef, type LocationSearchLevel, type LocationStatus
+  locationSearchCost, STATUS_LABEL, TYPE_LABEL, allLocationRefs, checkedResults, conflictingStatedPlaces, locationSearchPlan, mapSearchUrl,
+  refsFromOrganizationPlaces, refsFromSearch, sortRefs, engineLabel, subjectMatcher, summarise,
+  type CheckedResult, type LocationRef, type LocationSearchLevel, type LocationStatus
 } from '../../../lib/locationEvidence';
 import type { Investigation } from '../../../types/investigation';
 import { useWorkspace } from '../workspace/WorkspaceContext';
@@ -35,11 +36,17 @@ function useLocationScan() {
     try {
       const out = await run(tasks.map(t => ({ key: t.key, label: t.label, capability: t.capability, query: t.query, options: t.options })));
       if (!out) return; // cancelled
-      const items = tasks.flatMap(t => out[t.key]?.items || []);
+      const general = tasks.filter(t => !t.organization);
+      const items = general.flatMap(t => out[t.key]?.items || []);
+      const refs = [
+        ...refsFromSearch(inv, items),
+        ...tasks.filter(t => t.organization).flatMap(t => refsFromOrganizationPlaces(t.organization!, out[t.key]?.items || []))
+      ];
       result = {
         at,
-        resultsChecked: items.length,
-        refs: refsFromSearch(inv, items),
+        resultsChecked: tasks.reduce((n, t) => n + (out[t.key]?.items.length || 0), 0),
+        refs,
+        results: tasks.flatMap(t => checkedResults(inv, t.label, out[t.key]?.items || [], refs)),
         sources: tasks.map(t => {
           const r = out[t.key];
           const failed = !r || (r.engines.length > 0 && r.engines.every(e => e.status === 'error' || e.status === 'quota'));
@@ -124,6 +131,8 @@ export const LocationTab: React.FC = () => {
   const everySourceFailed = allRuns.length > 0 && allRuns.every(r => Boolean(r.error) || (r.sources.length > 0 && r.sources.every(s => s.status === 'failed')));
   const subject = subjectMatcher(inv).label;
   const shownRefs = showAllRefs ? confirmed : confirmed.slice(0, 12);
+  const conflicts = conflictingStatedPlaces(confirmed);
+  const checked = [...(runs.core?.results || []), ...(runs.more?.results || [])];
 
   if (running) return <SearchLoader title={`Searching public sources for location information about ${subject}`} steps={steps} onCancel={cancel} />;
 
@@ -145,12 +154,19 @@ export const LocationTab: React.FC = () => {
 
       {/* Which sources were searched, and which could not be reached: a failed source is not "no location". */}
       <div className="ws-loc-status-line">
-        <SourceStatus title="Web, Bing, news and Google Maps" run={runs.core} />
-        <SourceStatus title="Videos, images and social posts" run={runs.more} />
+        <SourceStatus title="Google, Bing, news, Google Maps and social media" run={runs.core} />
+        <SourceStatus title="More social media, videos and images" run={runs.more} />
         {!runs.more && (
           <span className="ws-sub">
-            Videos (YouTube, Google Videos), images (Google, Bing) and social posts (X, Instagram, TikTok, Threads) have not been searched yet —
-            use Search more sources ({locationSearchCost(inv, 'more')} SerpApi searches). The profiles, pages and news already in this case are always included.
+            LinkedIn, Threads, YouTube and Reddit profiles and posts, videos (YouTube, Google Videos) and images (Google, Bing) have not been
+            searched yet — use Search more sources ({locationSearchCost(inv, 'more')} SerpApi searches). The profiles, pages and news already
+            in this case are always included.
+          </span>
+        )}
+        {conflicts.length > 1 && (
+          <span className="ws-loc-warn">
+            Sources state different locations ({conflicts.join(' · ')}). They may be different accounts or people with the same name or
+            username — check each source below before relying on one.
           </span>
         )}
       </div>
@@ -235,6 +251,17 @@ export const LocationTab: React.FC = () => {
         </section>
       )}
 
+      {checked.length > 0 && <ResultsChecked results={checked} />}
+      {checked.length === 0 && allRuns.some(r => r.resultsChecked > 0 && !r.results) && (
+        <section className="ws-loc-section">
+          <SectionHead title="Results checked" />
+          <p className="ws-sub ws-loc-intro">
+            This location search ran before the results list was added. Choose Search again to list every result it checks
+            (repeating a search within 12 hours uses no extra quota).
+          </p>
+        </section>
+      )}
+
       {sources.length > 0 && (
         <section className="ws-loc-section">
           <SectionHead title="Sources" count={sources.length} />
@@ -271,3 +298,39 @@ const RefRow: React.FC<{ r: LocationRef }> = ({ r }) => (
     </div>
   </div>
 );
+
+/** Every result the location searches returned, grouped by source, with what was found in each. */
+const ResultsChecked: React.FC<{ results: CheckedResult[] }> = ({ results }) => {
+  const bySource = useMemo(() => {
+    const m = new Map<string, CheckedResult[]>();
+    results.forEach(r => m.set(r.source, [...(m.get(r.source) || []), r]));
+    return Array.from(m.entries());
+  }, [results]);
+  return (
+    <section className="ws-loc-section">
+      <SectionHead title="Results checked" count={results.length} />
+      <p className="ws-sub ws-loc-intro">
+        Everything the location searches returned. A result adds a location only when it states one next to the person (or on their own
+        profile) and something ties it to this identity; the note on each result says what was found.
+      </p>
+      {bySource.map(([source, list]) => (
+        <details key={source} className="ws-loc-results" open={list.some(r => r.places.length > 0) || bySource.length <= 2}>
+          <summary><b>{source}</b> <span className="ws-sub">· {list.length} result{list.length === 1 ? '' : 's'}{list.some(r => r.places.length) ? ` · ${list.filter(r => r.places.length).length} with a location` : ''}</span></summary>
+          {list.map(r => (
+            <div key={`${source}|${r.url}`} className="ws-loc-result">
+              <div className="ws-loc-result-head">
+                <SourceLogo url={r.url} />
+                <a href={r.url} target="_blank" rel="noopener noreferrer" className="ws-loc-result-title">{r.title || shortUrl(r.url)}</a>
+              </div>
+              {r.address && <div className="ws-sub"><MapPin size={12} /> {r.address}</div>}
+              {r.snippet && <div className="ws-sub ws-loc-result-snippet">{r.snippet}</div>}
+              <div className={`ws-loc-result-note${r.linked ? ' ok' : r.places.length ? ' warn' : ''}`}>
+                {r.places.length > 0 && <b>{r.places.join(' · ')} — </b>}{r.note}
+              </div>
+            </div>
+          ))}
+        </details>
+      ))}
+    </section>
+  );
+};

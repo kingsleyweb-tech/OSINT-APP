@@ -21,7 +21,9 @@ const allowedOrigins = [...new Set([...ALLOWED_ORIGINS, ...DEV_ORIGINS])];
 app.use(cors({
   origin: (origin, cb) => {
     // Allow server-to-server requests (no origin header) and all allowed origins.
-    if (!origin || allowedOrigins.some(o => origin === o || origin.endsWith('.vercel.app'))) {
+    // Any local dev port is allowed (Vite moves to 5174, 5175… when 5173 is already in use).
+    const localDev = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin || '');
+    if (!origin || localDev || allowedOrigins.some(o => origin === o || origin.endsWith('.vercel.app'))) {
       cb(null, true);
     } else {
       cb(new Error(`CORS: origin ${origin} not allowed`));
