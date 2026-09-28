@@ -8,7 +8,7 @@ import { allLocationRefs, summarise } from '../../../lib/locationEvidence';
 import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
 
 export type TabKey =
-  | 'overview' | 'profiles' | 'activity' | 'associations' | 'sources'
+  | 'overview' | 'organization' | 'profiles' | 'activity' | 'associations' | 'sources'
   | 'web' | 'news' | 'images' | 'location' | 'contact' | 'metrics' | 'audit';
 
 export interface Derived {
@@ -42,6 +42,8 @@ export function derive(inv: Investigation): Derived {
     // Each count is the length of exactly the list its tab renders.
     counts: {
       overview: undefined,
+      // Facts about the organisation (organisation cases only).
+      organization: inv.organization ? inv.organization.facts.length + (inv.organization.description ? 1 : 0) + (inv.organization.type ? 1 : 0) : undefined,
       profiles: profiles.length + buckets.page.length,
       activity: (inv.activities || []).filter(a => !isSimilarActivity(a, similarKeys)).length,
       associations: (inv.associations || []).length,

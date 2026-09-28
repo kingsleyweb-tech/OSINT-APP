@@ -256,6 +256,92 @@ export interface CaseImage {
   foundAt: string;
 }
 
+/** A fact about an organisation, always with where it came from. */
+export interface OrgFact {
+  label: string;
+  value: string;
+  source: string;
+  sourceUrl?: string;
+}
+
+/** What the name search established about an organisation (backend organizationDetector). */
+export interface OrganizationInfo {
+  name: string;
+  type?: OrgFact;
+  description?: OrgFact;
+  facts: OrgFact[];
+  website?: { url: string; basis: string; source: string };
+  socialProfiles: Array<{ platform: string; url: string; source: string }>;
+  signals: Array<{ signal: string; matched: boolean }>;
+  hasKnowledgePanel: boolean;
+  detectionReason: string;
+}
+
+export interface EntityResolution {
+  query: string;
+  kind: 'resolved' | 'ambiguous' | 'possible';
+  candidates: Array<{ name: string; support: number; sources: Array<{ title: string; url: string }> }>;
+}
+
+export type WebsitePageKind =
+  | 'home' | 'about' | 'contact' | 'services' | 'products' | 'programs' | 'leadership' | 'departments'
+  | 'locations' | 'news' | 'projects' | 'publications' | 'events' | 'admissions' | 'careers';
+
+export type OrgField =
+  | 'official_name' | 'alt_name' | 'type' | 'industry' | 'sector' | 'description' | 'founded'
+  | 'headquarters' | 'country' | 'address' | 'website' | 'phone' | 'email' | 'hours' | 'coordinates'
+  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'employees';
+
+/** One fact from one source (backend orgEnrichment). */
+export interface OrgClaim {
+  field: OrgField;
+  value: string;
+  role?: string;
+  source: string;
+  sourceKind: string;
+  sourceUrl?: string;
+  quote?: string;
+}
+
+export interface OrgMention { title: string; url: string; snippet?: string; source: string; date?: string; thumbnail?: string; engine: string }
+
+/** The organisation sources searched by the enrichment step (Maps, Google, Bing, social, YouTube, Wikidata). */
+export interface OrgEnrichment {
+  name: string;
+  checkedAt: string;
+  claims: OrgClaim[];
+  mapsListings: Array<{
+    title: string; category?: string; address?: string; phone?: string; website?: string; hours?: string;
+    rating?: number; reviews?: number; latitude?: number; longitude?: number; mapsUrl: string; matchedBy: string;
+  }>;
+  wikidata?: { id: string; url: string; label: string; description?: string; wikipediaUrl?: string }
+    | { ambiguous: Array<{ id: string; label: string; description?: string; url: string }> };
+  mentions: OrgMention[];
+  videos: OrgMention[];
+  sources: Array<{ label: string; status: 'ok' | 'empty' | 'failed'; results: number; used: number; error?: string }>;
+  /** Set when the enrichment could not be run at all. */
+  error?: string;
+}
+
+/** The organisation's website as read by the Organisation tab (backend websiteIntel). */
+export interface WebsiteIntel {
+  requestedUrl: string;
+  finalUrl?: string;
+  reachable: boolean;
+  error?: string;
+  verification: { status: 'verified' | 'probable' | 'unverified'; reasons: string[] };
+  siteName?: string;
+  pages: Array<{ kind: WebsitePageKind; url: string; title: string; description?: string; text: string[]; headings: string[]; emails: string[]; phones: string[]; addresses: string[] }>;
+  structured: Array<{ label: string; value: string; url: string }>;
+  socialLinks: Array<{ platform: string; url: string; foundOn: string }>;
+  emails: Array<{ value: string; foundOn: string }>;
+  phones: Array<{ value: string; foundOn: string }>;
+  addresses: Array<{ value: string; foundOn: string }>;
+  people?: Array<{ name: string; role: string; url: string; quote: string }>;
+  linkedSites?: Array<{ url: string; host: string; text: string }>;
+  fetchedAt: string;
+}
+
 export interface Investigation {
   id: string;
   name: string;
@@ -335,6 +421,15 @@ export interface Investigation {
     refs: import('../lib/contactEvidence').ContactRef[];
     results?: Array<{ source?: string; title: string; url: string; snippet?: string; values: string[]; linked: boolean; note: string }>;
   };
+  /** 'organization' when the name search recognised a company, institution, association… (missing = person). */
+  entityKind?: 'person' | 'organization';
+  organization?: OrganizationInfo;
+  /** The Organisation tab's reading of the organisation's website (no SerpApi searches). */
+  websiteIntel?: WebsiteIntel;
+  /** Facts about the organisation from Google Maps, Google, Bing, social platforms, YouTube and Wikidata. */
+  orgEnrich?: OrgEnrichment;
+  /** Abbreviation searches ("UPSA"): the full names the results give for it, with support. */
+  entityResolution?: EntityResolution;
   /** Email searches: usernames the address suggests (shown as suggestions, never attributed). */
   derivedUsernames?: string[];
   /**

@@ -36,6 +36,28 @@ const GROUPS: Array<{ kinds: RowKind[]; title: string }> = [
   { kinds: ['page', 'group'], title: 'Organization pages & groups' }
 ];
 
+/**
+ * A search about a similar account, opened on New Investigation: a handle platform is searched by
+ * username; a LinkedIn/Facebook account named with a real name by that name. The case for the identity
+ * holding this exact account is then opened automatically.
+ */
+function investigateLink(p: SocialProfile): string | undefined {
+  const url = (p.profileUrl || p.url) as string | undefined;
+  if (!url) return undefined;
+  let name = (p.profileName || '').replace(/^@/, '').replace(/[\s_-]*\d{5,}$/, '').trim();
+  // LinkedIn slugs carry the name: "mcnard-david-pingal-a4165610a" → "Mcnard David Pingal".
+  if (/linkedin/i.test(p.platform || '') && !/\s/.test(name)) {
+    const parts = name.split('-').filter(w => w && !/\d/.test(w));
+    if (parts.length >= 2) name = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  const realName = /^(linkedin|facebook)/i.test(p.platform || '') && /^[\p{L}.'’-]+(\s+[\p{L}.'’-]+)+$/u.test(name);
+  let handle = (p.username || '').replace(/^@/, '');
+  if (!handle) { try { handle = new URL(url).pathname.split('/').filter(Boolean).pop() || ''; } catch { /* keep empty */ } }
+  const q = realName ? name : handle;
+  if (!q) return undefined;
+  return `/new-investigation?type=${realName ? 'Name' : 'Username'}&q=${encodeURIComponent(q)}&run=1&open=${encodeURIComponent(url)}`;
+}
+
 export const ProfilesTab: React.FC = () => {
   const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
   const allProfiles = useMemo(() => inv.socialProfiles || [], [inv.socialProfiles]);
@@ -122,7 +144,7 @@ export const ProfilesTab: React.FC = () => {
     else openUrl(r.url);
   };
 
-  const similarList = <SimilarAccounts what="profiles" items={similar.map(p => ({ key: profileKey(p), title: p.profileName || (p.username ? `@${p.username}` : p.platform), platform: p.platform, url: (p.profileUrl || p.url) as string }))} />;
+  const similarList = <SimilarAccounts what="profiles" items={similar.map(p => ({ key: profileKey(p), title: p.profileName || (p.username ? `@${p.username}` : p.platform), platform: p.platform, url: (p.profileUrl || p.url) as string, investigateTo: investigateLink(p) }))} />;
 
   if (rows.length === 0 && d.buckets.social.length === 0) {
     return (

@@ -9,6 +9,7 @@ import { PeoplePage } from './pages/People/People';
 import { SourcesPage } from './pages/Sources/Sources';
 import { SettingsPage } from './pages/Settings/Settings';
 import { HelpPage } from './pages/Help/Help';
+import { GuidePage } from './pages/Guide/Guide';
 import { SocialSearchPage } from './pages/Explore/SocialSearch';
 import { NewsSearchPage } from './pages/Explore/NewsSearch';
 import { MediaSearchPage } from './pages/Explore/MediaSearch';
@@ -62,7 +63,7 @@ const AuthRoute: React.FC = () => {
   return <AuthPage />;
 };
 
-const TAB_ROUTES = ['overview', 'profiles', 'activity', 'associations', 'sources', 'webnews', 'stats', 'news', 'images', 'location', 'contact'];
+const TAB_ROUTES = ['overview', 'organization', 'profiles', 'activity', 'associations', 'sources', 'webnews', 'stats', 'news', 'images', 'location', 'contact'];
 
 const AppRoutes: React.FC = () => {
   const { user, loading } = useSession();
@@ -108,6 +109,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/people" element={<AppPage><PeoplePage currentUser={user || undefined} /></AppPage>} />
       <Route path="/sources" element={<AppPage><SourcesPage /></AppPage>} />
       <Route path="/help" element={<AppPage><HelpPage /></AppPage>} />
+      <Route path="/guide" element={<AppPage><GuidePage /></AppPage>} />
       <Route path="/settings" element={<AppPage><SettingsPage /></AppPage>} />
       <Route path="/search/social" element={<AppPage><SocialSearchPage /></AppPage>} />
       <Route path="/search/news" element={<AppPage><NewsSearchPage /></AppPage>} />

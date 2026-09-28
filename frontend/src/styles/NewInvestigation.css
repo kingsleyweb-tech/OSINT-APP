@@ -440,3 +440,24 @@
     gap: 12px;
   }
 }
+
+/* Suggestions while typing a name (organisations / abbreviations) */
+.search-input-form { position: relative; }
+.entity-suggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); padding: 6px; max-height: 340px; overflow-y: auto;
+}
+.entity-suggest-head { font-size: 0.78rem; color: var(--text-muted); padding: 6px 10px 4px; }
+.entity-suggest-head span { opacity: 0.8; }
+.entity-suggest-item {
+  display: grid; grid-template-columns: 18px minmax(0, max-content) minmax(0, 1fr); align-items: center; gap: 8px;
+  width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; color: var(--text-primary);
+}
+.entity-suggest-item:hover { background: var(--bg-hover); }
+.entity-suggest-item .l { font-weight: 600; }
+.entity-suggest-item .d { color: var(--text-muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) {
+  .entity-suggest-item { grid-template-columns: 18px minmax(0, 1fr); }
+  .entity-suggest-item .d { grid-column: 2; white-space: normal; }
+}

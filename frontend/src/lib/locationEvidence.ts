@@ -557,8 +557,55 @@ export function checkedResults(inv: Investigation, source: string, items: Explor
 }
 
 /** Every location reference of a case: its own data plus the Location tab's saved search. */
+/**
+ * Organisation cases: where the organisation says it is — its headquarters/address in Google's knowledge
+ * panel and the addresses its own website publishes (website only when confirmed as official).
+ */
+function organizationRefs(inv: Investigation): LocationRef[] {
+  if (inv.entityKind !== 'organization' || !inv.organization) return [];
+  const org = inv.organization;
+  const out: LocationRef[] = [];
+  org.facts.filter(f => /^(headquarters|address|location|locations|head office)$/i.test(f.label)).forEach(f => {
+    const url = f.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent(org.name)}`;
+    out.push({
+      id: `${urlKey(url)}|${placeKey(f.value)}|organization`, place: f.value, key: placeKey(f.value), type: 'organization', status: 'stated',
+      sourceKind: 'Google knowledge panel', sourceName: 'Google', url,
+      evidence: `Google’s knowledge panel lists ${f.label.toLowerCase()}: “${f.value}”.`,
+      relationship: `${f.label} of ${org.name} as listed in Google’s knowledge panel.`
+    });
+  });
+  const site = inv.websiteIntel;
+  if (site?.reachable && site.verification.status !== 'unverified') {
+    site.addresses.forEach(a => out.push({
+      id: `${urlKey(a.foundOn)}|${placeKey(a.value)}|organization`, place: a.value, key: placeKey(a.value), type: 'organization', status: 'stated',
+      sourceKind: 'Official website', sourceName: site.siteName || org.name, url: a.foundOn,
+      evidence: `The organisation’s website shows the address “${a.value}”.`,
+      relationship: `An address ${org.name} publishes on its own website (office, branch or contact address).`
+    }));
+  }
+  // Enrichment sources: Wikidata's headquarters, a search result that states it, and every Google Maps listing.
+  const enr = inv.orgEnrich;
+  (enr?.claims || []).filter(c => (c.field === 'headquarters' || c.field === 'address') && c.sourceKind !== 'maps').forEach(c => {
+    const url = c.sourceUrl || '';
+    const wd = c.sourceKind === 'wikidata';
+    out.push({
+      id: `${urlKey(url)}|${placeKey(c.value)}|organization`, place: c.value, key: placeKey(c.value), type: 'organization', status: wd ? 'stated' : 'reported',
+      sourceKind: wd ? 'Wikidata' : 'Search result', sourceName: c.source, url,
+      evidence: c.quote || `${c.source} gives the ${c.field === 'headquarters' ? 'headquarters' : 'address'} of ${org.name} as “${c.value}”.`,
+      relationship: `${c.field === 'headquarters' ? 'Headquarters' : 'Address'} of ${org.name} according to ${c.source}.`
+    });
+  });
+  (enr?.mapsListings || []).filter(l => l.address).forEach(l => out.push({
+    id: `${urlKey(l.mapsUrl)}|${placeKey(l.address!)}|organization`, place: l.address!, key: placeKey(l.address!), type: 'organization', status: 'reported',
+    sourceKind: 'Google Maps listing', sourceName: l.title, url: l.mapsUrl,
+    evidence: `Google Maps lists “${l.title}”${l.category ? ` (${l.category})` : ''} at ${l.address}.`,
+    relationship: `A Google Maps listing attributed to ${org.name} because ${l.matchedBy}. It may be a branch, office or unit rather than the headquarters.`
+  }));
+  return out;
+}
+
 export function allLocationRefs(inv: Investigation): LocationRef[] {
-  const fromCase = refsFromCase(inv);
+  const fromCase = [...refsFromCase(inv), ...organizationRefs(inv)];
   const ids = new Set(fromCase.map(r => r.id));
   const scan = inv.locationScan;
   const searched = [...(scan?.runs?.core?.refs || []), ...(scan?.runs?.more?.refs || []), ...(scan?.refs || [])];

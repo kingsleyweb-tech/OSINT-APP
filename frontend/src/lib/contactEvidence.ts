@@ -196,8 +196,49 @@ export function contactsFromSearch(inv: Investigation, items: ExploreItem[]): Co
 }
 
 /** Every contact reference of a case: its own data plus the Contact tab's saved search. */
+/**
+ * Organisation cases: contact details the organisation publishes itself — on its website (read by the
+ * Organisation tab) and in Google's knowledge panel. A website that could not be confirmed as the
+ * organisation's own gives unconfirmed references only.
+ */
+export function organizationContacts(inv: Investigation): ContactRef[] {
+  if (inv.entityKind !== 'organization') return [];
+  const out: ContactRef[] = [];
+  const org = inv.organization;
+  const site = inv.websiteIntel;
+  const official = site?.reachable && site.verification.status !== 'unverified';
+  const add = (kind: ContactKind, value: string, url: string, sourceKind: string, sourceName: string, stated: boolean, evidence: string) => {
+    if (kind === 'phone' && !validPhone(value)) return;
+    const key = kind === 'email' ? value.toLowerCase() : phoneKey(value);
+    out.push({
+      id: `${urlKey(url)}|${kind}|${key}`, kind, value, key, status: stated ? 'stated' : 'unconfirmed',
+      sourceKind, sourceName, url, evidence,
+      relationship: stated
+        ? `Published by ${org?.name || 'the organisation'} itself (${sourceKind.toLowerCase()}).`
+        : 'Shown on a website that could not be confirmed as the organisation’s official website. It may belong to a different organisation.',
+      ...(kind === 'email' ? { emailType: FREE_MAIL.test(value) ? 'personal' as const : 'organisation' as const } : {})
+    });
+  };
+  if (site?.reachable) {
+    const label = official ? 'Official website' : 'Website (not confirmed as official)';
+    site.emails.forEach(e => add('email', e.value, e.foundOn, label, site.siteName || shortHost(e.foundOn), Boolean(official), `The page ${shortHost(e.foundOn)} shows “${e.value}”.`));
+    site.phones.forEach(p => add('phone', p.value, p.foundOn, label, site.siteName || shortHost(p.foundOn), Boolean(official), `The page ${shortHost(p.foundOn)} shows “${p.value}”.`));
+  }
+  (org?.facts || []).filter(f => /phone|customer service|contact|telephone/i.test(f.label)).forEach(f => {
+    findContacts(f.value).forEach(c => add(c.kind, c.value, f.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent(org?.name || inv.name)}`, 'Google knowledge panel', 'Google', true, `Google’s knowledge panel lists ${f.label.toLowerCase()} “${f.value}”.`));
+  });
+  // Organisation sources searched by the enrichment step: Wikidata and the organisation's own Google Maps listing.
+  (inv.orgEnrich?.claims || []).filter(c => c.field === 'phone' || c.field === 'email').forEach(c => {
+    const label = c.sourceKind === 'wikidata' ? 'Wikidata' : c.sourceKind === 'maps' ? 'Google Maps listing' : c.source;
+    add(c.field as ContactKind, c.value, c.sourceUrl || '', label, label, true, `${c.source} lists “${c.value}” for ${org?.name || 'the organisation'}.`);
+  });
+  return out;
+}
+
+const shortHost = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, '') + new URL(url).pathname.replace(/\/$/, ''); } catch { return url; } };
+
 export function allContacts(inv: Investigation): ContactRef[] {
-  return dedupe([...contactsFromCase(inv), ...(inv.contactScan?.refs || [])]);
+  return dedupe([...contactsFromCase(inv), ...(inv.contactScan?.refs || []), ...organizationContacts(inv)]);
 }
 
 export interface ContactSummary {

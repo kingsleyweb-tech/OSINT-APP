@@ -9,6 +9,7 @@ import {
 import type { EvidenceLevel } from '../../../types/investigation';
 import { caseGender } from '../../../lib/genderEvidence';
 import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
+import { OrgOverview } from './OrgOverview';
 
 const LEVEL_RANK: Record<EvidenceLevel, number> = { validated: 2, relevant: 1, raw: 0 };
 
@@ -55,6 +56,7 @@ export const OverviewTab: React.FC = () => {
   if (inputs.organization) inputChips.push(['Organization', inputs.organization]);
   inputChips.push(['Depth', inv.searchDepth || 'deep']);
 
+  const org = inv.entityKind === 'organization' ? inv.organization : undefined;
   const gender = caseGender(inv);
   const genderText = gender.value === 'Conflicting'
     ? `Conflicting — ${gender.evidence.map(x => `${x.e.gender} (${x.platform})`).join(', ')}`
@@ -82,34 +84,41 @@ export const OverviewTab: React.FC = () => {
         <SectionHead title="Subject summary" right={<span className="ws-sub">Built from {d.sources.length} kept result{d.sources.length === 1 ? '' : 's'}</span>} />
         <p className="ws-summary">{inv.quickSummary || 'No summary could be built from the search results.'}</p>
 
-        <div className="ws-infobox">
-          <div><div className="k">Name / target</div><div className="v">{inv.targetProfile?.fullName || inv.name}</div></div>
-          <div><div className="k">Location</div><div className="v">{place}</div></div>
-          <div><div className="k">Occupation / role</div><div className="v">{role}</div></div>
-          <div><div className="k">Main platforms</div><div className="v">{mainPlatforms.join(', ') || 'None found'}</div></div>
-          <div>
-            <div className="k">Last observed activity</div>
-            <div className="v">{lastSeen ? `${fmtDate(lastSeen.date.toISOString())} · ${lastSeen.a.sourceName}` : 'No dated activity'}</div>
-          </div>
-          <div><div className="k">Documented associations</div><div className="v">{associations.length} ({validatedAssoc} validated)</div></div>
-          <div>
-            <div className="k">Public contact</div>
-            <div className="v">
-              {(() => {
-                const c = summariseContacts(allContacts(inv));
-                const emails = c.filter(x => x.kind === 'email').length;
-                const phones = c.filter(x => x.kind === 'phone').length;
-                return c.length
-                  ? <button type="button" className="ws-link" onClick={() => goTab('contact')}>{[emails ? `${emails} email${emails === 1 ? '' : 's'}` : '', phones ? `${phones} phone${phones === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')} →</button>
-                  : 'None found yet (see Contact tab)';
-              })()}
+        {(() => {
+          const c = summariseContacts(allContacts(inv));
+          const emails = c.filter(x => x.kind === 'email').length;
+          const phones = c.filter(x => x.kind === 'phone').length;
+          const contact = c.length
+            ? <button type="button" className="ws-link" onClick={() => goTab('contact')}>{[emails ? `${emails} email${emails === 1 ? '' : 's'}` : '', phones ? `${phones} phone${phones === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')} →</button>
+            : 'None found yet (see Contact tab)';
+          const common = <>
+            <div><div className="k">Main platforms</div><div className="v">{mainPlatforms.join(', ') || 'None found'}</div></div>
+            <div>
+              <div className="k">Last observed activity</div>
+              <div className="v">{lastSeen ? `${fmtDate(lastSeen.date.toISOString())} · ${lastSeen.a.sourceName}` : 'No dated activity'}</div>
             </div>
-          </div>
-          <div>
-            <div className="k">Gender</div>
-            <div className="v" title="Only from pronouns or a gender field the person's own profiles state. Never inferred from a name or photo.">{genderText}</div>
-          </div>
-        </div>
+            <div><div className="k">Documented associations</div><div className="v">{associations.length} ({validatedAssoc} validated)</div></div>
+            <div><div className="k">Public contact</div><div className="v">{contact}</div></div>
+          </>;
+
+          if (!org) {
+            return (
+              <div className="ws-infobox">
+                <div><div className="k">Name / target</div><div className="v">{inv.targetProfile?.fullName || inv.name}</div></div>
+                <div><div className="k">Location</div><div className="v">{place}</div></div>
+                <div><div className="k">Occupation / role</div><div className="v">{role}</div></div>
+                {common}
+                <div>
+                  <div className="k">Gender</div>
+                  <div className="v" title="Only from pronouns or a gender field the person's own profiles state. Never inferred from a name or photo.">{genderText}</div>
+                </div>
+              </div>
+            );
+          }
+
+          // Organisation case: a summary per section, each linking to the Organisation tab.
+          return <OrgOverview contact={contact} platforms={mainPlatforms} />;
+        })()}
 
 
         <div className="ws-inputs">

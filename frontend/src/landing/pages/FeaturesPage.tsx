@@ -192,7 +192,7 @@ export const FeaturesPage: React.FC = () => {
       whatItIs: 'Your workspace: cases, saved findings from any search page, tracked people and a history of every search.',
       whyItExists: 'Investigations span many sessions and many kinds of search.',
       howItWorks: 'Any result can be saved to a case; if you have no case yet one is created automatically. Every search is saved to your history, grouped by kind, and can be re-run or opened as its case. Cases can be re-run to see what changed and exported as JSON and CSV.',
-      whatUsersSee: 'Investigations list, the 12 case tabs, tracked people, and Search history with results and corrections.',
+      whatUsersSee: 'Investigations list, the case tabs (plus an Organisation tab for organisations), tracked people, and Search history with results and corrections.',
       limitations: 'Data is stored in your own account and visible only to you.',
       whatToVerify: 'Export important cases periodically for your records.'
     },

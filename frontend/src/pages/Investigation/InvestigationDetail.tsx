@@ -22,6 +22,11 @@ import { NewsTab } from '../../components/investigations/tabs/NewsTab';
 import { ImagesTab } from '../../components/investigations/tabs/ImagesTab';
 import { LocationTab } from '../../components/investigations/tabs/LocationTab';
 import { ContactTab } from '../../components/investigations/tabs/ContactTab';
+import { OrganizationTab } from '../../components/investigations/tabs/OrganizationTab';
+import { useOrgPipelineAutoRun } from '../../components/investigations/workspace/useOrgPipeline';
+
+/** Runs the organisation data pipeline for organisation cases (renders nothing). */
+const OrgPipelineRunner: React.FC = () => { useOrgPipelineAutoRun(); return null; };
 import { SearchLoader } from '../../components/ui/SearchLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
@@ -29,6 +34,7 @@ import '../../styles/Workspace.css';
 
 const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 'Record' }> = [
   { key: 'overview', label: 'Overview', group: 'Summary' },
+  { key: 'organization', label: 'Organisation', group: 'Summary' },
   { key: 'profiles', label: 'Profiles', group: 'Evidence' },
   { key: 'activity', label: 'Activity', group: 'Evidence' },
   { key: 'associations', label: 'Associations', group: 'Evidence' },
@@ -250,9 +256,11 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     else toast.success('Person tracked', `${investigation.name} now appears on the People page.`);
   };
 
+  // The Organisation tab only exists for organisation cases.
+  const tabs = TABS.filter(t => t.key !== 'organization' || investigation.entityKind === 'organization');
   const tabButton = (t: typeof TABS[number], i: number) => {
     const count = d.counts[t.key];
-    const gap = i > 0 && TABS[i - 1].group !== t.group && t.group !== 'Evidence';
+    const gap = i > 0 && tabs[i - 1].group !== t.group && t.group !== 'Evidence';
     return (
       <button
         key={t.key}
@@ -268,6 +276,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
 
   return (
     <WorkspaceContext.Provider value={api}>
+      {investigation.entityKind === 'organization' && <OrgPipelineRunner />}
       <div className="ws-root">
         <nav className="ws-crumb" aria-label="Breadcrumb">
           <Link to="/investigations"><ChevronLeft size={16} /> Investigations</Link>
@@ -319,11 +328,11 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
         </header>
 
-        <div className="ws-tabs" role="tablist">{TABS.map(tabButton)}</div>
+        <div className="ws-tabs" role="tablist">{tabs.map(tabButton)}</div>
 
         <div className="ws-mobile-tabs">
           <button type="button" className="menu" onClick={() => setSheetOpen(true)} aria-label="Jump to section"><Menu size={17} /></button>
-          {TABS.map(t => {
+          {tabs.map(t => {
             const count = d.counts[t.key];
             return (
               <button key={t.key} type="button" className={currentTab === t.key ? 'active' : ''} onClick={() => goTab(t.key)}>
@@ -335,6 +344,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
 
         <div className="ws-body">
           {currentTab === 'overview' && <OverviewTab />}
+          {currentTab === 'organization' && <OrganizationTab />}
           {currentTab === 'profiles' && <ProfilesTab />}
           {currentTab === 'activity' && <ActivityTab />}
           {currentTab === 'associations' && <AssociationsTab />}
@@ -368,7 +378,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
               {(['Summary', 'Evidence', 'Record'] as const).map(group => (
                 <div key={group}>
                   <div className="ws-sheet-group ws-label">{group}</div>
-                  {TABS.filter(t => t.group === group).map(t => (
+                  {tabs.filter(t => t.group === group).map(t => (
                     <button key={t.key} type="button" className={`ws-sheet-item${currentTab === t.key ? ' active' : ''}`} onClick={() => goTab(t.key)}>
                       {t.label}
                       <span className="n">{currentTab === t.key ? '✓' : d.counts[t.key] ?? ''}</span>

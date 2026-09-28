@@ -86,7 +86,7 @@ const DOCS: DocSection[] = [
     id: 'loader', label: 'Progress, caching & quota', category: 'Search', title: 'Progress, Caching & Quota',
     paragraphs: [
       'Every search shows a progress loader listing each engine it calls, with real status for each. You can cancel at any time. A slow engine times out after 30 seconds and is retried once, so a search never freezes.',
-      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick), 9–10 (standard) or 9–12 (deep) searches plus one per location or organisation; a username search uses 5, 11 or 14 (quick / standard / deep), and its direct platform checks are free. The Contact tab uses 4 to look for the person’s public email addresses and phone numbers. The in-app Help page lists the exact cost of every search.'
+      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick), 9–10 (standard) or 9–12 (deep) searches plus one per location or organisation; a username search uses 5, 11 or 14 (quick / standard / deep), and its direct platform checks are free. The Contact tab uses 4 to look for the person’s public email addresses and phone numbers. Recognising an organisation and reading its website use none. The in-app Help page lists the exact cost of every search.'
     ]
   },
   {
@@ -103,10 +103,11 @@ const DOCS: DocSection[] = [
     ]
   },
   {
-    id: 'case-tabs', label: 'The 12 case tabs', category: 'Results', title: 'The 12 Case Tabs',
-    paragraphs: ['Each case is organised into twelve tabs:'],
+    id: 'case-tabs', label: 'The case tabs', category: 'Results', title: 'The Case Tabs',
+    paragraphs: ['Each case is organised into twelve tabs, plus an Organisation tab when the name search found an organisation:'],
     list: [
       'Overview — summary of the selected identity and its key facts.',
+      'Organisation (organisation cases only) — official name, type, description, industry, headquarters, website, key people and products, each with its source; the official website’s About, Services, Products, Leadership, Locations, Contact and News pages; and whether the website could be verified as official.',
       'Profiles — the subject’s own profiles, with link checks; similar accounts listed separately.',
       'Activity — public posts, videos, articles and code activity in date order.',
       'Associations — organisations, co-mentioned people and linked usernames.',

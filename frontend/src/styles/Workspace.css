@@ -1053,3 +1053,48 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
 .ws-loc-result-note.warn { color: var(--ws-bad); }
 @media (max-width: 700px) { .ws-loc-result { padding-left: 0; } }
 .ws-gender-line { font-size: 12px; margin-top: 2px; }
+
+.ws-similar-row > a { color: inherit; display: inline-flex; }
+.ws-similar-open { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.ws-similar-go { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ws-accent); white-space: nowrap; }
+@media (max-width: 700px) { .ws-similar-go { display: none; } }
+
+.ws-infobox-head { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--ws-border); }
+.ws-org-kind { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; color: #7c3aed; background: rgba(124, 58, 237, 0.12); border: 1px solid rgba(124, 58, 237, 0.35); border-radius: 999px; padding: 4px 12px; }
+.ws-infobox-wide { grid-column: 1 / -1; }
+
+/* ─── Organisation tab ─── */
+.ws-org-table td.ws-org-k { width: 190px; vertical-align: top; }
+.ws-org-table td.ws-org-v { text-align: left !important; white-space: normal !important; }
+.ws-org-fact { padding: 2px 0 8px; }
+.ws-org-fact + .ws-org-fact { border-top: 1px dashed var(--ws-border); padding-top: 8px; }
+.ws-org-src summary { cursor: pointer; list-style: none; font-size: 13px; margin-top: 2px; }
+.ws-org-src summary::-webkit-details-marker { display: none; }
+.ws-org-src ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.ws-org-src ul a { color: var(--ws-accent); }
+.ws-org-conflict { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ws-bad); margin-bottom: 6px; }
+.ws-org-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ws-org-running { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ws-accent); margin: 0 0 12px; }
+.ws-spin { animation: ws-spin 1s linear infinite; }
+@keyframes ws-spin { to { transform: rotate(360deg); } }
+.ws-org-news { grid-template-columns: 24px minmax(0, 1fr) minmax(90px, 220px); }
+.ws-org-news .name { white-space: normal; overflow: visible; }
+.ws-org-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.ws-org-video { display: flex; flex-direction: column; gap: 4px; color: var(--ws-text); text-decoration: none; }
+.ws-org-video img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: var(--ws-surface); }
+.ws-org-video .t { font-size: 14px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ws-org-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ws-org-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--ws-border); border-radius: 10px; }
+.ws-org-stats b { font-size: 22px; color: var(--ws-text); }
+.ws-org-stats b.bad { color: var(--ws-bad); }
+.ws-org-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.ws-org-card { border: 1px solid var(--ws-border); border-radius: 12px; padding: 14px 16px; background: var(--ws-surface); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ws-org-card h4 { margin: 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--ws-text); }
+.ws-org-card .v { font-size: 14.5px; line-height: 1.5; color: var(--ws-text); overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .ws-org-table td.ws-org-k { width: auto; }
+  .ws-org-stats, .ws-org-sections { grid-template-columns: minmax(0, 1fr); }
+  .ws-org-news { grid-template-columns: 24px minmax(0, 1fr); }
+  .ws-org-news .ws-trunc { display: none; }
+}
+.ws-org-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 14px; }

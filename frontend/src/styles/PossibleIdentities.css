@@ -777,3 +777,17 @@
 .pi-similar-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pi-similar-platform { color: var(--text-muted); font-size: 0.82rem; flex: 1; }
 .pi-similar-tag { font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--bg-hover); color: var(--text-secondary); border: 1px solid var(--border-color); }
+
+.confidence-pill.pi-org-pill {
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  color: #7c3aed;
+}
+
+/* Abbreviation searches: what the results say it stands for */
+.pi-resolution { border: 1px solid rgba(124, 58, 237, 0.35); background: rgba(124, 58, 237, 0.08); border-radius: 12px; padding: 12px 16px; margin: 0 0 16px; font-size: 0.92rem; line-height: 1.55; }
+.pi-resolution p { margin: 0; }
+.pi-resolution a { color: #7c3aed; font-weight: 600; }
+.pi-resolution-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pi-resolution-choice { border: 1px solid rgba(124, 58, 237, 0.45); border-radius: 999px; padding: 5px 12px; text-decoration: none; }
+.pi-resolution-choice span { font-weight: 400; opacity: 0.75; }

@@ -140,8 +140,42 @@ export function buildNameInvestigation(
   };
 }
 
+/**
+ * When the name search is about an organisation: one card holding the organisation's own profiles
+ * and every kept result, with the organisation facts (each with its source).
+ */
+export function buildOrganizationIdentity(query: OSINTQuery, output: NameSearchOutput): IdentityCluster | null {
+  const org = output.entity.profile;
+  if (output.entity.kind !== 'organization' || !org) return null;
+  const own = new Set(org.socialProfiles.map(s => s.url));
+  const profiles = output.profiles.filter(p => p.relation !== 'similar' && (own.has(p.profileUrl) || own.has(p.canonicalUrl || '')));
+  const hq = org.facts.find(f => /^(headquarters|address|location)$/i.test(f.label))?.value;
+  return {
+    id: 'organization-1',
+    kind: 'organization',
+    fullName: org.name,
+    publicRole: org.type?.value || 'Organisation',
+    location: hq || 'Not specified',
+    avatarUrl: profiles.find(p => p.thumbnail)?.thumbnail,
+    summary: org.description?.value || `${output.entity.reason} No description was found in the sources.`,
+    confidenceScore: org.hasKnowledgePanel ? 85 : 60,
+    confidenceLabel: org.hasKnowledgePanel ? 'Strong evidence' : 'Possible match',
+    evidenceChecklist: org.signals,
+    profiles,
+    webItems: output.webItems.map(w => ({ ...w, metadata: { ...(w.metadata || {}), identityLink: 'linked' } }))
+  };
+}
+
 export function buildIdentityPayload(query: OSINTQuery, identity: IdentityCluster, output: NameSearchOutput, searchDepth: string): any {
   const investigation = buildNameInvestigation(query, identity, output, searchDepth);
+  // An abbreviation search: the full names the results give for it (shown above the results).
+  if (output.entity.resolution) investigation.entityResolution = output.entity.resolution;
+  if (identity.kind === 'organization' && output.entity.profile) {
+    // Organisation case: the organisation's facts and how it was recognised.
+    investigation.entityKind = 'organization';
+    investigation.organization = { ...output.entity.profile, detectionReason: output.entity.reason };
+    investigation.targetProfile = { ...investigation.targetProfile, gender: 'Not applicable', age: 'Not applicable', occupation: output.entity.profile.type?.value || 'Organisation' };
+  }
   return {
     id: identity.id,
     kind: identity.kind,
@@ -182,7 +216,19 @@ export function rescanNameInvestigation(query: OSINTQuery, investigation: any, o
     }
   });
 
+  // Organisation cases stay organisation cases: rebuild from the organisation card, with refreshed facts.
+  // A case opened before organisations were recognised becomes one when the search now finds an organisation
+  // that owns at least one of the case's profiles.
+  const orgOwnsCase = output.entity.kind === 'organization'
+    && (output.entity.profile?.socialProfiles || []).some(s => prevKeys.has(s.url) || previous.some(p => (p.profileUrl || p.url) === s.url));
+  const orgIdentity = investigation.entityKind === 'organization' || orgOwnsCase ? buildOrganizationIdentity(query, output) : null;
+  if (orgIdentity) best = orgIdentity;
+
   const fresh = buildNameInvestigation(query, best, output, searchDepth, investigation.createdBy);
+  if (orgIdentity && output.entity.profile) {
+    fresh.entityKind = 'organization';
+    fresh.organization = { ...output.entity.profile, detectionReason: output.entity.reason };
+  }
   const freshKeys = new Set<string>(fresh.socialProfiles.map((p: DiscoveredProfile) => p.canonicalUrl));
 
   fresh.socialProfiles = fresh.socialProfiles.map((p: DiscoveredProfile) => {

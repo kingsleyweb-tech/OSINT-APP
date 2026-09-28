@@ -4,7 +4,7 @@ import { TrackingEngine } from '../services/intelligence/trackingEngine';
 import { DeepSearchEngine } from '../services/search/deepSearchEngine';
 import { NormalizedResultItem, OSINTQuery } from '../types/search';
 import { NameSearchEngine } from '../services/nameSearch/nameSearchEngine';
-import { buildIdentityPayload, buildNameInvestigation, rescanNameInvestigation } from '../services/nameSearch/nameInvestigationBuilder';
+import { buildIdentityPayload, buildNameInvestigation, buildOrganizationIdentity, rescanNameInvestigation } from '../services/nameSearch/nameInvestigationBuilder';
 
 const UNSUPPORTED_TYPE_ERROR = 'Only name and username searches are supported.';
 
@@ -74,7 +74,9 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
 
     if (query.searchType === 'name') {
       const nameOutput = await NameSearchEngine.execute(query, { searchDepth, onProgress: (req as any).onProgress });
-      const identities = nameOutput.identities.map(identity => buildIdentityPayload(query, identity, nameOutput, searchDepth));
+      // An organisation is listed first; the person groups stay (someone may share the name).
+      const orgIdentity = buildOrganizationIdentity(query, nameOutput);
+      const identities = [...(orgIdentity ? [orgIdentity] : []), ...nameOutput.identities].map(identity => buildIdentityPayload(query, identity, nameOutput, searchDepth));
       const primary = identities[0];
       const investigation = buildNameInvestigation(query, nameOutput.identities[0], nameOutput, searchDepth, (req as any).user?.uid);
 

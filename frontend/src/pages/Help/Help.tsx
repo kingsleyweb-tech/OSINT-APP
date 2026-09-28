@@ -82,7 +82,9 @@ const SECTIONS: HelpSection[] = [
         list: [
           'Searches Google with the exact name, then one query per platform group: LinkedIn, Facebook (two pages), Instagram, X, TikTok & Threads, YouTube, and GitHub/Medium/Reddit/Stack Overflow.',
           'Groups results into possible identities; pick one to create a case.',
-          'Deep searches confirm the best Facebook and Instagram matches with their profile APIs.'
+          'Deep searches confirm the best Facebook and Instagram matches with their profile APIs.',
+          'Abbreviations (UPSA, GRA) are resolved from what the results say they stand for; if several organisations share one, you choose.',
+          'Organisations too: when Google’s knowledge panel (or at least two other signs) shows the name is a company, institution or association, an Organisation card is listed first, and its case gets an Organisation tab that reads the official website.'
         ]
       },
       {
@@ -154,11 +156,12 @@ const SECTIONS: HelpSection[] = [
     more: { to: '/sources', label: 'Open the Sources page and API reference' }
   },
   {
-    id: 'workspace', label: 'The 12 case tabs', icon: FileText, kind: 'tabs',
-    title: 'The 12 Case Tabs',
-    lead: 'Each case (investigation) is organised into 12 tabs. Tab counts are the number of items the tab shows.',
+    id: 'workspace', label: 'The case tabs', icon: FileText, kind: 'tabs',
+    title: 'The Case Tabs',
+    lead: 'Each case (investigation) is organised into 12 tabs, plus an Organisation tab in organisation cases. Tab counts are the number of items the tab shows.',
     steps: [
       { num: '01', title: 'Overview', desc: 'Summary of the selected identity: main profiles, key facts, evidence levels and the latest changes.' },
+      { num: '01b', title: 'Organisation', desc: 'Organisation cases only. Facts gathered from Google’s knowledge panel, Wikidata, Google Maps, Google and Bing results, social platforms and the official website, cross-checked (confirmed by several sources, single source, or sources disagree) and split into eight sections; the official website — verified, probably official or could not be verified — and what its About, Services, Products, Leadership, Locations, Contact and News pages say; public profiles; and why it was recognised as an organisation. Anything no source gives is shown as “Not found”.' },
       { num: '02', title: 'Profiles', desc: 'The person’s own profiles on each platform, with open/closed link checks. Similar accounts are listed separately.' },
       { num: '03', title: 'Activity', desc: 'Public posts, videos, articles and code activity from the person’s own accounts, in date order.' },
       { num: '04', title: 'Associations', desc: 'Organisations, co-mentioned people and linked usernames.' },
@@ -489,7 +492,7 @@ export const HelpPage: React.FC = () => {
           )}
 
           <footer className="hd-foot">
-            <span>Still stuck?</span> Read the <Link to="/sources">Sources &amp; API reference</Link> or the <Link to="/documentation">public documentation</Link>.
+            <span>Still stuck?</span> Read the plain-language <Link to="/guide">Guide</Link>, the <Link to="/sources">Sources &amp; API reference</Link> or the <Link to="/documentation">public documentation</Link>.
           </footer>
         </main>
       </div>

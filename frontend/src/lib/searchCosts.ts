@@ -83,7 +83,8 @@ export const COST_GROUPS: CostGroup[] = [
       { search: 'Images tab', tokens: '2', notes: 'Runs once automatically the first time the tab is opened; again only on request.' },
       { search: 'Location tab (automatic)', tokens: '9 – 11', notes: 'Runs once when first opened: Google web, Bing web, news (2), Google Maps, 4 social platforms, + 1 Google Maps lookup per organisation of the person (up to 2).' },
       { search: 'Location tab · Search more sources', tokens: '8', notes: 'LinkedIn/Threads/YouTube/Reddit (4), videos (2), images (2).' },
-      { search: 'Contact tab (automatic)', tokens: '4', notes: 'Runs once when first opened: Google, Bing, DuckDuckGo and social profiles, for public emails and phone numbers of the person. Contact details already on the case’s profiles cost nothing.' }
+      { search: 'Contact tab (automatic)', tokens: '4', notes: 'Runs once when first opened: Google, Bing, DuckDuckGo and social profiles, for public emails and phone numbers of the person. Contact details already on the case’s profiles cost nothing.' },
+      { search: 'Organisation sources (automatic, organisation cases)', tokens: '5 – 7', notes: 'Runs once when an organisation case opens (and again if it failed or after “Re-run searches”): Google Maps, Google pages 1–2, Google News, DuckDuckGo, social platforms and YouTube. Google page 1 and YouTube reuse the name search’s own queries, so they are usually free from the 12-hour cache. Wikidata and the official website are read at no cost. “Search again” in Sources & verification runs it again.' }
     ]
   },
   {
@@ -92,6 +93,8 @@ export const COST_GROUPS: CostGroup[] = [
       { search: 'Repeating a search within 12 hours', tokens: '0', notes: 'Identical requests are answered from the server cache.' },
       { search: 'Search history · View results', tokens: '0', notes: 'Shows the saved results from your account.' },
       { search: 'Direct username checks', tokens: '0', notes: 'GitHub, Reddit, Docker Hub, npm, DEV, Mastodon, Bluesky, Telegram, Twitch, Vimeo, YouTube, Wikipedia, TikTok and Snapchat profile pages.' },
+      { search: 'Organisation detection', tokens: '0', notes: 'Deciding that a name search is about an organisation (and its knowledge-panel facts) uses the name search’s own results.' },
+      { search: 'Organisation tab · website reading', tokens: '0', notes: 'The organisation’s own website is read directly by the server (up to 12 public pages), not through SerpApi. Wikidata is also free.' },
       { search: 'Analysis & records', tokens: '0', notes: 'Content analysis, Network, profile link checks, the quota indicator, maps (map/satellite view) and the Sources page.' }
     ]
   }

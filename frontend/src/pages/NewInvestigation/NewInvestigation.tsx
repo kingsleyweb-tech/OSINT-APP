@@ -16,6 +16,7 @@ import { SearchLoader } from '../../components/ui/SearchLoader';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
 import { useProfilerSearch } from '../../components/search/useProfilerSearch';
+import { EntitySuggestions } from '../../components/search/EntitySuggestions';
 import { linkHistoryToCase } from '../../lib/history';
 import type { Investigation } from '../../types/investigation';
 import { saveInvestigationToDb, getUserInvestigationsFromDb } from '../../firebase/firestore';
@@ -37,9 +38,15 @@ interface NewInvestigationPageProps {
 const SEARCH_TYPES = ['Name', 'Username'] as const;
 type SearchType = typeof SEARCH_TYPES[number];
 
+/** Same profile, ignoring protocol, www/m/country subdomains, case and a trailing slash. */
+function sameProfileUrl(a: unknown, b: string): boolean {
+  const norm = (u: string) => u.toLowerCase().replace(/^https?:\/\//, '').replace(/^(www|m|mobile|[a-z]{2})\./, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
+  return typeof a === 'string' && a !== '' && norm(a) === norm(b);
+}
+
 export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, info } = useToast();
   const profiler = useProfilerSearch('profiler');
   const [searchMode, setSearchMode] = useSearchMode();
   const { addNotification } = useNotifications();
@@ -67,67 +74,12 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     getUserInvestigationsFromDb(userId).then(setRealInvestigations);
   }, [userId]);
 
-  const handleSearchSubmit = async (e?: React.FormEvent, opts: { q?: string; keepOriginal?: boolean; chosen?: string } = {}) => {
-    if (e) e.preventDefault();
-    const query = (opts.q ?? queryInput).trim();
-    if (!query) {
-      toastError('Input required', 'Please enter a target name or username.');
-      return;
-    }
-
-    setIsLoading(true);
-    setActiveQuery(query);
-    setActiveSearchType(searchType);
-    setDiscoveredIdentities(null);
-
-    try {
-      const outcome = await profiler.run(query, searchType, searchDefaults.depth, { mode: searchMode, cases: realInvestigations, keepOriginal: opts.keepOriginal, chosen: opts.chosen });
-      if (outcome.openCaseId) {
-        navigate(`/investigations/${outcome.openCaseId}`);
-        return;
-      }
-      const identities = outcome.identities;
-      // A confident correction was searched: the case is named after what was actually searched.
-      setActiveQuery(outcome.searchQuery);
-      setDiscoveredIdentities(identities);
-      const profileCount = identities.reduce((n, i) => n + (i.investigation?.socialProfiles?.length || 0), 0);
-      success('Search complete', `${identities.length} possible ${identities.length === 1 ? 'person' : 'people'} and ${profileCount} profile${profileCount === 1 ? '' : 's'} for "${query}".`);
-    } catch (err: any) {
-      if (err instanceof SearchError && err.title === 'Search cancelled') return;
-      toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const runFromParams = React.useRef<{ q: string; t: SearchType } | null>(null);
-  // History → "Run again" opens this page with ?q=…&type=…&run=1.
-  usePageSearch(p => {
-    const q = p.get('q') || '';
-    const t = ((SEARCH_TYPES as readonly string[]).includes(p.get('type') || '') ? p.get('type') : 'Name') as SearchType;
-    setQueryInput(q);
-    setSearchType(t);
-    runFromParams.current = { q, t };
-  }, payload => {
-    // History → "View results": the saved results, no searches used.
-    const d = payload as { query: string; searchQuery: string; type: SearchType; identities: DiscoveredIdentity[]; intel?: QueryIntel | null };
-    setQueryInput(d.query); setSearchType(d.type); setActiveSearchType(d.type);
-    setActiveQuery(d.searchQuery || d.query); setDiscoveredIdentities(d.identities || []);
-    profiler.setIntel(d.intel || null);
-  });
-  React.useEffect(() => {
-    const pending = runFromParams.current;
-    if (!pending || pending.q !== queryInput || pending.t !== searchType) return;
-    runFromParams.current = null;
-    const t = setTimeout(() => handleSearchSubmit(), 0);
-    return () => clearTimeout(t);
-  });
-
-  const handleSelectIdentity = async (selectedIdentity: DiscoveredIdentity) => {
+  const handleSelectIdentity = async (selectedIdentity: DiscoveredIdentity, searched?: { query: string; type: SearchType }) => {
     if (!selectedIdentity) return;
     const invData: Investigation = identityToInvestigation(selectedIdentity, {
-      activeQuery,
-      searchType: activeSearchType,
+      // Right after a search the state may not be updated yet, so the search itself is passed in.
+      activeQuery: searched?.query ?? activeQuery,
+      searchType: searched?.type ?? activeSearchType,
       userId,
       searchDepth: searchDefaults.depth
     });
@@ -150,6 +102,75 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
     setRealInvestigations(prev => [invData, ...prev.filter(i => i.id !== invData.id)]);
     navigate(`/investigations/${invData.id}`, { state: { investigation: invData } });
   };
+
+  const handleSearchSubmit = async (e?: React.FormEvent, opts: { q?: string; keepOriginal?: boolean; chosen?: string } = {}) => {
+    if (e) e.preventDefault();
+    const query = (opts.q ?? queryInput).trim();
+    if (!query) {
+      toastError('Input required', 'Please enter a target name or username.');
+      return;
+    }
+
+    setIsLoading(true);
+    setActiveQuery(query);
+    setActiveSearchType(searchType);
+    setDiscoveredIdentities(null);
+
+    try {
+      const outcome = await profiler.run(query, searchType, searchDefaults.depth, { mode: searchMode, cases: realInvestigations, keepOriginal: opts.keepOriginal, chosen: opts.chosen });
+      if (outcome.openCaseId) {
+        navigate(`/investigations/${outcome.openCaseId}`);
+        return;
+      }
+      const identities = outcome.identities;
+      // Opened from "Similar accounts": go straight to the identity holding that exact account.
+      const target = autoOpen.current;
+      autoOpen.current = null;
+      if (target) {
+        const holder = identities.find(i => (i.investigation?.socialProfiles || []).some((sp: { profileUrl?: string; url?: string; canonicalUrl?: string }) => [sp.profileUrl, sp.url, sp.canonicalUrl].some(u => sameProfileUrl(u, target))));
+        const searched = { query: outcome.searchQuery || query, type: searchType };
+        if (holder) { handleSelectIdentity(holder, searched); return; }
+        if (identities.length === 1) { handleSelectIdentity(identities[0], searched); return; }
+        info('Choose the person', 'The account was not found in a single group, so pick the matching result below.');
+      }
+      // A confident correction was searched: the case is named after what was actually searched.
+      setActiveQuery(outcome.searchQuery);
+      setDiscoveredIdentities(identities);
+      const profileCount = identities.reduce((n, i) => n + (i.investigation?.socialProfiles?.length || 0), 0);
+      success('Search complete', `${identities.length} possible ${identities.length === 1 ? 'person' : 'people'} and ${profileCount} profile${profileCount === 1 ? '' : 's'} for "${query}".`);
+    } catch (err: any) {
+      if (err instanceof SearchError && err.title === 'Search cancelled') return;
+      toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const [inputFocused, setInputFocused] = useState(false);
+  const runFromParams = React.useRef<{ q: string; t: SearchType } | null>(null);
+  const autoOpen = React.useRef<string | null>(null);
+  // History → "Run again" opens this page with ?q=…&type=…&run=1.
+  usePageSearch(p => {
+    const q = p.get('q') || '';
+    const t = ((SEARCH_TYPES as readonly string[]).includes(p.get('type') || '') ? p.get('type') : 'Name') as SearchType;
+    setQueryInput(q);
+    setSearchType(t);
+    runFromParams.current = { q, t };
+    autoOpen.current = p.get('open');
+  }, payload => {
+    // History → "View results": the saved results, no searches used.
+    const d = payload as { query: string; searchQuery: string; type: SearchType; identities: DiscoveredIdentity[]; intel?: QueryIntel | null };
+    setQueryInput(d.query); setSearchType(d.type); setActiveSearchType(d.type);
+    setActiveQuery(d.searchQuery || d.query); setDiscoveredIdentities(d.identities || []);
+    profiler.setIntel(d.intel || null);
+  });
+  React.useEffect(() => {
+    const pending = runFromParams.current;
+    if (!pending || pending.q !== queryInput || pending.t !== searchType) return;
+    runFromParams.current = null;
+    const t = setTimeout(() => handleSearchSubmit(), 0);
+    return () => clearTimeout(t);
+  });
 
   const getPlaceholderText = () => {
     switch (searchType) {
@@ -210,7 +231,7 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
             {searchType === 'Name' && <SearchModeToggle mode={searchMode} onChange={setSearchMode} />}
           </div>
 
-          <form className="search-input-form" onSubmit={handleSearchSubmit}>
+          <form className="search-input-form" onSubmit={e => { setInputFocused(false); handleSearchSubmit(e); }}>
             <div className="search-input-wrapper">
               <SearchIcon size={18} className="search-input-icon" />
               <input
@@ -219,6 +240,8 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
                 placeholder={getPlaceholderText()}
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
                 disabled={isLoading}
               />
               <button 
@@ -236,6 +259,13 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
                 )}
               </button>
             </div>
+            {searchType === 'Name' && !isLoading && (
+              <EntitySuggestions
+                query={queryInput}
+                open={inputFocused}
+                onPick={label => { setQueryInput(label); setInputFocused(false); handleSearchSubmit(undefined, { q: label }); }}
+              />
+            )}
           </form>
 
 

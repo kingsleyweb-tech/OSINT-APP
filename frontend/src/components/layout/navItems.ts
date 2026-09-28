@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Search, FolderSearch, Users, Globe, Settings, HelpCircle,
+  LayoutDashboard, Search, BookOpen, FolderSearch, Users, Globe, Settings, HelpCircle,
   MessagesSquare, Newspaper, Image, MapPin, TrendingUp, Share2, BarChart3, History, type LucideIcon
 } from 'lucide-react';
 
@@ -47,6 +47,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'More',
     items: [
       { path: '/sources', label: 'Sources', icon: Globe },
+      { path: '/guide', label: 'Guide', icon: BookOpen },
       { path: '/help', label: 'Help & Docs', icon: HelpCircle },
       { path: '/settings', label: 'Settings', icon: Settings }
     ]

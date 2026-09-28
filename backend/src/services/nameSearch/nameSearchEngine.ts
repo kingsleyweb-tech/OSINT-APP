@@ -1,3 +1,4 @@
+import { detectOrganization, type OrganizationDetection } from './organizationDetector';
 import type { ProgressCallback } from '../../types/progress';
 import { OSINTQuery, NormalizedResultItem } from '../../types/search';
 import { PLATFORM_REGISTRY } from '../search/platformRegistry';
@@ -82,7 +83,7 @@ export interface DiscoveredProfile {
 
 export interface IdentityCluster {
   id: string;
-  kind: 'distinct' | 'unlinked' | 'web_only';
+  kind: 'distinct' | 'unlinked' | 'web_only' | 'organization';
   fullName: string;
   publicRole: string;
   location: string;
@@ -105,6 +106,8 @@ export interface SerpCallAudit {
 }
 
 export interface NameSearchOutput {
+  /** Person or organisation, decided from the knowledge panel and the results (no extra searches). */
+  entity: OrganizationDetection;
   profiles: DiscoveredProfile[];
   webItems: NormalizedResultItem[];
   identities: IdentityCluster[];
@@ -958,6 +961,9 @@ export class NameSearchEngine {
 
     console.log(`[NameSearchEngine] "${targetName}" — raw hits ${allHits.length}, profiles ${profiles.length}, web ${webItems.length}, rejected ${rejected.length}, billed ${stats.serpApiCallsBilled}, cached ${stats.serpApiCallsCached}${quotaExhausted ? ', QUOTA EXHAUSTED' : ''}`);
 
-    return { profiles, webItems, identities, searchCoverage, auditTrail, rejected, stats };
+    const entity = detectOrganization(targetName, results[0]?.data, profiles, webItems);
+    if (entity.kind === 'organization') console.log(`[NameSearchEngine] "${targetName}" looks like an organisation: ${entity.reason}`);
+
+    return { entity, profiles, webItems, identities, searchCoverage, auditTrail, rejected, stats };
   }
 }

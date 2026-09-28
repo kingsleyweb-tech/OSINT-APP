@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { 
   ShieldCheck, 
   MapPin, 
@@ -120,6 +121,28 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
           Distinct identity clusters discovered from public evidence. Hover over a card to view detailed match evidence. Select a person to open their isolated investigation file.
         </p>
 
+        {(() => {
+          // Abbreviation searches ("UPSA"): what the results say it stands for. Several supported full names
+          // are listed for the user to choose; nothing is picked for them.
+          const res = identities.find(i => i.investigation?.entityResolution)?.investigation?.entityResolution as
+            { query: string; kind: 'resolved' | 'ambiguous' | 'possible'; candidates: Array<{ name: string; support: number; sources: Array<{ title: string; url: string }> }> } | undefined;
+          if (!res) return null;
+          const searchLink = (name: string) => `/new-investigation?type=Name&q=${encodeURIComponent(name)}&run=1`;
+          const top = res.candidates[0];
+          return (
+            <div className="pi-resolution">
+              {res.kind === 'resolved' && <p><b>“{res.query}”</b> stands for <b>{top.name}</b> in {top.support} independent sources ({top.sources.slice(0, 3).map(s => s.title).join('; ')}). The results below are for the abbreviation; <Link to={searchLink(top.name)}>search the full name</Link> for a complete profile.</p>}
+              {res.kind === 'ambiguous' && <>
+                <p><b>Multiple possible entities found.</b> “{res.query}” is used by several organisations — choose the one you mean:</p>
+                <div className="pi-resolution-choices">
+                  {res.candidates.map(c => <Link key={c.name} className="pi-resolution-choice" to={searchLink(c.name)}>{c.name} <span>· {c.support} source{c.support === 1 ? '' : 's'}</span></Link>)}
+                </div>
+              </>}
+              {res.kind === 'possible' && <p>“{res.query}” may stand for <b>{top.name}</b> (found in one source: {top.sources[0]?.title}). This is not confirmed — <Link to={searchLink(top.name)}>search that name</Link> if it is the organisation you mean.</p>}
+            </div>
+          );
+        })()}
+
         <div className="pi-list">
           {identities.map((item) => {
             const initials = item.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -136,6 +159,7 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
                 <div className="pi-body">
                   <div className="pi-top">
                     <h3 className="pi-name">{item.fullName}</h3>
+                    {item.investigation?.entityKind === 'organization' && <span className="confidence-pill pi-org-pill" title={item.investigation?.organization?.detectionReason}><Building2 size={12} /> Organisation</span>}
                     <span className={`confidence-pill ${getConfidenceBadgeClass(item.confidenceLabel)}`}><ShieldCheck size={12} /> {item.confidenceLabel}</span>
                   </div>
                   <div className="pi-meta">
