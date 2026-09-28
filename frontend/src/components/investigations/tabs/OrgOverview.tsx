@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { AlertTriangle, Building2, Loader2 } from 'lucide-react';
 import { shortUrl } from '../../../lib/workspace';
 import {
-  entityClass, orgActivities, orgActivityInputs, orgProfile, sectionLabels, type FactGroup, type OrgSection
+  entityClass, orgActivities, orgActivityInputs, orgProfile, sectionLabels, unitLabel, type FactGroup, type OrgSection
 } from '../../../lib/organizationProfile';
 import { allLocationRefs } from '../../../lib/locationEvidence';
 import type { OrgField } from '../../../types/investigation';
@@ -69,6 +69,7 @@ export const OrgOverview: React.FC<{ contact: React.ReactNode; platforms: string
         </div>
       </>
     },
+    { title: unitLabel(cls.category), section: 'products', has: Boolean(f.unit?.length), content: values('unit', 8).join(' · ') + (f.unit && f.unit.length > 8 ? ` +${f.unit.length - 8} more` : '') },
     { title: labels.products || 'Products & services', section: 'products', has: products.length > 0 || pageHeadings.length > 0, content: (products.length ? products : pageHeadings).join(' · ') },
     {
       title: 'Official website', section: 'online', has: Boolean(website),

@@ -290,7 +290,7 @@ export type WebsitePageKind =
 export type OrgField =
   | 'official_name' | 'alt_name' | 'type' | 'industry' | 'sector' | 'description' | 'founded'
   | 'headquarters' | 'country' | 'address' | 'website' | 'phone' | 'email' | 'hours' | 'coordinates'
-  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'employees';
+  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'unit' | 'employees';
 
 /** One fact from one source (backend orgEnrichment). */
 export interface OrgClaim {
@@ -307,6 +307,7 @@ export interface OrgMention { title: string; url: string; snippet?: string; sour
 
 /** The organisation sources searched by the enrichment step (Maps, Google, Bing, social, YouTube, Wikidata). */
 export interface OrgEnrichment {
+  version?: number;
   name: string;
   checkedAt: string;
   claims: OrgClaim[];
@@ -339,6 +340,7 @@ export interface WebsiteIntel {
   addresses: Array<{ value: string; foundOn: string }>;
   people?: Array<{ name: string; role: string; url: string; quote: string }>;
   linkedSites?: Array<{ url: string; host: string; text: string }>;
+  units?: Array<{ name: string; url: string; group: string; foundOn: string }>;
   fetchedAt: string;
 }
 

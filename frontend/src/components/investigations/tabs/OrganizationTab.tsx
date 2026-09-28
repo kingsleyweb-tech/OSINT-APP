@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Building2, CheckCircle2, ExternalLink, Globe, Loader2, MapPin, RotateCw, XCircle } from 'lucide-react';
 import { fmtDate, parseLooseDate, shortUrl } from '../../../lib/workspace';
 import {
-  FIELD_LABEL, ORG_SECTIONS, confidenceText, entityClass, orgActivities, orgActivityInputs, orgProfile, sectionLabels, websitesAround,
+  FIELD_LABEL, ORG_SECTIONS, confidenceText, entityClass, orgActivities, orgActivityInputs, orgProfile, sectionLabels, unitLabel, websitesAround,
   type ActivityKind, type FactGroup, type OrgSection
 } from '../../../lib/organizationProfile';
 import { STATUS_LABEL, TYPE_LABEL, allLocationRefs } from '../../../lib/locationEvidence';
@@ -228,7 +228,7 @@ export const OrganizationTab: React.FC = () => {
       case 'products':
         return (
           <>
-            {table(<>{row('product', { max: 15 })}{row('service', { max: 10 })}</>)}
+            {table(<>{row('unit', { max: 30, label: unitLabel(cls.category) })}{row('product', { max: 15 })}{row('service', { max: 10 })}</>)}
             <div className="ws-loc-section">
               <SectionHead title="From the organisation’s website" />
               {pageBlock(['services', 'products', 'programs', 'departments', 'admissions'], 'Not found — the website has no Services, Products, Programmes, Departments or Admissions page.')}

@@ -46,6 +46,8 @@ export interface WebsiteIntel {
   people?: Array<{ name: string; role: string; url: string; quote: string }>;
   /** Other websites the official site links to (units, affiliates, partners), as the site labels them. */
   linkedSites?: Array<{ url: string; host: string; text: string }>;
+  /** Units the site's own menu lists under a heading such as "Arms of service", "Faculties", "Divisions". */
+  units?: Array<{ name: string; url: string; group: string; foundOn: string }>;
   fetchedAt: string;
 }
 
@@ -220,18 +222,30 @@ function headings(html: string): string[] {
  * Short text blocks in page order (headings, bold text, captions, card lines) — where leadership pages put
  * a person's name and, next to it, their role.
  */
-function shortBlocks(html: string): string[] {
-  const body = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<nav[\s\S]*?<\/nav>|<footer[\s\S]*?<\/footer>/gi, ' ')
+function shortBlocks(html: string, keepNav = false): string[] {
+  // Menus are dropped for people (so menu labels are not read as names), kept for unit lists (some sites
+  // wrap their whole list of colleges or departments in a <nav>).
+  const noise = keepNav ? /<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi : /<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<nav[\s\S]*?<\/nav>|<footer[\s\S]*?<\/footer>/gi;
+  const body = html.replace(noise, ' ')
     // A heading's text as one block even when split into spans ("<span>Prof. Emmanuel</span><span>S.</span>…").
     .replace(/<(h[1-6])([^>]*)>([\s\S]*?)<\/\1>/gi, (_m, tag, attrs, inner) => `<${tag}${attrs}>${clean(inner)}</${tag}>`);
   const out: string[] = [];
-  for (const m of body.matchAll(/<(h[1-6]|p|span|strong|b|em|small|li|td|figcaption|div|a)\b[^>]*>([^<]{3,120})</gi)) {
+  // The text must not be only whitespace, and the next tag's "<" is looked at, not consumed (otherwise the
+  // whitespace between <div> and <h4> would swallow the heading that follows).
+  for (const m of body.matchAll(/<(h[1-6]|p|span|strong|b|em|small|li|td|figcaption|div|a)\b[^>]*>(\s*[^<\s][^<]{2,119})(?=<)/gi)) {
     const t = clean(m[2]);
     if (t.length >= 3 && t.length <= 110 && out[out.length - 1] !== t) out.push(t);
-    if (out.length >= 600) break;
+    if (out.length >= (keepNav ? 3000 : 600)) break;
   }
   return out;
 }
+
+/** A unit's proper name: "College of …", "School of …", "Faculty of …", "Institute for …", "… Business School". */
+// Case-sensitive on purpose: a unit's name is capitalised ("College of Health Sciences"); "Explore the college" is not.
+const UNIT_NAME = /^(?:(?:The\s+)?(?:College|School|Faculty|Department|Institute|Centre|Center|Division|Directorate|Command|Regiment|Battalion|Brigade|Campus|Academy)\s+(?:of|for)\s+[A-Z][\w'’&-]*(?:[\s,]+(?:and|&|of|for|the|in|[A-Z][\w'’&-]*))*|[A-Z][\w'’&-]*(?:\s+(?:and|&|of|the|[A-Z][\w'’&-]*)){0,6}\s+(?:College|School|Faculty|Institute|Centre|Center|Academy|Campus|Command|Division|Directorate))$/;
+
+/** Menu headings under which organisations list their parts. */
+const UNIT_GROUP = /^(arms? of (the )?service|services? arms?|our units|units|formations|commands|divisions|our divisions|business units|departments|academic departments|faculties|schools|colleges|schools (and|&) colleges|colleges (and|&) schools|institutes|centres|centers|campuses|our campuses|subsidiaries|our companies|group companies|member (companies|institutions|organi[sz]ations)|agencies|directorates|regions|regional offices|branches|our branches|chapters|affiliates)$/i;
 
 const SOCIAL: Array<[RegExp, string]> = [
   [/facebook\.com\/(?!sharer|share|dialog|plugins|tr\?)/i, 'Facebook'], [/instagram\.com\//i, 'Instagram'], [/linkedin\.com\/(company|in|school)\//i, 'LinkedIn'],
@@ -430,6 +444,36 @@ export async function readOrganizationWebsite(rawUrl: string, orgName: string, l
     });
   });
 
+  // Units the site's own menu groups under a units heading: <li><a>Arms of service</a><ul><li><a>Army</a>…</ul></li>.
+  const units = new Map<string, { name: string; url: string; group: string; foundOn: string }>();
+  pages.forEach((p, i) => {
+    if (!['home', 'about', 'departments'].includes(p.kind)) return;
+    for (const m of (htmls[i] || '').matchAll(/<li[^>]*>\s*<a[^>]*>([\s\S]{2,60}?)<\/a>\s*(?:<[^u][^>]*>\s*)*<ul[^>]*>([\s\S]*?)<\/ul>/gi)) {
+      const group = clean(m[1]);
+      if (!UNIT_GROUP.test(group)) continue;
+      for (const a of m[2].matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+        const raw = clean(a[2]);
+        if (!raw || raw.length > 70 || /^(all|view all|more|see all|home)$/i.test(raw)) continue;
+        // Menu text is often in capitals ("AIRFORCE"): keep the words, in normal case.
+        const name = raw === raw.toUpperCase() && raw.length > 4 ? raw.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : raw;
+        let url = '';
+        try { url = new URL(decode(a[1]), p.url).toString(); } catch { continue; }
+        const k = name.toLowerCase();
+        if (!units.has(k)) units.set(k, { name, url, group, foundOn: p.url });
+      }
+    }
+  });
+
+  // Units named on the site's departments/colleges/faculties page ("College of Basic and Applied Sciences").
+  pages.forEach((p, i) => {
+    if (p.kind !== 'departments') return;
+    shortBlocks(htmls[i] || '', true).forEach(b => {
+      if (!UNIT_NAME.test(b) || b.split(/\s+/).length > 10 || /[.!?:]$/.test(b)) return;
+      const k = b.toLowerCase();
+      if (!units.has(k) && units.size < 40) units.set(k, { name: b, url: p.url, group: p.title || 'Departments page', foundOn: p.url });
+    });
+  });
+
   // Other websites the official site links to (units, affiliated bodies, partners), with the site's own label.
   const linkedSites = new Map<string, { url: string; host: string; text: string }>();
   const ownHost = base.hostname.replace(/^www\./, '');
@@ -453,6 +497,7 @@ export async function readOrganizationWebsite(rawUrl: string, orgName: string, l
     emails: collect(p => p.emails), phones: collect(p => p.phones), addresses: collect(p => p.addresses),
     people: Array.from(people.values()).slice(0, 25),
     linkedSites: Array.from(linkedSites.values()).slice(0, 20),
+    units: Array.from(units.values()).slice(0, 40),
     fetchedAt
   };
 }

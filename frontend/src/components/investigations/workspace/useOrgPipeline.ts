@@ -10,6 +10,9 @@ import { useWorkspace } from './WorkspaceContext';
 /** Case ids with a request in flight in this tab (the saved running flag can be stale after a reload). */
 const inflight = new Set<string>();
 
+/** Must match ENRICHMENT_VERSION in backend/src/services/organization/orgEnrichment.ts. */
+const ENRICHMENT_VERSION = 2;
+
 const hostOf = (u?: string) => { try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
@@ -93,6 +96,8 @@ export function needsEnrichment(inv: Investigation): boolean {
   const e = inv.orgEnrich;
   if (!e) return true;
   if (e.error) return true;
+  // Searched by an earlier version (without units, people and the newer sources): refresh once.
+  if ((e.version || 1) < ENRICHMENT_VERSION) return true;
   const failed = e.sources.filter(s => s.status === 'failed').length;
   if (e.sources.length === 0 || failed * 2 >= e.sources.length) return true;
   return Boolean(inv.lastSearched && new Date(inv.lastSearched).getTime() > new Date(e.checkedAt).getTime());
@@ -120,7 +125,7 @@ export function useOrgPipelineAutoRun(): void {
     const read = inv.websiteIntel;
     if (!target || done.current.site === target.url) return undefined;
     // Already read — unless by the earlier reader, which did not collect people and related sites (read once more, free).
-    const outdated = Boolean(read?.reachable && read.people === undefined);
+    const outdated = Boolean(read?.reachable && (read.people === undefined || read.units === undefined));
     if (read && !outdated && (hostOf(read.requestedUrl) === hostOf(target.url) || hostOf(read.finalUrl) === hostOf(target.url))) return undefined;
     const t = setTimeout(() => { done.current.site = target.url; readSite(); }, 0);
     return () => clearTimeout(t);

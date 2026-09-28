@@ -43,7 +43,7 @@ export const FIELD_LABEL: Record<OrgField, string> = {
   sector: 'Sector / field', description: 'Description', founded: 'Founded / established', headquarters: 'Headquarters',
   country: 'Country', address: 'Address', website: 'Official website', phone: 'Phone', email: 'Email', hours: 'Opening hours',
   coordinates: 'Coordinates', person: 'People', product: 'Products', service: 'Services', social: 'Online accounts',
-  parent: 'Parent organisation', subsidiary: 'Subsidiaries / units', employees: 'Employees'
+  parent: 'Parent organisation', subsidiary: 'Subsidiaries', unit: 'Units / divisions', employees: 'Employees'
 };
 
 /** Fields where sources should give a single answer; different answers are shown as a conflict. */
@@ -135,6 +135,8 @@ export function orgClaims(inv: Investigation): Claim[] {
     site.phones.forEach(p => self('phone', p.value, p.foundOn));
     site.addresses.forEach(a => self('address', a.value, a.foundOn));
     // Account address only (a LinkedIn link like /school/636196/admin/feed/posts → /school/636196).
+    // Units the site lists (its menu's arms of service, faculties, divisions… or its departments page).
+    (site.units || []).forEach(u => push({ field: 'unit', value: u.name, source: 'Official website', sourceKind: 'website', sourceUrl: u.url, quote: `Listed under “${u.group}” on ${hostOf(u.foundOn)}` }, 'website'));
     site.socialLinks.forEach(s => self('social', s.url.replace(/(linkedin\.com\/(?:company|school|showcase|in)\/[^/?#]+).*/i, '$1').replace(/[?#].*$/, ''), s.foundOn, s.platform));
   }
   return out;
@@ -161,14 +163,16 @@ function key(field: OrgField, v: string): string {
 }
 
 /** Two values are the same fact (e.g. "Redmond" and "Redmond, Washington"). */
-function same(field: OrgField, a: string, b: string): boolean {
-  const ka = key(field, a);
-  const kb = key(field, b);
+function same(field: OrgField, a: string, b: string, orgName = ''): boolean {
+  // Units: the organisation's own words are dropped before comparing ("Ghana Army" = "ARMY", "Ghana Air Force" = "Airforce").
+  const strip = (v: string) => (field === 'unit' && orgName ? v.split(/\s+/).filter(w => !orgName.toLowerCase().split(/\s+/).includes(w.toLowerCase())).join(' ') || v : v);
+  const ka = key(field, strip(a));
+  const kb = key(field, strip(b));
   if (!ka || !kb) return false;
   if (ka === kb) return true;
   // The same sentence cut at different lengths by different snippets.
   if (field === 'description' && ka.length >= 40 && kb.length >= 40 && ka.slice(0, 40) === kb.slice(0, 40)) return true;
-  if (['type', 'industry', 'sector', 'product', 'service', 'official_name', 'alt_name', 'parent', 'subsidiary', 'address', 'person'].includes(field)) {
+  if (['type', 'industry', 'sector', 'product', 'service', 'official_name', 'alt_name', 'parent', 'subsidiary', 'unit', 'address', 'person'].includes(field)) {
     const [s, l] = ka.length <= kb.length ? [ka, kb] : [kb, ka];
     return s.length >= 5 && l.includes(s);
   }
@@ -177,10 +181,10 @@ function same(field: OrgField, a: string, b: string): boolean {
 
 const PRIORITY: Record<string, number> = { website: 0, wikidata: 1, knowledge_panel: 2, maps: 3, social: 4, search: 5, bing: 6 };
 
-export function groupFacts(claims: Claim[], field: OrgField): FactGroup[] {
+export function groupFacts(claims: Claim[], field: OrgField, orgName = ''): FactGroup[] {
   const groups: Array<{ claims: Claim[] }> = [];
   claims.filter(c => c.field === field).forEach(c => {
-    const g = groups.find(x => x.claims.some(y => same(field, y.value, c.value)));
+    const g = groups.find(x => x.claims.some(y => same(field, y.value, c.value, orgName)));
     if (g) g.claims.push(c); else groups.push({ claims: [c] });
   });
   return groups.map(g => {
@@ -189,7 +193,7 @@ export function groupFacts(claims: Claim[], field: OrgField): FactGroup[] {
     const pathLen = (u: string) => { try { return new URL(u).pathname.replace(/\/+$/, '').length; } catch { return u.length; } };
     const best = [...g.claims].sort((a, b) =>
       field === 'website' ? pathLen(a.value) - pathLen(b.value)
-        : ['headquarters', 'address', 'description'].includes(field) ? b.value.length - a.value.length
+        : ['headquarters', 'address', 'description', 'unit'].includes(field) ? b.value.length - a.value.length
           : (PRIORITY[a.sourceKind] ?? 9) - (PRIORITY[b.sourceKind] ?? 9) || b.value.length - a.value.length)[0];
     return {
       field,
@@ -216,7 +220,7 @@ export function orgProfile(inv: Investigation): OrgProfile {
   const claims = orgClaims(inv);
   const facts: OrgProfile['facts'] = {};
   (Object.keys(FIELD_LABEL) as OrgField[]).forEach(f => {
-    const g = groupFacts(claims, f);
+    const g = groupFacts(claims, f, inv.organization?.name || '');
     if (g.length) facts[f] = g;
   });
   // A disagreement needs different sources: one source listing several values (e.g. regional websites
@@ -415,4 +419,17 @@ export function websitesAround(inv: Investigation, profile: OrgProfile): { relat
     third.set(h, { url: m.url, host: h, label: m.title, basis: m.engine === 'google_news' ? 'News article' : 'Page that mentions it' });
   });
   return { related: Array.from(related.values()), thirdParty: Array.from(third.values()).slice(0, 15) };
+}
+
+/** What an organisation's parts are called, by kind (armed forces → arms of service, a university → colleges & faculties). */
+export function unitLabel(category: EntityCategory): string {
+  switch (category) {
+    case 'Military organisation': return 'Units / arms of service';
+    case 'University': case 'College': return 'Colleges, faculties & schools';
+    case 'School': return 'Departments & sections';
+    case 'Company': case 'Brand': return 'Divisions & business units';
+    case 'Government agency': case 'International organisation': return 'Divisions, departments & offices';
+    case 'Hospital / health institution': return 'Departments & facilities';
+    default: return 'Units & divisions';
+  }
 }

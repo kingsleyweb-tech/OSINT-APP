@@ -17,7 +17,7 @@ const NAME_PART = "[A-Z](?:[a-zA-Z'’-]+\\.?|\\.)";
 const TITLE_WORD = /^(mr|mrs|ms|miss|dr|prof|professor|hon|honourable|rev|reverend|sir|dame|engr|ing|justice|lt|lieutenant|maj|major|brig|brigadier|gen|general|col|colonel|capt|captain|cdr|commander|commodore|adm|admiral|rear|vice|air|marshal|madam)\.?$/i;
 const PERSON = new RegExp(`^${TITLE}(${NAME_PART}(?:\\s+${NAME_PART}){1,4})$`);
 
-const NOT_NAME = /\b(of|the|and|for|university|college|school|company|limited|ltd|forces|army|navy|air force|ministry|authority|service|services|department|board|council|office|staff|profile|overview|leadership|management|team|about|contact|news|home|vision|mission|biography|related|links|command|higher|welcome|message|history|our|meet|view|more|read|learn|click|see|show|all|download|apply|login|register)\b/i;
+const NOT_NAME = /\b(of|the|and|for|university|college|school|company|limited|ltd|forces|army|navy|air force|ministry|authority|service|services|department|board|council|office|staff|profile|overview|leadership|management|team|about|contact|news|home|vision|mission|biography|related|links|command|higher|welcome|message|history|our|meet|view|more|read|learn|click|see|show|all|download|apply|login|register|other|others|senior|officers|officials|members|principal officers)\b/i;
 
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
 

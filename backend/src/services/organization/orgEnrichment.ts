@@ -20,7 +20,7 @@ import { peopleFromText } from './peopleExtract';
 export type OrgField =
   | 'official_name' | 'alt_name' | 'type' | 'industry' | 'sector' | 'description' | 'founded'
   | 'headquarters' | 'country' | 'address' | 'website' | 'phone' | 'email' | 'hours' | 'coordinates'
-  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'employees';
+  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'unit' | 'employees';
 
 export interface OrgClaim {
   field: OrgField;
@@ -53,6 +53,8 @@ export interface MapsListing {
 export interface OrgMention { title: string; url: string; snippet?: string; source: string; date?: string; thumbnail?: string; engine: string }
 
 export interface OrgEnrichment {
+  /** Version of the enrichment (cases searched with an older one refresh once). */
+  version: number;
   name: string;
   checkedAt: string;
   claims: OrgClaim[];
@@ -144,6 +146,14 @@ export function snippetClaims(text: string, org: string, source: string, sourceK
     const def = s.match(new RegExp(`(?:^|[^\\w])(?:the\\s+)?${phrase}(?:\\s*\\([^)]{1,20}\\))?\\s+(?:is|was|are)\\s+(?:a|an|the)\\s+\\w`, 'i'));
     // The pattern itself makes the name the subject ("<name> (ABC) is a …"), so no separate subject check.
     if (def && !/(…|\.\.\.)\s*$/.test(s) && s.length >= 40) add('description', s.trim(), s, 320);
+    // "… consisting of the Army (GA), Navy (GN), and Ghana Air Force": the parts the source lists.
+    const comp = s.match(/\b(?:consist(?:s|ing)? of|comprises|comprising|is made up of|made up of|is composed of|composed of|includes the|including the)\s+(?:the\s+)?(.+?)(?:[.;]|$)/i);
+    if (comp && about(comp)) {
+      const items = comp[1].replace(/\([^)]*\)/g, '').split(/\s*,\s*|\s+and\s+|\s*&\s*/).map(x => x.replace(/^(?:and|the)\s+/i, '').trim()).filter(Boolean);
+      const unitLike = items.filter(x => /^[A-Z][\w'’-]*(?:\s+(?:of|and|for|the|[A-Z][\w'’-]*)){0,5}$/.test(x) && x.split(/\s+/).length <= 6);
+      // Only a list of proper names (2+ items, all capitalised) — not a sentence about something else.
+      if (unitLike.length >= 2 && unitLike.length === items.length) unitLike.forEach(u => add('unit', u, s));
+    }
     let m = s.match(/\b(?:founded|established|incorporated|formed|set up|created)\s+(?:in|on)\s+(?:[A-Z][a-z]+\s+\d{1,2},?\s+|\d{1,2}\s+[A-Z][a-z]+\s+)?((?:18|19|20)\d{2})\b/i);
     if (about(m)) add('founded', m![1], s);
     m = s.match(/\b(?:headquartered|headquarters(?:\s+is)?|head\s+office(?:\s+is)?)\s+(?:located\s+)?(?:in|at)\s+((?:[A-Z][\w'’.-]*)(?:[ ,]+(?:[A-Z][\w'’.-]*)){0,4})/);
@@ -211,7 +221,7 @@ function wdTime(v: any): string | null {
   return m[1];
 }
 
-const REF_PROPS = ['P452', 'P159', 'P17', 'P112', 'P169', 'P488', 'P1037', 'P749', 'P355', 'P1056', 'P101', 'P131'];
+const REF_PROPS = ['P452', 'P159', 'P17', 'P112', 'P169', 'P488', 'P1037', 'P749', 'P355', 'P1056', 'P101', 'P131', 'P527', 'P199'];
 
 async function wikidataClaims(org: string, websiteHosts: string[]): Promise<{ claims: OrgClaim[]; info?: OrgEnrichment['wikidata'] }> {
   const search = await wdGet(`${API}&action=wbsearchentities&type=item&language=en&limit=8&search=${encodeURIComponent(org)}`);
@@ -276,6 +286,8 @@ async function wikidataClaims(org: string, websiteHosts: string[]): Promise<{ cl
   currentIdsOf(e, 'P1037').forEach(id => add('person', L[id], 'Director / manager'));
   labelled('P749', 'parent');
   idsOf(e, 'P355').slice(0, 10).forEach(id => add('subsidiary', L[id]));
+  // Parts and divisions of the organisation (armed forces → army, navy, air force; a university → its colleges).
+  [...idsOf(e, 'P527'), ...idsOf(e, 'P199')].slice(0, 20).forEach(id => add('unit', L[id]));
   idsOf(e, 'P1056').slice(0, 12).forEach(id => add('product', L[id]));
   claimsOf(e, 'P571').forEach(v => add('founded', wdTime(v)));
   claimsOf(e, 'P856').forEach(v => add('website', v));
@@ -375,6 +387,9 @@ function failure(r: { error: string | null; data: any; quotaExhausted?: boolean 
   if (/not configured/i.test(r.error)) return { error: 'Search is not configured on the server' };
   return { error: 'The source could not be reached' };
 }
+
+/** 2: units (Wikidata parts, "consisting of …"), people named with the organisation, DuckDuckGo, Google News. */
+export const ENRICHMENT_VERSION = 2;
 
 export async function enrichOrganization(org: string, websiteHints: string[] = []): Promise<OrgEnrichment> {
   const serp = new SerpApiProvider();
@@ -499,6 +514,7 @@ export async function enrichOrganization(org: string, websiteHints: string[] = [
   // One mention per page.
   const seen = new Set<string>();
   return {
+    version: ENRICHMENT_VERSION,
     name: org,
     checkedAt: new Date().toISOString(),
     claims,
