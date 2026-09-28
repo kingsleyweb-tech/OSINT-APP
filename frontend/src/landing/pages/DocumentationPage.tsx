@@ -65,7 +65,7 @@ const DOCS: DocSection[] = [
     list: [
       'Social search — public posts and pages on X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Reddit, Threads, Telegram, WhatsApp public groups, VK and Weibo (one search per platform), or forums and discussions.',
       'News — Google News and Bing News. Choosing a country shows only that country’s edition; several words are matched as an exact phrase in the article text.',
-      'Media — images (Google & Bing), videos (YouTube & Google Videos) and reverse image search (Google Lens and Google Reverse Image).',
+      'Media — images (Google & Bing) and videos (YouTube & Google Videos).',
       'Geo search — places and businesses with reviews (Google Maps), news, social posts, web pages and events for a location; with “Any country”, places with the same name elsewhere are listed.',
       'Trends — interest over time and related queries (Google Trends), trending now in a country, and what news, social media and the web are saying.'
     ]
@@ -86,7 +86,7 @@ const DOCS: DocSection[] = [
     id: 'loader', label: 'Progress, caching & quota', category: 'Search', title: 'Progress, Caching & Quota',
     paragraphs: [
       'Every search shows a progress loader listing each engine it calls, with real status for each. You can cancel at any time. A slow engine times out after 30 seconds and is retried once, so a search never freezes.',
-      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick) or 9 (standard/deep) searches plus one per location or organisation; a username search uses 5, 10 or up to 13, and its direct platform checks are free.'
+      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick), 9–10 (standard) or 9–12 (deep) searches plus one per location or organisation; a username search uses 5, 11 or 14 (quick / standard / deep), and its direct platform checks are free. The Contact tab uses 4 to look for the person’s public email addresses and phone numbers. The in-app Help page lists the exact cost of every search.'
     ]
   },
   {
@@ -103,8 +103,8 @@ const DOCS: DocSection[] = [
     ]
   },
   {
-    id: 'case-tabs', label: 'The 11 case tabs', category: 'Results', title: 'The 11 Case Tabs',
-    paragraphs: ['Each case is organised into eleven tabs:'],
+    id: 'case-tabs', label: 'The 12 case tabs', category: 'Results', title: 'The 12 Case Tabs',
+    paragraphs: ['Each case is organised into twelve tabs:'],
     list: [
       'Overview — summary of the selected identity and its key facts.',
       'Profiles — the subject’s own profiles, with link checks; similar accounts listed separately.',
@@ -115,6 +115,7 @@ const DOCS: DocSection[] = [
       'News — news articles naming the subject, gathered automatically.',
       'Images — public images of or about the subject, gathered automatically.',
       'Location — places public sources connect to the person, each with the source’s exact words and whether it is a profile location, stated residence, hometown, workplace or only a mention. Nothing is guessed.',
+      'Contact — public email addresses and phone numbers the person’s own profiles or linked pages show (Google, Bing, DuckDuckGo and social profiles are searched), each with its source. Nothing is generated.',
       'Metrics — result counts and the full SerpApi search log.',
       'Audit — time-stamped log of every search and change, exportable as CSV.'
     ]
@@ -129,7 +130,7 @@ const DOCS: DocSection[] = [
   {
     id: 'history', label: 'Search history', category: 'Cases', title: 'Search History',
     paragraphs: [
-      'Every search is saved to your account and grouped by kind: name, username, social, forums, news, images, videos, reverse image, geo and trends. Open an entry to see its top results, run it again, or open the case made from it. Corrected searches show “Original → Correction” with the confidence.'
+      'Every search is saved to your account and grouped by kind: name, username, social, forums, news, images, videos, geo and trends. Open an entry to see its top results, run it again, or open the case made from it. Corrected searches show “Original → Correction” with the confidence.'
     ]
   },
   {

@@ -1,5 +1,7 @@
 import type { Investigation } from '../types/investigation';
+import { franc } from 'franc-min';
 import { hostOf, parseLooseDate, urlKey, bucketOf, kindOf } from './workspace';
+import { allLocationRefs } from './locationEvidence';
 
 /**
  * Everything here is computed from data already saved in the user's cases.
@@ -116,6 +118,15 @@ export interface ContentItem {
   platform: string;
   type: string;
   date: Date | null;
+  /** Account or author that published it, when the saved record or its link names one. */
+  author?: string;
+}
+
+/** The account in a post/profile link (x.com/name/status/…, tiktok.com/@name/…, instagram.com/name). */
+function accountOfUrl(url: string): string | undefined {
+  const m = url.match(/^https?:\/\/(?:www\.|m\.)?(?:x\.com|twitter\.com|tiktok\.com|instagram\.com|threads\.net|youtube\.com|facebook\.com)\/@?([A-Za-z0-9_.]{2,40})(?:\/|$)/i);
+  if (!m || /^(p|reel|reels|watch|explore|hashtag|search|share|video|videos|pages|groups|events|story\.php|permalink\.php|profile\.php|channel|c|user|status|i)$/i.test(m[1])) return undefined;
+  return `@${m[1]}`;
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -136,21 +147,22 @@ export function contentItems(invs: Investigation[]): ContentItem[] {
       out.push({
         title: w.title || '', text: `${w.title || ''} ${w.description || ''}`, url: w.url,
         platform: w.source || hostOf(w.url), type,
-        date: parseLooseDate(m.publishedAt || m.date, w.discoveredAt || inv.createdAt)
+        date: parseLooseDate(m.publishedAt || m.date, w.discoveredAt || inv.createdAt),
+        author: m.username ? `@${String(m.username).replace(/^@/, '')}` : m.author ? String(m.author) : accountOfUrl(w.url)
       });
     });
     (inv.activities || []).forEach(a => {
       const k = urlKey(a.sourceUrl);
       if (!k || seen.has(k)) return;
       seen.add(k);
-      out.push({ title: a.title, text: `${a.title} ${a.briefReport || ''}`, url: a.sourceUrl, platform: a.sourceName, type: 'Activity', date: parseLooseDate(a.date, a.foundAt || inv.createdAt) });
+      out.push({ title: a.title, text: `${a.title} ${a.briefReport || ''}`, url: a.sourceUrl, platform: a.sourceName, type: 'Activity', date: parseLooseDate(a.date, a.foundAt || inv.createdAt), author: accountOfUrl(a.sourceUrl) });
     });
     (inv.socialProfiles || []).forEach(p => {
       const u = p.profileUrl || p.url;
       const k = urlKey(u);
       if (!k || seen.has(k)) return;
       seen.add(k);
-      out.push({ title: p.title || p.username, text: `${p.title || ''} ${p.snippet || p.bio || ''}`, url: u, platform: p.platform, type: 'Profile', date: null });
+      out.push({ title: p.title || p.username, text: `${p.title || ''} ${p.snippet || p.bio || ''}`, url: u, platform: p.platform, type: 'Profile', date: null, author: p.username ? `@${p.username.replace(/^@/, '')}` : undefined });
     });
   });
   return out;
@@ -171,4 +183,55 @@ export function perMonth(items: ContentItem[]): Array<{ month: string; count: nu
     m.set(k, (m.get(k) || 0) + 1);
   });
   return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([month, count]) => ({ month, count }));
+}
+
+// ─── Content analysis additions (computed from saved data only) ────────────────
+
+/** Hashtags used in saved results: number of results that use each tag. */
+export function hashtagCounts(items: ContentItem[]): Array<{ key: string; count: number }> {
+  const counts = new Map<string, number>();
+  items.forEach(i => {
+    const tags = new Set((i.text.match(/(^|\s)#([\p{L}\p{N}_]{2,50})/gu) || [])
+      .map(t => t.trim().toLowerCase())
+      .filter(t => !/^#\d+$/.test(t)));
+    tags.forEach(t => counts.set(t, (counts.get(t) || 0) + 1));
+  });
+  return Array.from(counts.entries()).map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count);
+}
+
+/** Accounts / authors that published the most saved results (only where the record or link names one). */
+export function authorCounts(items: ContentItem[]): Array<{ key: string; count: number }> {
+  return countBy(items.filter(i => i.author), i => i.author!);
+}
+
+const LANGUAGE_NAME: Record<string, string> = {
+  eng: 'English', fra: 'French', spa: 'Spanish', por: 'Portuguese', deu: 'German', ita: 'Italian', nld: 'Dutch',
+  arb: 'Arabic', rus: 'Russian', ukr: 'Ukrainian', pol: 'Polish', tur: 'Turkish', cmn: 'Chinese', jpn: 'Japanese',
+  kor: 'Korean', hin: 'Hindi', ben: 'Bengali', urd: 'Urdu', ind: 'Indonesian', zlm: 'Malay', vie: 'Vietnamese', tha: 'Thai',
+  swh: 'Swahili', hau: 'Hausa', yor: 'Yoruba', ibo: 'Igbo', amh: 'Amharic', som: 'Somali', zul: 'Zulu', xho: 'Xhosa',
+  aka: 'Akan (Twi)', twi: 'Twi', ewe: 'Ewe', pes: 'Persian', heb: 'Hebrew', ell: 'Greek', ron: 'Romanian', hun: 'Hungarian',
+  ces: 'Czech', swe: 'Swedish', dan: 'Danish', nob: 'Norwegian', fin: 'Finnish', tgl: 'Tagalog', ceb: 'Cebuano'
+};
+
+/** Minimum text length for automatic language detection; shorter texts are too unreliable to label. */
+export const LANGUAGE_MIN_CHARS = 60;
+
+/**
+ * Language of each saved result, detected automatically from its title and summary (franc).
+ * Only texts of 60+ characters are labelled; shorter ones are counted as "Too short to tell".
+ */
+export function languageCounts(items: ContentItem[]): Array<{ key: string; count: number }> {
+  return countBy(items, i => {
+    const text = i.text.replace(/https?:\/\/\S+/g, ' ').replace(/[#@][\w.]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (text.length < LANGUAGE_MIN_CHARS) return 'Too short to tell';
+    const code = franc(text, { minLength: LANGUAGE_MIN_CHARS });
+    if (code === 'und') return 'Undetermined';
+    return LANGUAGE_NAME[code] || code.toUpperCase();
+  });
+}
+
+/** Places from the cases' Location evidence (confirmed references only), counted per reference. */
+export function locationCounts(invs: Investigation[]): Array<{ key: string; count: number }> {
+  const refs = invs.flatMap(inv => allLocationRefs(inv).filter(r => r.status !== 'unconfirmed'));
+  return countBy(refs, r => r.place.split(',')[0].trim() + (r.place.includes(',') ? `, ${r.place.split(',').slice(-1)[0].trim()}` : ''));
 }

@@ -200,22 +200,6 @@ function googleVideos(data: Raw, engine: string): Draft[] {
   })).filter(Boolean) as Draft[];
 }
 
-function lens(data: Raw, engine: string): Draft[] {
-  return [...arr(data.exact_matches), ...arr(data.visual_matches)].map(r => draft(engine, 'visual_match', r, {
-    thumbnail: str(r.thumbnail),
-    image: str(r.image),
-    author: str(r.source),
-    metadata: { source: str(r.source), price: r.price?.value }
-  })).filter(Boolean) as Draft[];
-}
-
-function reverseImage(data: Raw, engine: string): Draft[] {
-  return [
-    ...arr(data.image_results).map(r => draft(engine, 'visual_match', r, { metadata: { displayedLink: str(r.displayed_link) } })),
-    ...arr(data.inline_images).map(r => draft(engine, 'visual_match', r, { url: str(r.link), thumbnail: str(r.thumbnail), title: str(r.title) || str(r.source) }))
-  ].filter(Boolean) as Draft[];
-}
-
 function organic(data: Raw, engine: string, fallback: ExploreItemKind): Draft[] {
   return arr(data.organic_results).map(r => {
     const link = str(r.link) || '';
@@ -341,13 +325,12 @@ export function normalizeEngine(engine: string, params: Record<string, string | 
     case 'bing_images': return images(data, engine);
     case 'youtube': return youtube(data, engine);
     case 'google_videos': return googleVideos(data, engine);
-    case 'google_lens': return lens(data, engine);
-    case 'google_reverse_image': return reverseImage(data, engine);
     case 'google_maps': return places(data, engine);
     case 'google_maps_reviews': return reviews(data, engine);
     case 'google_events': return events(data, engine);
     case 'google_maps_autocomplete': return autocomplete(data, engine);
     case 'bing': return organic(data, engine, 'web');
+    case 'duckduckgo': return organic(data, engine, 'web');
     case 'google_forums': return organic(data, engine, 'forum');
     case 'google':
       if (params.tbm === 'nws') return googleNewsTab(data, engine);
@@ -360,10 +343,14 @@ export function normalizeEngine(engine: string, params: Record<string, string | 
 /** Number of raw entries an engine returned (before filtering), for the engine status list. */
 export function rawCount(engine: string, data: Raw | null): number {
   if (!data) return 0;
-  const keys = ['news_results', 'organic_results', 'images_results', 'video_results', 'visual_matches',
+  const keys = ['news_results', 'organic_results', 'images_results', 'video_results',
     'image_results', 'local_results', 'reviews', 'events_results', 'trending_searches', 'suggestions'];
   let n = keys.reduce((sum, k) => sum + (Array.isArray(data[k]) ? data[k].length : 0), 0);
   if (engine === 'google_maps' && n === 0 && data.place_results) n = 1;
-  if (engine === 'google_trends') n = (data.interest_over_time?.timeline_data?.length || 0) + (data.related_queries?.top?.length || 0) + (data.related_queries?.rising?.length || 0);
+  if (engine === 'google_trends') {
+    n = (data.interest_over_time?.timeline_data?.length || 0) + (data.related_queries?.top?.length || 0) + (data.related_queries?.rising?.length || 0)
+      + (data.interest_by_region?.length || 0) + (data.compared_breakdown_by_region?.length || 0)
+      + (data.related_topics?.top?.length || 0) + (data.related_topics?.rising?.length || 0);
+  }
   return n;
 }

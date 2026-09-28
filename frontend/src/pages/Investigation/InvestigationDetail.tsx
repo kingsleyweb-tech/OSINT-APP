@@ -21,6 +21,7 @@ import { WebTab } from '../../components/investigations/tabs/WebTab';
 import { NewsTab } from '../../components/investigations/tabs/NewsTab';
 import { ImagesTab } from '../../components/investigations/tabs/ImagesTab';
 import { LocationTab } from '../../components/investigations/tabs/LocationTab';
+import { ContactTab } from '../../components/investigations/tabs/ContactTab';
 import { SearchLoader } from '../../components/ui/SearchLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
@@ -36,6 +37,7 @@ const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 
   { key: 'news', label: 'News', group: 'Evidence' },
   { key: 'images', label: 'Images', group: 'Evidence' },
   { key: 'location', label: 'Location', group: 'Evidence' },
+  { key: 'contact', label: 'Contact', group: 'Evidence' },
   { key: 'metrics', label: 'Metrics', group: 'Record' },
   { key: 'audit', label: 'Audit', group: 'Record' }
 ];
@@ -342,6 +344,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           {currentTab === 'news' && <NewsTab />}
           {currentTab === 'images' && <ImagesTab />}
           {currentTab === 'location' && <LocationTab />}
+          {currentTab === 'contact' && <ContactTab />}
           {currentTab === 'metrics' && <MetricsTab />}
           {currentTab === 'audit' && <AuditTab />}
         </div>

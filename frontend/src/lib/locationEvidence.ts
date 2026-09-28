@@ -147,6 +147,22 @@ export function placeKey(place: string): string {
 
 /** How the subject is written in text: the full name (all words) or the username. */
 export function subjectMatcher(inv: Investigation): { label: string; find: (text: string) => number[] } {
+  if (inv.searchType === 'email') {
+    const email = (inv.searchInputs?.email || inv.name).toLowerCase();
+    return {
+      label: email,
+      find: text => { const out: number[] = []; const lower = text.toLowerCase(); let i = lower.indexOf(email); while (i !== -1) { out.push(i + email.length); i = lower.indexOf(email, i + 1); } return out; }
+    };
+  }
+  if (inv.searchType === 'phone') {
+    const digits = (inv.searchInputs?.phone || inv.name).replace(/\D/g, '');
+    const tail = digits.slice(-Math.min(digits.length, 9));
+    return {
+      label: inv.searchInputs?.phone || inv.name,
+      // Phone numbers written with any separators: the end of each run whose digits end with the number.
+      find: text => Array.from(text.matchAll(/\+?\d[\d\s().-]{6,}\d/g)).filter(m => m[0].replace(/\D/g, '').endsWith(tail)).map(m => (m.index || 0) + m[0].length)
+    };
+  }
   if (inv.searchType === 'username') {
     const handle = (inv.searchInputs?.username || inv.name).replace(/^@/, '').toLowerCase();
     const re = new RegExp(`(^|[^\\w.])@?${handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'gi');
@@ -621,11 +637,13 @@ export interface LocationSearchTask {
  *  - more (8 searches, on request): YouTube + Google Videos, Google Images + Bing Images, X, Instagram, TikTok, Threads posts
  */
 export function locationSearchPlan(inv: Investigation, level: LocationSearchLevel): LocationSearchTask[] {
-  const qualifier = inv.searchType === 'username' ? '' : subjectQualifier(inv);
-  const q = inv.searchType === 'username'
-    ? `"${(inv.searchInputs?.username || inv.name).replace(/^@/, '')}"`
-    : `"${subjectName(inv)}"${qualifier ? ` ${qualifier}` : ''}`;
-  const plain = inv.searchType === 'username' ? q.replace(/"/g, '') : `${subjectName(inv)}${qualifier ? ` ${qualifier}` : ''}`;
+  const exact = inv.searchType === 'username' || inv.searchType === 'email' || inv.searchType === 'phone';
+  const qualifier = exact ? '' : subjectQualifier(inv);
+  const id = inv.searchType === 'email' ? (inv.searchInputs?.email || inv.name)
+    : inv.searchType === 'phone' ? (inv.searchInputs?.phone || inv.name)
+    : (inv.searchInputs?.username || inv.name).replace(/^@/, '');
+  const q = exact ? `"${id}"` : `"${subjectName(inv)}"${qualifier ? ` ${qualifier}` : ''}`;
+  const plain = exact ? id : `${subjectName(inv)}${qualifier ? ` ${qualifier}` : ''}`;
   if (level === 'core') {
     return [
       { key: 'web', label: 'Google web', capability: 'web', query: q },

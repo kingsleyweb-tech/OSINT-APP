@@ -12,7 +12,7 @@ export interface NotificationPrefs {
 
 /** Kind of search, used to group the search history. */
 export type SearchCategory =
-  | 'name' | 'username' | 'social' | 'forums' | 'news' | 'images' | 'videos' | 'reverseImage' | 'geo' | 'trends';
+  | 'name' | 'username' | 'email' | 'phone' | 'social' | 'forums' | 'news' | 'images' | 'videos' | 'geo' | 'trends';
 
 export interface SearchHistoryResult {
   title: string;

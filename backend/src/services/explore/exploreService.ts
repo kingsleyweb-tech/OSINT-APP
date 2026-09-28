@@ -63,6 +63,24 @@ function trendsExtra(results: SerpCallResult[]): Record<string, unknown> {
       extra.relatedTop = pick(r.data.related_queries?.top);
       extra.relatedRising = pick(r.data.related_queries?.rising);
     }
+    // Interest by region (0–100, relative to the region with the most interest). Comparisons carry one value per term.
+    if (r.params.data_type === 'GEO_MAP_0' || r.params.data_type === 'GEO_MAP') {
+      const rows = Array.isArray(r.data.interest_by_region) ? r.data.interest_by_region : Array.isArray(r.data.compared_breakdown_by_region) ? r.data.compared_breakdown_by_region : [];
+      extra.byRegion = rows.slice(0, 30).map((row: any) => ({
+        location: String(row.location || row.geo || ''),
+        values: Array.isArray(row.values)
+          ? row.values.map((v: any) => ({ query: String(v.query || ''), value: Number(v.extracted_value ?? v.value) || 0 }))
+          : [{ query: '', value: Number(row.extracted_value ?? row.value) || 0 }]
+      })).filter((row: any) => row.location);
+    }
+    // Related topics: entities Google groups with the term (title + type, e.g. "Accra — City").
+    if (r.params.data_type === 'RELATED_TOPICS') {
+      const pick = (list: any[]) => (Array.isArray(list) ? list.slice(0, 15).map(t => ({
+        title: String(t.topic?.title || ''), type: String(t.topic?.type || ''), value: String(t.value ?? ''), link: t.link || null
+      })).filter(t => t.title) : []);
+      extra.topicsTop = pick(r.data.related_topics?.top);
+      extra.topicsRising = pick(r.data.related_topics?.rising);
+    }
     if (Array.isArray(r.data.trending_searches)) {
       extra.trending = r.data.trending_searches.slice(0, 40).map((t: any) => ({
         query: String(t.query || ''),
@@ -154,11 +172,9 @@ export async function explore(req: ExploreRequest): Promise<ExploreResponse> {
       }
       const domain = domainOf(d.url);
       const h = handleFromUrl(d.url);
-      let relevance = capability === 'reverseImage'
-        ? { score: 0, label: 'Visual match' as const, reasons: ['Similar image found; this does not identify a person'] }
-        : scored
-          ? scoreText(query, { title: d.title, snippet: d.snippet, author: d.author, url: d.url })
-          : { score: 0, label: 'Not scored' as const, reasons: [] as string[] };
+      let relevance = scored
+        ? scoreText(query, { title: d.title, snippet: d.snippet, author: d.author, url: d.url })
+        : { score: 0, label: 'Not scored' as const, reasons: [] as string[] };
       // News engines searched with an exact phrase match it in the article body: an article whose headline
       // does not name it still mentions it. Kept, ranked below headline matches.
       if (scored && relevance.score < MIN_SCORE && phraseInBody(call)) {

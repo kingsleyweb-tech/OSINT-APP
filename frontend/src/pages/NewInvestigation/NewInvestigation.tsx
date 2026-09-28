@@ -104,7 +104,7 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
   // History → "Run again" opens this page with ?q=…&type=…&run=1.
   usePageSearch(p => {
     const q = p.get('q') || '';
-    const t = (p.get('type') === 'Username' ? 'Username' : 'Name') as SearchType;
+    const t = ((SEARCH_TYPES as readonly string[]).includes(p.get('type') || '') ? p.get('type') : 'Name') as SearchType;
     setQueryInput(q);
     setSearchType(t);
     runFromParams.current = { q, t };

@@ -112,15 +112,6 @@ export function planCalls(capability: ExploreCapability, query: string, o: Explo
         { engine: 'google_videos', label: 'Google Videos', params: { q: query, start: page * 10, ...(tbs ? { tbs } : {}), ...locale(o) } }
       ];
 
-    case 'reverseImage': {
-      const url = o.imageUrl || '';
-      if (!/^https?:\/\/\S+$/i.test(url)) throw new Error('Paste a public image link starting with http:// or https://.');
-      return [
-        { engine: 'google_lens', label: 'Google Lens · visual matches', params: { url, type: 'visual_matches', ...(o.country ? { country: o.country } : {}) } },
-        { engine: 'google_reverse_image', label: 'Google Reverse Image', params: { image_url: url } }
-      ];
-    }
-
     case 'social': {
       // One query per platform, site filter first (like the name search). A single query with many
       // site: filters made Google ignore the keywords and return unrelated pages.
@@ -166,7 +157,11 @@ export function planCalls(capability: ExploreCapability, query: string, o: Explo
       return [
         { engine: 'google_trends', label: 'Google Trends · interest over time', params: { ...common, data_type: 'TIMESERIES' } },
         // Related queries only accept a single term.
-        ...(query.includes(',') ? [] : [{ engine: 'google_trends' as SerpEngine, label: 'Google Trends · related queries', params: { ...common, data_type: 'RELATED_QUERIES' } }])
+        ...(query.includes(',') ? [] : [{ engine: 'google_trends' as SerpEngine, label: 'Google Trends · related queries', params: { ...common, data_type: 'RELATED_QUERIES' } }]),
+        // Where interest is highest: regions of the chosen country, or countries worldwide. Several terms are compared per region.
+        { engine: 'google_trends' as SerpEngine, label: 'Google Trends · interest by region', params: { ...common, data_type: query.includes(',') ? 'GEO_MAP' : 'GEO_MAP_0' } },
+        // Related topics (entities such as people, places, organisations): single term only.
+        ...(query.includes(',') ? [] : [{ engine: 'google_trends' as SerpEngine, label: 'Google Trends · related topics', params: { ...common, data_type: 'RELATED_TOPICS' } }])
       ];
     }
 
@@ -179,6 +174,20 @@ export function planCalls(capability: ExploreCapability, query: string, o: Explo
     case 'webBing':
       // Bing's own web index (independent of Google), e.g. to check a person's location across more of the open web.
       return [{ engine: 'bing', label: 'Bing Search', params: { q: query, first: page * 20 + 1, count: 20 } }];
+
+    case 'contacts': {
+      // Public contact details of a person: the name/handle (query, already quoted by the caller) with
+      // contact words, across Google, Bing, DuckDuckGo and social profiles. Results are scored against
+      // the name/handle only, so pages must name the person to be kept.
+      const words = '(email OR "e-mail" OR contact OR phone OR tel OR call OR whatsapp OR "@gmail.com")';
+      const social = '(site:facebook.com OR site:instagram.com OR site:linkedin.com OR site:x.com OR site:tiktok.com)';
+      return [
+        { engine: 'google', label: 'Google · contact details', params: { q: `${query} ${words}`, num: 20, ...locale(o) } },
+        { engine: 'bing', label: 'Bing · contact details', params: { q: `${query} ${words}`, count: 20 } },
+        { engine: 'duckduckgo', label: 'DuckDuckGo · contact details', params: { q: `${query} ${words}` } },
+        { engine: 'google', label: 'Social profiles · contact details', params: { q: `${social} ${query} ${words}`, num: 20, ...locale(o) } }
+      ];
+    }
 
     case 'placeLookup':
       // Place names that match the text, worldwide (e.g. "Osu" in Ghana, Japan, the US…).
@@ -194,10 +203,10 @@ export function planCalls(capability: ExploreCapability, query: string, o: Explo
 }
 
 /** Capabilities whose results are scored against the query text (others are shown as returned). */
-export const SCORED_CAPABILITIES: ExploreCapability[] = ['news', 'images', 'videos', 'social', 'forums', 'web', 'webBing'];
+export const SCORED_CAPABILITIES: ExploreCapability[] = ['news', 'images', 'videos', 'social', 'forums', 'web', 'webBing', 'contacts'];
 
 /** Capabilities that do not take a text query. */
-export const QUERYLESS_CAPABILITIES: ExploreCapability[] = ['reverseImage', 'placeReviews', 'trendingNow'];
+export const QUERYLESS_CAPABILITIES: ExploreCapability[] = ['placeReviews', 'trendingNow'];
 
 /** Labels of a capability's engine calls, without running them (for the progress list). */
 export function planLabels(capability: ExploreCapability, query: string, o: ExploreOptions = {}): Array<{ index: number; engine: string; label: string }> {

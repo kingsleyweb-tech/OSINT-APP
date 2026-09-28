@@ -21,7 +21,7 @@ router.post('/link-health', async (req, res) => {
   res.json({ results: await checkLinks(urls) });
 });
 
-// Explore capabilities: news, images, videos, reverse image, social posts, places, events, trends
+// Explore capabilities: news, images, videos, social posts, places, events, trends
 router.post('/explore', handleExplore);
 router.post('/explore/plan', handleExplorePlan);
 // Search intelligence: typo detection and corrections before a search (1 cached Google probe; none in Precise mode)

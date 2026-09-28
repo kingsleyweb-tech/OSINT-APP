@@ -158,7 +158,12 @@ export const SocialSearchPage: React.FC = () => {
           </div>
         )}
         {error && <div className="ex-notice">{error}</div>}
-        <span className="ex-muted ex-small">Uses 1 SerpApi search (2 if a broader retry is needed). Several words are searched as an exact phrase; use OR or quotes to control this. Repeating a search within 12 hours is free.</span>
+        <span className="ex-muted ex-small">
+          {mode === 'social'
+            ? `Uses ${platforms.size} SerpApi search${platforms.size === 1 ? '' : 'es'} (1 per selected platform); a platform that finds nothing relevant is retried once more broadly (+1 for it).`
+            : 'Uses 1 SerpApi search (+1 if the forum filter finds nothing).'}
+          {' '}Several words are searched as an exact phrase; use OR or quotes to control this. Repeating a search within 12 hours is free.
+        </span>
       </form>
 
       {running || qi.checking ? <SearchLoader query={query} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (
@@ -180,7 +185,7 @@ export const SocialSearchPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <ResultList items={response.items} query={response.query} savedFrom={mode === 'social' ? 'Social search' : 'Forum search'} />
             {response.items.length > 0 && page < 4 && (
-              <button type="button" className="ex-btn ex-btn-ghost" style={{ alignSelf: 'center' }} onClick={() => search({ page: page + 1 })}>More results (uses 1 search)</button>
+              <button type="button" className="ex-btn ex-btn-ghost" style={{ alignSelf: 'center' }} onClick={() => search({ page: page + 1 })}>More results (uses {mode === 'social' ? platforms.size : 1} search{mode === 'social' && platforms.size !== 1 ? 'es' : ''})</button>
             )}
           </div>
           <div className="ex-side">

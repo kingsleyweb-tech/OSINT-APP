@@ -10,7 +10,7 @@ import { CATEGORY_LABEL, CATEGORY_PAGE } from '../../lib/history';
 import { fmtDate } from '../../lib/workspace';
 import type { SearchCategory, SearchHistoryEntry } from '../../types/user';
 
-const ORDER: SearchCategory[] = ['name', 'username', 'social', 'forums', 'news', 'images', 'videos', 'reverseImage', 'geo', 'trends'];
+const ORDER: SearchCategory[] = ['name', 'username', 'email', 'phone', 'social', 'forums', 'news', 'images', 'videos', 'geo', 'trends'];
 
 /**
  * Link that reopens a search on its page. "view" shows the results saved with the search (no searches
@@ -18,9 +18,9 @@ const ORDER: SearchCategory[] = ['name', 'username', 'social', 'forums', 'news',
  */
 function searchLink(e: SearchHistoryEntry, how: 'view' | 'run'): string {
   const params = new URLSearchParams(e.params || {});
-  if (e.category === 'name' || e.category === 'username') {
+  if (e.category === 'name' || e.category === 'username' || e.category === 'email' || e.category === 'phone') {
     params.set('q', e.query);
-    params.set('type', e.category === 'username' ? 'Username' : 'Name');
+    params.set('type', e.category.charAt(0).toUpperCase() + e.category.slice(1));
   }
   if (how === 'view') params.set('restore', e.id);
   else params.set('run', '1');
@@ -34,7 +34,8 @@ export const SearchHistoryPage: React.FC = () => {
   const [category, setCategory] = useState<SearchCategory | 'all'>('all');
   const [text, setText] = useState('');
   const [open, setOpen] = useState<string | null>(null);
-  const history = useMemo(() => profile?.searchHistory || [], [profile?.searchHistory]);
+  // Searches of a kind that no longer exists (e.g. the removed reverse image search) are not listed.
+  const history = useMemo(() => (profile?.searchHistory || []).filter(h => h.category in CATEGORY_LABEL), [profile?.searchHistory]);
 
   const counts = useMemo(() => {
     const m = new Map<SearchCategory, number>();

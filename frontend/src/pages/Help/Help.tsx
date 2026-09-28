@@ -13,8 +13,10 @@ import {
   X,
   Sparkles,
   FolderOpen,
-  KeyRound
+  KeyRound,
+  Coins
 } from 'lucide-react';
+import { COST_GROUPS } from '../../lib/searchCosts';
 import './Help.css';
 
 const Highlight: React.FC<{ text: string; query: string }> = ({ text, query }) => {
@@ -45,7 +47,7 @@ interface HelpSection {
   id: string;
   label: string;
   icon: React.ElementType;
-  kind: 'cards' | 'modalities' | 'tiers' | 'steps' | 'tabs' | 'practices' | 'principles' | 'faq';
+  kind: 'cards' | 'modalities' | 'tiers' | 'steps' | 'tabs' | 'practices' | 'principles' | 'faq' | 'costs';
   title: string;
   lead: string;
   cards?: Card[];
@@ -104,7 +106,7 @@ const SECTIONS: HelpSection[] = [
       },
       {
         badge: 'EXPLORE', title: 'Media', link: '/search/media',
-        desc: 'Images (Google & Bing Images), videos (YouTube & Google Videos) and reverse image search (Google Lens and Google Reverse Image) from a public image link. Facial recognition is not connected yet.'
+        desc: 'Images (Google & Bing Images) and videos (YouTube & Google Videos). Facial recognition is not connected yet.'
       },
       {
         badge: 'EXPLORE', title: 'Geo search', link: '/search/geo',
@@ -145,16 +147,16 @@ const SECTIONS: HelpSection[] = [
     title: 'Platforms & Sources Covered',
     lead: 'Where each kind of search looks. The Sources page lists every source with what it returns, and its API endpoints tab shows every API the platform calls, with documentation links.',
     tiers: [
-      { num: 'SERPAPI', name: 'Search engines', desc: 'Paid searches through SerpApi (cached 12 hours).', platforms: ['Google', 'Bing', 'DuckDuckGo', 'Yahoo', 'YouTube', 'Google News', 'Bing News', 'Google & Bing Images', 'Google Videos', 'Google Lens', 'Google Maps & Reviews', 'Google Trends', 'Facebook Profile', 'Instagram Profile'] },
+      { num: 'SERPAPI', name: 'Search engines', desc: 'Paid searches through SerpApi (cached 12 hours).', platforms: ['Google', 'Bing', 'DuckDuckGo', 'Yahoo', 'YouTube', 'Google News', 'Bing News', 'Google & Bing Images', 'Google Videos', 'Google Maps & Reviews', 'Google Trends', 'Facebook Profile', 'Instagram Profile'] },
       { num: 'SOCIAL', name: 'Social platforms', desc: 'Found through Google, some confirmed with profile APIs.', platforms: ['Facebook', 'Instagram', 'X (Twitter)', 'TikTok', 'LinkedIn', 'Threads', 'YouTube', 'Reddit', 'Telegram', 'WhatsApp groups', 'VK', 'Weibo', 'Quora', 'Stack Exchange'] },
       { num: 'FREE', name: 'Direct platform checks', desc: 'Free public APIs used by username search; no SerpApi quota.', platforms: ['GitHub', 'Reddit', 'Mastodon', 'Bluesky', 'Docker Hub', 'npm', 'DEV', 'Medium', 'Telegram', 'Twitch', 'Vimeo', 'YouTube', 'Wikipedia'] }
     ],
     more: { to: '/sources', label: 'Open the Sources page and API reference' }
   },
   {
-    id: 'workspace', label: 'The 11 case tabs', icon: FileText, kind: 'tabs',
-    title: 'The 11 Case Tabs',
-    lead: 'Each case (investigation) is organised into 11 tabs. Tab counts are the number of items the tab shows.',
+    id: 'workspace', label: 'The 12 case tabs', icon: FileText, kind: 'tabs',
+    title: 'The 12 Case Tabs',
+    lead: 'Each case (investigation) is organised into 12 tabs. Tab counts are the number of items the tab shows.',
     steps: [
       { num: '01', title: 'Overview', desc: 'Summary of the selected identity: main profiles, key facts, evidence levels and the latest changes.' },
       { num: '02', title: 'Profiles', desc: 'The person’s own profiles on each platform, with open/closed link checks. Similar accounts are listed separately.' },
@@ -165,8 +167,9 @@ const SECTIONS: HelpSection[] = [
       { num: '07', title: 'News', desc: 'News articles naming the subject, gathered automatically, with publisher and thumbnail.' },
       { num: '08', title: 'Images', desc: 'Public images of or about the subject, gathered automatically.' },
       { num: '09', title: 'Location', desc: 'Places public sources connect to the person, searched across the open web (Google, Bing, news, Google Maps, and on request videos, images and social posts), each with the source’s exact words: profile location, stated residence, hometown, workplace, listing or a place only mentioned. Pages are counted only when tied to this person; same-name pages are kept apart and nothing is guessed.' },
-      { num: '10', title: 'Metrics', desc: 'Result counts, what each search returned versus kept, and the full SerpApi search log.' },
-      { num: '11', title: 'Audit', desc: 'Time-stamped log of every search and every change to the case, exportable as CSV.' }
+      { num: '10', title: 'Contact', desc: 'Public email addresses and phone numbers of the person: from their own profiles (bios, public email fields, business contact fields) and from Google, Bing, DuckDuckGo and social profiles — each with its source and the exact words. Only details a source shows; same-name pages are kept apart; nothing is generated.' },
+      { num: '11', title: 'Metrics', desc: 'Result counts, what each search returned versus kept, and the full SerpApi search log.' },
+      { num: '12', title: 'Audit', desc: 'Time-stamped log of every search and every change to the case, exportable as CSV.' }
     ]
   },
   {
@@ -188,9 +191,8 @@ const SECTIONS: HelpSection[] = [
     steps: [
       { num: 'A', title: 'Handle pivot', desc: 'Found a profile in a name search? Copy its handle (e.g. @johndoe_dev) and run a Username search to find the same person’s other accounts.' },
       { num: 'B', title: 'Narrow common names', desc: 'Add a location or organisation to a name search (e.g. Kwame Mensah + Accra). Each adds one search and filters out unrelated people.' },
-      { num: 'C', title: 'Image pivot', desc: 'Copy a profile picture’s image link into Media → Reverse image to see where else it is published.' },
-      { num: 'D', title: 'Topic and place pivot', desc: 'Use News, Geo search and Trends to see what is being said about an organisation, place or event, restricted to one country when needed.' },
-      { num: 'E', title: 'Keep the record', desc: 'Save findings to the case as you go and export the Sources and Audit CSVs for reporting.' }
+      { num: 'C', title: 'Topic and place pivot', desc: 'Use News, Geo search and Trends to see what is being said about an organisation, place or event, restricted to one country when needed.' },
+      { num: 'D', title: 'Keep the record', desc: 'Save findings to the case as you go and export the Sources and Audit CSVs for reporting.' }
     ]
   },
   {
@@ -198,14 +200,20 @@ const SECTIONS: HelpSection[] = [
     title: 'SerpApi, Quota & the Progress Loader',
     lead: 'Most searches run through SerpApi, which has a monthly search allowance. These are the costs and the ways the platform saves quota.',
     faqs: [
-      { q: 'How many searches does a name search use?', a: 'Quick: 4. Standard and Deep: 9 (Google with the exact name, LinkedIn, Facebook ×2, Instagram, X, TikTok & Threads, YouTube, developer & writing sites). Plus 1 per location or organisation you add, up to 2 profile confirmations in Deep, and 1 spelling check in Intelligent mode.' },
-      { q: 'How many does a username search use?', a: 'Quick: 5, Standard: 10, Deep: up to 13 SerpApi searches (Google broad and per-platform searches for Facebook, Instagram, X, TikTok and LinkedIn, DuckDuckGo, Yahoo, YouTube, and profile lookups). The direct platform checks (GitHub, Reddit, Mastodon, Bluesky and others) are free.' },
-      { q: 'And the Explore pages?', a: 'Each page shows its cost before you search. For example News uses 1–2, Social uses 1 per platform selected and Media 2. Geo search and Trends run several searches at once; the loader lists each one.' },
+      { q: 'How many searches does a name search use?', a: 'Quick: 4. Standard: 9–10. Deep (the default): 9–12 — the 9 Google/YouTube searches plus up to 3 Facebook/Instagram profile confirmations. Plus 1 per location or organisation you add, and 1 spelling check in Intelligent mode. See Search costs for every search.' },
+      { q: 'How many does a username search use?', a: 'Quick: 5, Standard: 11, Deep (the default): 14 SerpApi searches. The direct platform checks (GitHub, Reddit, TikTok and Snapchat profile pages, Mastodon, Bluesky and others) are free. See Search costs for every search.' },
+      { q: 'And the other search pages?', a: 'Each page shows its cost before you search, and the Search costs section lists every one: e.g. News 1–2, Social 1 per selected platform (6 by default), Images or Videos 2, Geo 10–12, Trends 11–14.' },
       { q: 'How does caching work?', a: 'Identical requests are cached for 12 hours on the server, so running the same search again, re-opening results or re-running a case soon after does not use quota twice.' },
       { q: 'What does the progress loader show?', a: 'Each engine the search calls, with its own status (waiting, running, done, failed) and real progress. You can cancel at any time; a slow engine times out after 30 seconds and is retried once, so the page never freezes.' },
       { q: 'Where can I see my remaining quota?', a: 'The quota indicator reads your remaining monthly searches from the SerpApi Account API, which is free.' }
     ],
     more: { to: '/sources', label: 'See every engine and its documentation' }
+  },
+  {
+    id: 'costs', label: 'Search costs (tokens)', icon: Coins, kind: 'costs',
+    title: 'Search Costs: Tokens per Search',
+    lead: 'Every search uses SerpApi searches (“tokens”) from your monthly quota. These are the exact numbers each search uses. A repeat of the same search within 12 hours is free, and a search you cancel stops using tokens for the steps that had not started.',
+    cards: COST_GROUPS.flatMap(g => g.rows.map(r => ({ title: `${g.title}|${r.search}`, desc: `${r.tokens}|${r.notes}` })))
   },
   {
     id: 'account', label: 'Account & security', icon: KeyRound, kind: 'principles',
@@ -241,12 +249,12 @@ const SECTIONS: HelpSection[] = [
       { q: 'It says “Too many searches in a short time”.', a: 'Each account can run a limited number of searches per 10 minutes. Wait a few minutes and try again.' },
       { q: 'It says my session has expired.', a: 'Sign in again. This happens after a password change, if your account was deleted or disabled, or if the server no longer accepts your sign-in.' },
       { q: 'Google sign-in was cancelled or blocked.', a: 'Allow pop-ups for this site and try again. If pop-ups stay blocked, the page goes to Google and comes back automatically.' },
-      { q: 'Is facial recognition available?', a: 'Not yet. The Media page has a Facial recognition tab reserved for it; reverse image search (Google Lens) is available now.' }
+      { q: 'Is facial recognition available?', a: 'Not yet. The Media page has a Facial recognition tab reserved for it; no face matching is done.' }
     ]
   }
 ];
 
-const SUGGESTED = ['Did you mean', 'Username', 'Similar accounts', 'Save to case', 'Quota', 'Google sign-in', 'News', 'Reverse image'];
+const SUGGESTED = ['Did you mean', 'Username', 'Similar accounts', 'Save to case', 'Quota', 'Google sign-in', 'News', 'Trends'];
 
 function sectionText(sec: HelpSection): string {
   return [
@@ -366,6 +374,24 @@ export const HelpPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        );
+      case 'costs':
+        return (
+          <>
+            {COST_GROUPS.map(g => (
+              <div key={g.title} className="hd-costs">
+                <h3>{hl(g.title)}</h3>
+                <table className="hd-table">
+                  <thead><tr><th>Search</th><th>Tokens</th><th>What is included</th></tr></thead>
+                  <tbody>
+                    {g.rows.map(r => (
+                      <tr key={r.search}><td><b>{hl(r.search)}</b></td><td className="hd-tokens">{hl(r.tokens)}</td><td>{hl(r.notes)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </>
         );
       case 'faq':
         return (

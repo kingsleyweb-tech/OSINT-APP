@@ -100,7 +100,7 @@ export const EngineStatus: React.FC<{ response: ExploreResponse | null }> = ({ r
 export const RelevancePill: React.FC<{ item: ExploreItem }> = ({ item }) => {
   const l = item.relevance.label;
   if (l === 'Not scored') return null;
-  const cls = l === 'Strong match' ? 'ok' : l === 'Partial match' ? 'mid' : l === 'Visual match' ? 'info' : 'low';
+  const cls = l === 'Strong match' ? 'ok' : l === 'Partial match' ? 'mid' : 'low';
   return <span className={`ex-pill ex-pill-${cls}`} title={item.relevance.reasons.join(' · ')}>{l}</span>;
 };
 

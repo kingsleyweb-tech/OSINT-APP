@@ -183,3 +183,10 @@ textarea.ex-input { height: auto; padding: 10px 12px; resize: vertical; }
 .ex-fb-not.on { background: var(--bg-hover); color: var(--text-secondary); border-color: var(--text-muted); text-decoration: line-through; }
 :root:not([data-theme="light"]) .ex-fb-relevant.on { color: #34d399; }
 .ex-group-head { padding: 8px 18px; font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); background: var(--bg-hover); border-bottom: 1px solid var(--border-color); }
+
+/* Trends: interest by region */
+.ex-trend-region { display: grid; grid-template-columns: minmax(110px, 200px) minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 0.85rem; }
+.ex-trend-region-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-trend-region-bars { display: flex; flex-direction: column; gap: 3px; }
+@media (max-width: 640px) { .ex-trend-region { grid-template-columns: minmax(0, 1fr) auto; } .ex-trend-region-bars { grid-column: 1 / -1; grid-row: 2; } }
+.ex-trend-region .ex-bar-track, .ex-trend-region .ex-bar-fill { display: block; }

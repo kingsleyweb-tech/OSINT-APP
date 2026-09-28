@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { getPageState, setPageState, usePageState } from '../../lib/pageState';
 import type { LoaderStep } from '../ui/SearchLoader';
 import type { DiscoveredIdentity } from './PossibleIdentitiesView';
-import { runSearch, SearchError, type SearchProgressEvent } from '../../lib/searchClient';
+import { runSearch, SearchError, type ProfilerSearchType, type SearchProgressEvent } from '../../lib/searchClient';
 import { recordSearch } from '../../lib/history';
 import { intelHistoryFields } from '../../lib/queryIntelClient';
 import { useQueryIntel } from './useIntelligentSearch';
@@ -66,11 +66,13 @@ export function useProfilerSearch(page = 'profiler') {
     setSteps([]);
   }, [qi, page, setRunning, setSteps]);
 
-  const run = useCallback(async (query: string, type: 'Name' | 'Username', depth?: 'quick' | 'standard' | 'deep', opts: ProfilerRunOptions = {}): Promise<ProfilerRunResult> => {
+  const run = useCallback(async (query: string, type: ProfilerSearchType, depth?: 'quick' | 'standard' | 'deep', opts: ProfilerRunOptions = {}): Promise<ProfilerRunResult> => {
     controllers.get(page)?.abort();
     const controller = new AbortController();
     controllers.set(page, controller);
-    const kind = type === 'Username' ? 'username' : 'name';
+    const kind = type.toLowerCase() as 'name' | 'username' | 'email' | 'phone';
+    // Emails and phone numbers are searched exactly as entered (no spelling check), like usernames.
+    const checkKind = kind === 'name' ? 'name' : 'username';
     const mode = opts.mode || 'intelligent';
 
     // Investigation memory: the same name/username searched in the last 24 hours already has a case.
@@ -98,7 +100,7 @@ export function useProfilerSearch(page = 'profiler') {
     setRunning(true);
     setSteps([{ id: 'intel', label: kind === 'name' && mode === 'intelligent' ? 'Checking spelling and meaning' : 'Planning the search', state: 'active' }]);
     try {
-      const checked = await qi.check(query, kind, mode, { knownNames: (opts.cases || []).map(c => c.name), keepOriginal: opts.keepOriginal, chosen: opts.chosen });
+      const checked = await qi.check(query, checkKind, mode, { knownNames: (opts.cases || []).map(c => c.name), keepOriginal: opts.keepOriginal, chosen: opts.chosen });
       if (!checked || controller.signal.aborted) throw new SearchError('The search was cancelled.', 'Search cancelled');
       setSteps(prev => prev.map(s => (s.id === 'intel' ? {
         ...s, state: 'done',

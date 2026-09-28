@@ -158,7 +158,7 @@ export class UsernameDiscoveryService {
             profileImage: data.avatar_url,
             confidence: 'confirmed',
             source: 'GitHub API',
-            metadata: { publicRepos: data.public_repos, followers: data.followers, bio: data.bio, location: data.location || undefined, company: data.company || undefined }
+            metadata: { publicRepos: data.public_repos, followers: data.followers, bio: data.bio, location: data.location || undefined, company: data.company || undefined, email: data.email || undefined, website: data.blog || undefined }
           };
         } else if (res.status === 404) {
           return { status: 'no_match', source: 'GitHub API', confidence: 'unconfirmed' };

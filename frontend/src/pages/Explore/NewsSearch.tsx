@@ -12,6 +12,7 @@ import { intelHistoryFields, type QueryIntel } from '../../lib/queryIntelClient'
 import { clearPageState, usePageState } from '../../lib/pageState';
 import { fmtDate } from '../../lib/workspace';
 import { useCases } from '../../components/explore/exploreHooks';
+import { newsCost } from '../../lib/searchCosts';
 
 export const NewsSearchPage: React.FC = () => {
   // Everything on this page is kept when you leave it (until "New search").
@@ -91,7 +92,7 @@ export const NewsSearchPage: React.FC = () => {
         <SearchModeToggle mode={searchMode} onChange={setSearchMode} />
         <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Search news</button>
         {error && <div className="ex-notice" style={{ width: '100%' }}>{error}</div>}
-        <span className="ex-muted ex-small" style={{ width: '100%' }}>Uses 2 SerpApi searches (Google + Bing). Put a name in quotes for exact matches.</span>
+        <span className="ex-muted ex-small" style={{ width: '100%' }}>Uses {newsCost(country || undefined) === 2 ? '2 SerpApi searches (Google News + Bing News)' : '1 SerpApi search (Google News — Bing News has no market for this country)'}; +1 per engine if the exact phrase finds nothing. Put a name in quotes for exact matches.</span>
       </form>
 
       {running || qi.checking ? <SearchLoader query={query} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

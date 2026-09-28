@@ -83,7 +83,6 @@ Besides the name and username investigations, the sidebar has these pages. They 
 | News | `/search/news` | `google_news`; with a country selected it uses that country's Google News edition (`gl`), and the time filter is Google News's own `when:` operator so results stay in the edition. `bing_news` is added when no country is selected or the country is one of Bing's markets (US, GB, CA, AU, IN, DE, FR); for other countries (e.g. Ghana) it is left out so the list stays country-specific | 1–2 |
 | Media: images | `/search/media` | `google_images` + `bing_images` | 2 |
 | Media: videos | `/search/media` | `youtube` + `google_videos` | 2 |
-| Media: reverse image | `/search/media` | `google_lens` (`type=visual_matches`) + `google_reverse_image`; needs a public image URL | 2 |
 | Web (used by Geo and Trends) | — | `google` web search; `bing` if Google returns nothing | 1–2 |
 | Media: facial recognition | `/search/media` | none. Shown as "Coming soon — API required"; no requests are sent | 0 |
 | Geo search | `/search/geo` | Runs together: `google_maps` (places; the selected country is written into the query, because Google Maps has no country filter and "osu" alone matched Ohio State University), `google_news` + `bing_news`, `google` on social sites, `google` web search, and the events block of `google` search (the separate `google_events` engine is rejected by SerpApi as unsupported). With **Any country**, `google_maps_autocomplete` (world view) also lists places with the same or a similar name in other countries. Reviews load on request with `google_maps_reviews` | 6 (7 with Any country; +1 per place's reviews) |
@@ -99,7 +98,6 @@ How Explore results are handled:
 - **Normalisation.** Each engine's JSON is converted into one `ExploreItem` shape (`normalize.ts`). Every item keeps the engine that returned it. Fields the engine did not return stay empty.
 - **De-duplication.** Results are de-duplicated by URL, with host and tracking parameters normalised.
 - **Relevance scoring.** News, images, videos, social and forum results are scored against the query text (`relevance.ts`). Results whose returned text contains none of the query terms, or fewer than 60% of them for multi-word searches, are hidden, and the count of hidden results is shown. Labels are "Strong match", "Partial match" and "Weak match", and describe only how well the text matches.
-- **Reverse image results.** These are labelled "Visual match" and are never presented as identifying a person.
 - **Engine isolation.** Engines run concurrently with a 40-second timeout each. One failing engine never fails the request; each engine's status (ok, cached, empty, error, quota) is shown on the page.
 - **Saving to a case.** Results can be saved to any of the user's cases (`frontend/src/lib/caseSave.ts`):
   - news goes to the News tab;
@@ -133,7 +131,7 @@ Every search page and the Profiler have a **Search mode** switch (default in Set
 ### Search progress, history and cases
 
 - **One loader for every search.** Name and username searches use `POST /api/search/stream`, which streams a progress event as each query finishes and then the same response as `POST /api/search`. Explore searches run each engine as its own request (`POST /api/explore/plan` lists them, then `POST /api/explore` with `callIndex`). The loader's percentage only moves when a source really finishes. Every search can be cancelled. Each SerpApi request gives up after 30 seconds (`SERPAPI_TIMEOUT_MS`) and is retried once (SerpApi serves the repeat from its own cache without using a search), so a search never hangs.
-- **Search history.** Every search (name, username, social, forums, news, images, videos, reverse image, geo, trends) is saved to `users/{uid}.searchHistory` in Firestore: newest first, capped at 100, with its settings, result count and top results. The **Search history** page groups them by kind and can run a search again or open the case made from it. Stored in the user's own document, it needs no Firestore rule change.
+- **Search history.** Every search (name, username, social, forums, news, images, videos, geo, trends) is saved to `users/{uid}.searchHistory` in Firestore: newest first, capped at 100, with its settings, result count and top results. The **Search history** page groups them by kind and can run a search again or open the case made from it. Stored in the user's own document, it needs no Firestore rule change.
 - **Saving results.** "Save to case" works without a Profiler search. With no case chosen, a new case named after the search is created in Firestore and the results are saved into it.
 - **Case Images and News tabs.** On first open, the Images tab searches Google Images and Bing Images for the subject's exact name, and the News tab searches Google News and Bing News. Only items whose title or summary names the subject are kept automatically; other news articles are listed for review. Results are stored in the case (`imageResults`, `imagesCheckedAt`, `newsCheckedAt`), so later visits use no searches.
 - **Opening a person** from the search results opens the case at once; saving it to Firestore continues in the background.
@@ -417,7 +415,7 @@ The investigator must judge whether the accounts belong to the same person. (The
 
 **Exact-match first.** Every query wraps the name or username in quotes, so the search engine must match the exact phrase.
 
-**Effect on SerpApi usage.** The query generator decides the cost of a search: one planned query = one SerpApi request. A name search costs 4 (quick) or 9 (standard/deep) requests, plus 1 per location or organisation hint, up to 2 profile confirmations (deep) and 1 spelling probe in Intelligent mode. A username search costs 5 / 10 / up to 13 requests (quick / standard / deep: Google broad and per-platform searches, DuckDuckGo, Yahoo, YouTube, and Facebook/Instagram profile lookups); its direct platform checks are free ([§11](#11-serpapi-request-limits)).
+**Effect on SerpApi usage.** The query generator decides the cost of a search: one planned query = one SerpApi request. A name search costs 4 (quick) or 9 (standard/deep) requests, plus 1 per location or organisation hint, up to 2 profile confirmations (deep) and 1 spelling probe in Intelligent mode. A username search costs 5 / 11 / 14 requests (quick / standard / deep: Google broad and per-platform searches incl. TikTok and Snapchat, DuckDuckGo, Yahoo, YouTube, and Facebook/Instagram profile lookups); the case Contact tab costs 4 (Google, Bing, DuckDuckGo, social profiles). The in-app Help page (Search costs) lists every search's cost, from `frontend/src/lib/searchCosts.ts`; its direct platform checks are free ([§11](#11-serpapi-request-limits)).
 
 ## 10. SerpApi Integration
 

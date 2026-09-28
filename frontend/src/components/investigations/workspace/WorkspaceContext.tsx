@@ -5,10 +5,11 @@ import {
   type IndexedSource, type PipelineCounts, type WebBucket, type WebItem
 } from '../../../lib/workspace';
 import { allLocationRefs, summarise } from '../../../lib/locationEvidence';
+import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
 
 export type TabKey =
   | 'overview' | 'profiles' | 'activity' | 'associations' | 'sources'
-  | 'web' | 'news' | 'images' | 'location' | 'metrics' | 'audit';
+  | 'web' | 'news' | 'images' | 'location' | 'contact' | 'metrics' | 'audit';
 
 export interface Derived {
   sources: IndexedSource[];
@@ -50,6 +51,8 @@ export function derive(inv: Investigation): Derived {
       images: (inv.imageResults || []).length,
       // Places in the Location summary (references linked to this identity).
       location: summarise(allLocationRefs(inv)).length,
+      // Emails / phone numbers tied to this identity.
+      contact: summariseContacts(allContacts(inv)).length,
       metrics: undefined,
       audit: auditCount
     }

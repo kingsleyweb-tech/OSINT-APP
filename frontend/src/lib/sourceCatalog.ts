@@ -95,18 +95,6 @@ export const DATA_SOURCES: DataSource[] = [
     usedIn: ['Media search'],
     data: ['Videos', 'Platforms', 'Dates']
   },
-  {
-    id: 'google-lens', name: 'Google Lens', domain: 'lens.google.com', category: 'Images & video', access: 'SerpApi',
-    description: 'Reverse image search: pages that show the same or a visually similar image.',
-    usedIn: ['Media search · Reverse image'],
-    data: ['Visual matches', 'Pages using the image']
-  },
-  {
-    id: 'google-reverse-image', name: 'Google Reverse Image', domain: 'google.com', category: 'Images & video', access: 'SerpApi',
-    description: 'Classic reverse image search, run alongside Google Lens for more matches.',
-    usedIn: ['Media search · Reverse image'],
-    data: ['Matching pages', 'Image guesses']
-  },
 
   // ─── Maps & places ─────────────────────────────────────────────────────────
   {
@@ -322,7 +310,7 @@ export const APP_ENDPOINTS: AppEndpoint[] = [
   { method: 'POST', path: '/api/search/stream', auth: 'Signed in', usedBy: 'Name & username search', description: 'Runs a name or username search and streams progress lines (NDJSON) followed by the result.', body: '{ query, type: "name" | "username", searchDepth?, location?, organization? }' },
   { method: 'POST', path: '/api/search', auth: 'Signed in', usedBy: 'Name & username search (fallback)', description: 'Same search as the stream, returned in one response.', body: '{ query, type, searchDepth? }' },
   { method: 'POST', path: '/api/investigations/rescan', auth: 'Signed in', usedBy: 'Case → Re-run searches', description: 'Re-runs a saved case’s searches and returns what changed.', body: '{ investigation, searchDepth? }' },
-  { method: 'POST', path: '/api/explore', auth: 'Signed in', usedBy: 'Social, News, Media, Geo, Trends, case News/Images tabs', description: 'Runs one Explore capability (news, images, videos, reverseImage, social, forums, places, placeReviews, placeLookup, events, trends, trendingNow, web).', body: '{ capability, query, options?: { country, language, when, platforms, page, imageUrl, dataId, timeframe, callIndex } }' },
+  { method: 'POST', path: '/api/explore', auth: 'Signed in', usedBy: 'Social, News, Media, Geo, Trends, case News/Images tabs', description: 'Runs one Explore capability (news, images, videos, social, forums, places, placeReviews, placeLookup, events, trends, trendingNow, web).', body: '{ capability, query, options?: { country, language, when, platforms, page, dataId, timeframe, callIndex } }' },
   { method: 'POST', path: '/api/explore/plan', auth: 'Signed in', usedBy: 'Search progress loader', description: 'Lists the engine calls a search will make (no searches used), so each step can show its own progress.', body: '{ capability, query, options? }' },
   { method: 'POST', path: '/api/query-intel', auth: 'Signed in', usedBy: 'Intelligent mode (“Did you mean”)', description: 'Checks the spelling of a search with one cached Google probe and returns corrections, alternatives and related searches. Not called in Precise mode.', body: '{ query, kind: "name" | "username" | "topic", mode?, knownNames? }' },
   { method: 'POST', path: '/api/link-health', auth: 'Signed in', usedBy: 'Profile link checks', description: 'Checks whether discovered profile links still open (known platform hosts only).', body: '{ urls: string[] }' },
@@ -355,8 +343,6 @@ export const EXTERNAL_APIS: ExternalApi[] = [
   { provider: 'SerpApi', name: 'Google Images API', endpoint: `${SERP}google_images`, usedFor: 'Media search, case Images tab', docs: 'https://serpapi.com/google-images-api', cost: 'SerpApi search' },
   { provider: 'SerpApi', name: 'Bing Images API', endpoint: `${SERP}bing_images`, usedFor: 'Media search', docs: 'https://serpapi.com/bing-images-api', cost: 'SerpApi search' },
   { provider: 'SerpApi', name: 'Google Videos API', endpoint: `${SERP}google_videos`, usedFor: 'Media search', docs: 'https://serpapi.com/google-videos-api', cost: 'SerpApi search' },
-  { provider: 'SerpApi', name: 'Google Lens API', endpoint: `${SERP}google_lens`, usedFor: 'Reverse image search', docs: 'https://serpapi.com/google-lens-api', cost: 'SerpApi search' },
-  { provider: 'SerpApi', name: 'Google Reverse Image API', endpoint: `${SERP}google_reverse_image`, usedFor: 'Reverse image search', docs: 'https://serpapi.com/google-reverse-image', cost: 'SerpApi search' },
   { provider: 'SerpApi', name: 'Google Maps API', endpoint: `${SERP}google_maps`, usedFor: 'Geo search · places', docs: 'https://serpapi.com/google-maps-api', cost: 'SerpApi search' },
   { provider: 'SerpApi', name: 'Google Maps Reviews API', endpoint: `${SERP}google_maps_reviews`, usedFor: 'Geo search · reviews', docs: 'https://serpapi.com/google-maps-reviews-api', cost: 'SerpApi search' },
   { provider: 'SerpApi', name: 'Google Maps Autocomplete API', endpoint: `${SERP}google_maps_autocomplete`, usedFor: 'Geo search · similar places', docs: 'https://serpapi.com/google-maps-autocomplete-api', cost: 'SerpApi search' },

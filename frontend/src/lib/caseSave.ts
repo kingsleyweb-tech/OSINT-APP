@@ -219,8 +219,11 @@ export async function createCaseFromSearch(name: string, savedFrom: string, quer
 }
 
 /** Exact query for the case subject: the full name in quotes, or the username. */
-export function subjectQuery(inv: { searchType?: string; name: string; searchInputs?: { name?: string; username?: string; queryValue?: string } }): string {
+export function subjectQuery(inv: { searchType?: string; name: string; searchInputs?: { name?: string; username?: string; email?: string; phone?: string; queryValue?: string } }): string {
   if (inv.searchType === 'username') return inv.searchInputs?.username || inv.name;
+  // Emails and phone numbers are searched as the exact identifier.
+  if (inv.searchType === 'email') return `"${inv.searchInputs?.email || inv.name}"`;
+  if (inv.searchType === 'phone') return `"${inv.searchInputs?.phone || inv.name}"`;
   const name = (inv.searchInputs?.name || inv.searchInputs?.queryValue || inv.name).replace(/"/g, '').trim();
   return `"${name}"`;
 }

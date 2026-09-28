@@ -8,6 +8,8 @@ export function relevanceText(w: WebItem, isUsername: boolean): string {
   const m = w.metadata || {};
   if (m.ownerProfileUrl) return 'Published by one of this identity\'s profiles';
   if (m.identityLink === 'linked') return 'Mentions this identity\'s organization or @username';
+  if (m.identifierMatch === 'email') return 'The page shows the searched email address';
+  if (m.identifierMatch === 'phone') return 'The page shows the searched phone number';
   if (isUsername) return 'The username appears in the result';
   return 'The full name appears in the title or snippet';
 }

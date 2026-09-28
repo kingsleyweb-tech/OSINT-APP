@@ -140,7 +140,7 @@ export interface TrackedPerson {
   userId: string;
   investigationId: string;
   name: string;
-  searchType: 'name' | 'username';
+  searchType: 'name' | 'username' | 'email' | 'phone';
   location?: string;
   occupation?: string;
   avatarUrl?: string;
@@ -158,7 +158,7 @@ function trackedFrom(inv: Investigation, uid: string, trackedAt?: string): Track
     userId: uid,
     investigationId: inv.id,
     name: inv.name,
-    searchType: inv.searchType === 'username' ? 'username' : 'name',
+    searchType: inv.searchType || 'name',
     location: location && location !== 'Not specified' ? location : undefined,
     occupation: occupation && !/not stated|no public role|public individual/i.test(occupation) ? occupation : undefined,
     avatarUrl: inv.targetProfile?.avatarUrl,

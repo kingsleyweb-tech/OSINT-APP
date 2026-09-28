@@ -7,7 +7,6 @@ export type ExploreCapability =
   | 'news'
   | 'images'
   | 'videos'
-  | 'reverseImage'
   | 'social'
   | 'forums'
   | 'places'
@@ -17,6 +16,7 @@ export type ExploreCapability =
   | 'trendingNow'
   | 'web'
   | 'webBing'
+  | 'contacts'
   | 'placeLookup';
 
 export type ExploreItemKind =
@@ -28,13 +28,12 @@ export type ExploreItemKind =
   | 'group'
   | 'forum'
   | 'web'
-  | 'visual_match'
   | 'place'
   | 'review'
   | 'event'
   | 'location';
 
-export type RelevanceLabel = 'Strong match' | 'Partial match' | 'Weak match' | 'Visual match' | 'Not scored';
+export type RelevanceLabel = 'Strong match' | 'Partial match' | 'Weak match' | 'Not scored';
 
 export interface ExploreRelevance {
   score: number;
@@ -89,8 +88,6 @@ export interface ExploreOptions {
   platforms?: string[];
   /** Result page (0-based) for engines that support paging. */
   page?: number;
-  /** Reverse image: a public http(s) image URL. */
-  imageUrl?: string;
   /** Place reviews: SerpApi data_id of a Google Maps place. */
   dataId?: string;
   /** Trends: timeframe such as "today 12-m" or "now 7-d". */

@@ -69,7 +69,10 @@ async function fetchStreamed(body: string, signal: AbortSignal, onProgress?: Run
  * SearchError describing what went wrong so the page can tell the user. Progress events are
  * reported while the sources run; the search can be cancelled with options.signal.
  */
-export async function runSearch(query: string, searchType: 'Name' | 'Username', searchDepth?: 'quick' | 'standard' | 'deep', options: RunSearchOptions = {}): Promise<DiscoveredIdentity[]> {
+/** The Profiler's identifier types. */
+export type ProfilerSearchType = 'Name' | 'Username' | 'Email' | 'Phone';
+
+export async function runSearch(query: string, searchType: ProfilerSearchType, searchDepth?: 'quick' | 'standard' | 'deep', options: RunSearchOptions = {}): Promise<DiscoveredIdentity[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
   const onAbort = () => controller.abort();
@@ -159,11 +162,11 @@ export async function runSearch(query: string, searchType: 'Name' | 'Username', 
  */
 export function identityToInvestigation(
   identity: DiscoveredIdentity,
-  opts: { activeQuery: string; searchType: 'Name' | 'Username'; userId: string; searchDepth?: string }
+  opts: { activeQuery: string; searchType: ProfilerSearchType; userId: string; searchDepth?: string }
 ): Investigation {
   const inv = identity.investigation || {};
   const nowIso = new Date().toISOString();
-  const type = opts.searchType.toLowerCase() as 'name' | 'username';
+  const type = opts.searchType.toLowerCase() as 'name' | 'username' | 'email' | 'phone';
 
   const socialProfiles = Array.isArray(inv.socialProfiles) ? inv.socialProfiles : [];
   const webAndNews = Array.isArray(inv.webAndNews)
@@ -187,6 +190,8 @@ export function identityToInvestigation(
     ? inv.searchInputs
     : type === 'username'
       ? { searchType: type, username: opts.activeQuery.replace(/^@/, ''), queryValue: opts.activeQuery }
+      : type === 'email' ? { searchType: type, email: opts.activeQuery, queryValue: opts.activeQuery }
+      : type === 'phone' ? { searchType: type, phone: opts.activeQuery, queryValue: opts.activeQuery }
       : { searchType: type, name: opts.activeQuery, queryValue: opts.activeQuery };
 
   return {

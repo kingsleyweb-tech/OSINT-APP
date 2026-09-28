@@ -1052,3 +1052,4 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
 .ws-loc-result-note.ok { color: var(--ws-good); }
 .ws-loc-result-note.warn { color: var(--ws-bad); }
 @media (max-width: 700px) { .ws-loc-result { padding-left: 0; } }
+.ws-gender-line { font-size: 12px; margin-top: 2px; }

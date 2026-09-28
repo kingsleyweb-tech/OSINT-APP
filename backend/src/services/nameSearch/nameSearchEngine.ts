@@ -513,10 +513,26 @@ async function confirmProfiles(
           if (hit && !profile.attributes[hit.attr]) profile.attributes[hit.attr] = text.replace(hit.re, '$1').trim();
           // Keep the exact wording: "Lives in" (current city) and "From" (hometown) are different facts.
           if (hit?.attr === 'location') profile.evidence.push({ code: 'about_location', text: `Facebook About section: "${text}"` });
+          // Contact details the profile owner published in the About section (email / phone items).
+          if (/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(text) || (/^\+?[\d\s().-]{9,20}$/.test(text) && text.replace(/\D/g, '').length >= 9)) {
+            profile.evidence.push({ code: 'about_contact', text: `Facebook About section: "${text}"` });
+          }
+          // A gender the profile owner published (only when Facebook marks the item as the gender field).
+          const labelled = `${item?.subtitle || ''} ${item?.type || ''} ${section?.title || ''}`;
+          if (/^(female|male|woman|man|non[- ]?binary)$/i.test(text) && /gender|basic info/i.test(labelled)) {
+            profile.evidence.push({ code: 'about_gender', text: `Facebook About section: "${text}"` });
+          }
         }));
       }
       if (engine === 'instagram_profile') {
         if (data.biography) profile.bio = data.biography;
+        // Business contact details the account shows publicly (only when SerpApi returns them).
+        [data.business_email, data.public_email, data.business_phone_number, data.contact_phone_number, data.public_phone_number]
+          .filter((v: unknown) => typeof v === 'string' && v.trim())
+          .forEach((v: string) => profile.evidence.push({ code: 'stated_contact', text: `Instagram contact: "${v.trim()}"` }));
+        // Pronouns the account holder set on Instagram (only when SerpApi returns them).
+        const pronouns = Array.isArray(data.pronouns) ? data.pronouns.join('/') : typeof data.pronouns === 'string' ? data.pronouns : '';
+        if (pronouns) profile.evidence.push({ code: 'stated_pronouns', text: `Instagram pronouns: "${pronouns}"` });
         const links: string[] = [data.external_url, ...(data.bio_links || []).map((l: any) => l?.url)].filter(Boolean);
         links.forEach(link => {
           const linked = profiles.find(o => o !== profile && (o.profileUrl === link || o.canonicalUrl === resolveCanonical(link)));

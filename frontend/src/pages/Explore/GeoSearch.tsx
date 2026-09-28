@@ -14,6 +14,7 @@ import { useQueryIntel, useSearchMode } from '../../components/search/useIntelli
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
 import { intelHistoryFields } from '../../lib/queryIntelClient';
 import { useCases } from '../../components/explore/exploreHooks';
+import { geoCost } from '../../lib/searchCosts';
 import { clearPageState, usePageState } from '../../lib/pageState';
 import { useTheme } from '../../context/ThemeContext';
 import { fmtDate } from '../../lib/workspace';
@@ -162,7 +163,7 @@ export const GeoSearchPage: React.FC = () => {
           <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Search location</button>
         </div>
         {error && <div className="ex-notice">{error}</div>}
-        <span className="ex-muted ex-small">Searches Google Maps, Google News, Bing News, social platforms, Google web and events together (6 SerpApi searches; 7 with Any country). Loading a place's reviews uses 1 more.</span>
+        <span className="ex-muted ex-small">Searches Google Maps, news, 6 social platforms, Google web and events together{country ? '' : ', plus places with the same name in other countries'}: {geoCost(country || undefined)} SerpApi searches with these settings. Loading a place's reviews uses 1 more.</span>
       </form>
 
       {running || qi.checking ? <SearchLoader query={[keyword, place].filter(Boolean).join(' · ')} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

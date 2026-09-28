@@ -3,12 +3,12 @@ import { apiFetch } from './apiAuth';
 
 /** Mirrors backend/src/types/explore.ts. */
 export type ExploreCapability =
-  | 'news' | 'images' | 'videos' | 'reverseImage' | 'social' | 'forums'
-  | 'places' | 'placeReviews' | 'events' | 'trends' | 'trendingNow' | 'web' | 'webBing' | 'placeLookup';
+  | 'news' | 'images' | 'videos' | 'social' | 'forums'
+  | 'places' | 'placeReviews' | 'events' | 'trends' | 'trendingNow' | 'web' | 'webBing' | 'contacts' | 'placeLookup';
 
 export type ExploreItemKind =
   | 'news' | 'image' | 'video' | 'post' | 'profile' | 'group' | 'forum' | 'web'
-  | 'visual_match' | 'place' | 'review' | 'event' | 'location';
+  | 'place' | 'review' | 'event' | 'location';
 
 /** Engine-specific fields; only those the source returned are present. */
 export interface ExploreMetadata {
@@ -61,7 +61,6 @@ export interface ExploreOptions {
   language?: string;
   platforms?: string[];
   page?: number;
-  imageUrl?: string;
   dataId?: string;
   timeframe?: string;
   /** Run only one engine of the plan (used for per-source progress). */
@@ -244,5 +243,5 @@ export const WHEN_OPTIONS: Array<{ code: ExploreOptions['when'] | ''; label: str
 
 export const KIND_LABEL: Record<ExploreItemKind, string> = {
   news: 'News', image: 'Image', video: 'Video', post: 'Post', profile: 'Profile', group: 'Group / channel',
-  forum: 'Forum', web: 'Web page', visual_match: 'Visual match', place: 'Place', review: 'Review', event: 'Event', location: 'Location'
+  forum: 'Forum', web: 'Web page', place: 'Place', review: 'Review', event: 'Event', location: 'Location'
 };

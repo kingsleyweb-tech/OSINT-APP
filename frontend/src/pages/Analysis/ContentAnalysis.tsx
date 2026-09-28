@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { BarChart3, Download } from 'lucide-react';
 import { ExplorePage, Field, EmptyState } from '../../components/explore/ExploreKit';
 import { useCases, topTerms } from '../../components/explore/exploreHooks';
-import { contentItems, countBy, perMonth } from '../../lib/caseAnalysis';
+import { authorCounts, contentItems, countBy, hashtagCounts, languageCounts, locationCounts, perMonth, LANGUAGE_MIN_CHARS } from '../../lib/caseAnalysis';
 import { downloadFile, toCsv, hostOf, safeFileName } from '../../lib/workspace';
 
 const Bars: React.FC<{ rows: Array<{ key: string; count: number }>; limit?: number }> = ({ rows, limit = 8 }) => {
@@ -31,6 +31,10 @@ export const ContentAnalysisPage: React.FC = () => {
   const byPlatform = useMemo(() => countBy(items, i => i.platform), [items]);
   const byType = useMemo(() => countBy(items, i => i.type), [items]);
   const byDomain = useMemo(() => countBy(items, i => hostOf(i.url)), [items]);
+  const hashtags = useMemo(() => hashtagCounts(items), [items]);
+  const authors = useMemo(() => authorCounts(items), [items]);
+  const languages = useMemo(() => languageCounts(items), [items]);
+  const places = useMemo(() => locationCounts(selected), [selected]);
   const names = selected.map(c => c.name);
   const terms = useMemo(() => topTerms(items.map(i => i.text), names, 30), [items, names]);
   const undated = items.filter(i => !i.date).length;
@@ -38,8 +42,8 @@ export const ContentAnalysisPage: React.FC = () => {
   const maxTerm = Math.max(1, ...terms.map(t => t.count));
 
   const exportCsv = () => {
-    const rows: Array<Array<string | number>> = [['Title', 'Type', 'Platform', 'Date', 'URL']];
-    items.forEach(i => rows.push([i.title, i.type, i.platform, i.date ? i.date.toISOString().slice(0, 10) : '', i.url]));
+    const rows: Array<Array<string | number>> = [['Title', 'Type', 'Platform', 'Account', 'Date', 'URL']];
+    items.forEach(i => rows.push([i.title, i.type, i.platform, i.author || '', i.date ? i.date.toISOString().slice(0, 10) : '', i.url]));
     downloadFile(`content-analysis-${safeFileName(scope === 'all' ? 'all-cases' : names[0] || 'case')}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
   };
 
@@ -100,6 +104,27 @@ export const ContentAnalysisPage: React.FC = () => {
             <section className="ex-card"><div className="ex-card-head"><h2 className="ex-card-title">By platform or source</h2></div><Bars rows={byPlatform} /></section>
             <section className="ex-card"><div className="ex-card-head"><h2 className="ex-card-title">By type</h2></div><Bars rows={byType} /></section>
             <section className="ex-card"><div className="ex-card-head"><h2 className="ex-card-title">Most frequent websites</h2></div><Bars rows={byDomain} /></section>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+            <section className="ex-card">
+              <div className="ex-card-head"><h2 className="ex-card-title">Hashtags</h2><span className="ex-muted ex-small">Results using each tag</span></div>
+              <Bars rows={hashtags} limit={10} />
+            </section>
+            <section className="ex-card">
+              <div className="ex-card-head"><h2 className="ex-card-title">Most active accounts</h2><span className="ex-muted ex-small">Where the saved record or its link names the account</span></div>
+              <Bars rows={authors} limit={10} />
+            </section>
+            <section className="ex-card">
+              <div className="ex-card-head"><h2 className="ex-card-title">Languages</h2><span className="ex-muted ex-small">Detected automatically from texts of {LANGUAGE_MIN_CHARS}+ characters</span></div>
+              <Bars rows={languages} limit={8} />
+            </section>
+            <section className="ex-card">
+              <div className="ex-card-head"><h2 className="ex-card-title">Locations</h2><span className="ex-muted ex-small">From the cases' Location evidence (confirmed references)</span></div>
+              {places.length === 0
+                ? <div className="ex-pad ex-muted ex-small">No location evidence in these cases yet. Open a case's Location tab to gather it.</div>
+                : <Bars rows={places} limit={10} />}
+            </section>
           </div>
 
           <section className="ex-card">

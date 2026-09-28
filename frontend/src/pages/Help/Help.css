@@ -231,3 +231,11 @@
   .hd-section h2 { font-size: 21px; }
   .hd-table td:first-child { width: auto; white-space: normal; }
 }
+
+/* Search costs */
+.hd-costs { margin-bottom: 28px; }
+.hd-costs:last-child { margin-bottom: 0; }
+.hd-costs h3 { margin: 0 0 10px; }
+.hd-costs .hd-table td:first-child { width: 220px; white-space: normal; }
+.hd-tokens { white-space: nowrap; font-weight: 700; color: var(--text-primary) !important; }
+@media (max-width: 700px) { .hd-tokens { white-space: normal; } }

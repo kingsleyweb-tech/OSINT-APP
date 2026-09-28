@@ -7,6 +7,7 @@ import {
   fmtDate, fmtShortDate, hostOf, kindLabel, kindOf, levelOf, openUrl, profileEvidence, profileKey, profileTypeLabel,
   shortUrl, urlKey, isSimilarProfile, type WebItem
 } from '../../../lib/workspace';
+import { genderLabel, genderOfProfile } from '../../../lib/genderEvidence';
 import { SimilarAccounts } from '../workspace/SimilarAccounts';
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { Chips, Empty, LevelBadge, LevelPicker, LinkStatus, SectionHead, SourceLogo } from '../workspace/ui';
@@ -173,6 +174,7 @@ export const ProfilesTab: React.FC = () => {
                                 <div style={{ minWidth: 0 }}>
                                   <div className="ws-cell-title">{r.name}</div>
                                   <div className="ws-cell-sub">{r.platform}{r.handle ? ` · ${r.handle}` : ''}</div>
+                                  {r.profile && <div className="ws-cell-muted ws-gender-line">Gender: {genderLabel(genderOfProfile(r.profile)).split(' · ')[0]}</div>}
                                 </div>
                               </div>
                             </td>
@@ -252,6 +254,19 @@ export const ProfilesTab: React.FC = () => {
                   <div><div className="k">Search match</div><div className="v">{selected.profile?.confidenceLabel || '—'}</div></div>
                   <div><div className="k">Discovered</div><div className="v">{fmtDate(selected.found, true)}</div></div>
                 </div>
+                {selected.profile && (() => {
+                  // Gender only when the profile states it (pronouns or a gender field); never inferred.
+                  const g = genderOfProfile(selected.profile);
+                  return (
+                    <div style={{ marginTop: 14 }}>
+                      <div className="k ws-sub">Gender</div>
+                      <div>{genderLabel(g)}</div>
+                      <div className="ws-cell-sub" style={{ fontFamily: 'inherit' }}>
+                        {g ? `“${g.quote}”` : 'The profile does not state a gender or pronouns. Gender is never guessed from a name or photo.'}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div style={{ marginTop: 14 }}>
                   <div className="k ws-sub">Discovered by</div>
                   <div>{selected.profile?.source || selected.web?.metadata?.foundVia || '—'}</div>

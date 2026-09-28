@@ -366,7 +366,10 @@ export class DeepSearchEngine {
                 ...(it.metadata?.location ? { statedLocation: String(it.metadata.location).slice(0, 120) } : {}),
                 ...(it.metadata?.bio ? { profileBio: String(it.metadata.bio).slice(0, 500) } : {}),
                 ...(it.metadata?.company ? { statedOrganization: String(it.metadata.company).replace(/^@/, '').slice(0, 120) } : {}),
-                ...(it.profileImage ? { profileImage: it.profileImage } : {})
+                ...(it.profileImage ? { profileImage: it.profileImage } : {}),
+                // Contact details the platform shows publicly for the account (e.g. GitHub public email).
+                ...(it.metadata?.email ? { statedEmail: String(it.metadata.email).slice(0, 120) } : {}),
+                ...(it.metadata?.website ? { statedWebsite: String(it.metadata.website).slice(0, 200) } : {})
               }
             });
             platformsCheckedSet.add(it.source);

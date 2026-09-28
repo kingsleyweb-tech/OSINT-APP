@@ -192,7 +192,7 @@ export const FeaturesPage: React.FC = () => {
       whatItIs: 'Your workspace: cases, saved findings from any search page, tracked people and a history of every search.',
       whyItExists: 'Investigations span many sessions and many kinds of search.',
       howItWorks: 'Any result can be saved to a case; if you have no case yet one is created automatically. Every search is saved to your history, grouped by kind, and can be re-run or opened as its case. Cases can be re-run to see what changed and exported as JSON and CSV.',
-      whatUsersSee: 'Investigations list, the 11 case tabs, tracked people, and Search history with results and corrections.',
+      whatUsersSee: 'Investigations list, the 12 case tabs, tracked people, and Search history with results and corrections.',
       limitations: 'Data is stored in your own account and visible only to you.',
       whatToVerify: 'Export important cases periodically for your records.'
     },
@@ -200,10 +200,10 @@ export const FeaturesPage: React.FC = () => {
       num: '11',
       id: 'explore-searches',
       title: 'Social, Media, Geo & Trends Searches',
-      tags: ['Social Posts', 'Reverse Image', 'Places & Reviews', 'Trending Now'],
+      tags: ['Social Posts', 'Images & Videos', 'Places & Reviews', 'Trending Now'],
       whatItIs: 'Keyword searches across public social content, images and videos, places and search trends.',
       whyItExists: 'Investigations often start from a topic, image or place rather than a person.',
-      howItWorks: 'Social search runs one query per platform (X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Reddit, Threads, Telegram, WhatsApp public groups, VK, Weibo) or searches forums. Media searches images, videos and reverse images (Google Lens). Geo search covers places with reviews, news, social, web and events for a location, with same-named places in other countries. Trends shows interest over time, related queries and what is trending now.',
+      howItWorks: 'Social search runs one query per platform (X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Reddit, Threads, Telegram, WhatsApp public groups, VK, Weibo) or searches forums. Media searches public images and videos. Geo search covers places with reviews, news, social, web and events for a location, with same-named places in other countries. Trends shows interest over time, related queries and what is trending now.',
       whatUsersSee: 'Result lists with engine status, thumbnails and a Save button on each result.',
       limitations: 'Only content that search engines have indexed or platforms expose publicly can be found.',
       whatToVerify: 'Open posts and images on the original platform to confirm context and date.'

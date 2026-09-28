@@ -7,6 +7,8 @@ import {
   isSimilarProfile, isSimilarActivity, similarProfileKeys
 } from '../../../lib/workspace';
 import type { EvidenceLevel } from '../../../types/investigation';
+import { caseGender } from '../../../lib/genderEvidence';
+import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
 
 const LEVEL_RANK: Record<EvidenceLevel, number> = { validated: 2, relevant: 1, raw: 0 };
 
@@ -47,9 +49,18 @@ export const OverviewTab: React.FC = () => {
   const inputChips: Array<[string, string]> = [];
   if (inputs.name) inputChips.push(['Name', inputs.name]);
   if (inputs.username) inputChips.push(['Username', `@${inputs.username}`]);
+  if (inputs.email) inputChips.push(['Email', inputs.email]);
+  if (inputs.phone) inputChips.push(['Phone', inputs.phone]);
   if (inputs.location) inputChips.push(['Location', inputs.location]);
   if (inputs.organization) inputChips.push(['Organization', inputs.organization]);
   inputChips.push(['Depth', inv.searchDepth || 'deep']);
+
+  const gender = caseGender(inv);
+  const genderText = gender.value === 'Conflicting'
+    ? `Conflicting — ${gender.evidence.map(x => `${x.e.gender} (${x.platform})`).join(', ')}`
+    : gender.evidence.length
+      ? `${gender.value} · stated on ${gender.evidence.map(x => x.platform).join(', ')}`
+      : 'Not publicly stated';
 
   const p = d.pipeline;
   const coverage = inv.searchCoverage || [];
@@ -81,7 +92,25 @@ export const OverviewTab: React.FC = () => {
             <div className="v">{lastSeen ? `${fmtDate(lastSeen.date.toISOString())} · ${lastSeen.a.sourceName}` : 'No dated activity'}</div>
           </div>
           <div><div className="k">Documented associations</div><div className="v">{associations.length} ({validatedAssoc} validated)</div></div>
+          <div>
+            <div className="k">Public contact</div>
+            <div className="v">
+              {(() => {
+                const c = summariseContacts(allContacts(inv));
+                const emails = c.filter(x => x.kind === 'email').length;
+                const phones = c.filter(x => x.kind === 'phone').length;
+                return c.length
+                  ? <button type="button" className="ws-link" onClick={() => goTab('contact')}>{[emails ? `${emails} email${emails === 1 ? '' : 's'}` : '', phones ? `${phones} phone${phones === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')} →</button>
+                  : 'None found yet (see Contact tab)';
+              })()}
+            </div>
+          </div>
+          <div>
+            <div className="k">Gender</div>
+            <div className="v" title="Only from pronouns or a gender field the person's own profiles state. Never inferred from a name or photo.">{genderText}</div>
+          </div>
         </div>
+
 
         <div className="ws-inputs">
           <span className="ws-label">Search inputs</span>

@@ -6,7 +6,7 @@ export type SerpEngine =
   | 'google' | 'bing' | 'youtube' | 'facebook_profile' | 'instagram_profile'
   // Explore capabilities (see services/explore/engineCatalog.ts)
   | 'google_news' | 'bing_news' | 'google_images' | 'bing_images' | 'google_videos'
-  | 'google_lens' | 'google_reverse_image' | 'google_forums'
+  | 'google_forums'
   | 'google_maps' | 'google_maps_reviews' | 'google_events'
   | 'google_trends' | 'google_trends_trending_now' | 'google_maps_autocomplete'
   | 'duckduckgo' | 'yahoo';

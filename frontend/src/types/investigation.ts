@@ -1,6 +1,6 @@
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 
-export type SearchType = 'name' | 'username';
+export type SearchType = 'name' | 'username' | 'email' | 'phone';
 
 export type ResultCategory = 
   | 'Social Media'
@@ -143,6 +143,8 @@ export interface SearchInput {
   username?: string;
   location?: string;
   organization?: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface SocialProfile {
@@ -182,6 +184,9 @@ export interface SocialProfile {
     education?: string;
     location?: string;
     details?: string[];
+    /** Public email / website the platform shows for the account (e.g. GitHub's public email). */
+    email?: string;
+    website?: string;
   };
   evidence?: { code: string; text: string }[];
   personId?: string;
@@ -320,6 +325,18 @@ export interface Investigation {
   imagesCheckedAt?: string;
   /** When the News tab last searched the news engines for the subject. */
   newsCheckedAt?: string;
+  /** The Contact tab's search for public email addresses and phone numbers of the person. */
+  contactScan?: {
+    checkedAt: string;
+    query: string;
+    resultsChecked: number;
+    sources: Array<{ label: string; status: 'ok' | 'empty' | 'failed'; results: number; error?: string }>;
+    error?: string;
+    refs: import('../lib/contactEvidence').ContactRef[];
+    results?: Array<{ source?: string; title: string; url: string; snippet?: string; values: string[]; linked: boolean; note: string }>;
+  };
+  /** Email searches: usernames the address suggests (shown as suggestions, never attributed). */
+  derivedUsernames?: string[];
   /**
    * The Location tab's searches across the open web: "core" (web, Bing, news, Maps; run on first open)
    * and "more" (videos, images, social posts; on request). Each keeps how every source did and the

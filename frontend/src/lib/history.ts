@@ -4,14 +4,14 @@ import type { SearchCategory, SearchHistoryEntry, SearchHistoryResult } from '..
 import type { ExploreItem } from './exploreClient';
 
 export const CATEGORY_LABEL: Record<SearchCategory, string> = {
-  name: 'Name', username: 'Username', social: 'Social', forums: 'Forums', news: 'News',
-  images: 'Images', videos: 'Videos', reverseImage: 'Reverse image', geo: 'Geo', trends: 'Trends'
+  name: 'Name', username: 'Username', email: 'Email', phone: 'Phone', social: 'Social', forums: 'Forums', news: 'News',
+  images: 'Images', videos: 'Videos', geo: 'Geo', trends: 'Trends'
 };
 
 /** Page that runs each kind of search (History → "Run again"). */
 export const CATEGORY_PAGE: Record<SearchCategory, string> = {
-  name: '/new-investigation', username: '/new-investigation', social: '/search/social', forums: '/search/social',
-  news: '/search/news', images: '/search/media', videos: '/search/media', reverseImage: '/search/media',
+  name: '/new-investigation', username: '/new-investigation', email: '/new-investigation', phone: '/new-investigation', social: '/search/social', forums: '/search/social',
+  news: '/search/news', images: '/search/media', videos: '/search/media',
   geo: '/search/geo', trends: '/search/trends'
 };
 

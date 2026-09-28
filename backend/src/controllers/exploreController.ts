@@ -4,8 +4,8 @@ import { SOCIAL_PLATFORMS, DEFAULT_SOCIAL_PLATFORMS, planLabels } from '../servi
 import type { ExploreCapability } from '../types/explore';
 
 const CAPABILITIES: ExploreCapability[] = [
-  'news', 'images', 'videos', 'reverseImage', 'social', 'forums', 'places', 'placeReviews', 'events', 'trends', 'trendingNow',
-  'web', 'webBing', 'placeLookup'
+  'news', 'images', 'videos', 'social', 'forums', 'places', 'placeReviews', 'events', 'trends', 'trendingNow',
+  'web', 'webBing', 'contacts', 'placeLookup'
 ];
 
 // Simple per-client limit so a runaway page cannot drain the monthly SerpApi quota.
@@ -43,7 +43,6 @@ export const handleExplore = async (req: Request, res: Response): Promise<void> 
     language: CC.test(o.language || '') ? String(o.language).toLowerCase() : undefined,
     platforms: Array.isArray(o.platforms) ? o.platforms.filter((p: unknown) => typeof p === 'string' && SOCIAL_PLATFORMS[p as string]).slice(0, 12) : undefined,
     page: Number.isInteger(o.page) ? o.page : 0,
-    imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl.trim().slice(0, 2000) : undefined,
     dataId: typeof o.dataId === 'string' && /^[\w:.-]{3,200}$/.test(o.dataId) ? o.dataId : undefined,
     timeframe: TIMEFRAMES.includes(o.timeframe) ? o.timeframe : undefined,
     callIndex: Number.isInteger(o.callIndex) && o.callIndex >= 0 && o.callIndex < 10 ? o.callIndex : undefined

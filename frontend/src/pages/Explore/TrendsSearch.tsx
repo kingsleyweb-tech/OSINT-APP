@@ -12,6 +12,7 @@ import { QueryIntelBanner, SearchModeToggle } from '../../components/search/Quer
 import { intelHistoryFields, type QueryIntel } from '../../lib/queryIntelClient';
 import { clearPageState, usePageState } from '../../lib/pageState';
 import { useCases } from '../../components/explore/exploreHooks';
+import { trendsCost } from '../../lib/searchCosts';
 
 const TIMEFRAMES = [
   { value: 'now 7-d', label: 'Past 7 days' },
@@ -147,6 +148,9 @@ export const TrendsSearchPage: React.FC = () => {
   const timeline = (extra.timeline || []) as Point[];
   const top = (extra.relatedTop || []) as Array<{ query: string; value: string }>;
   const rising = (extra.relatedRising || []) as Array<{ query: string; value: string }>;
+  const byRegion = (extra.byRegion || []) as Array<{ location: string; values: Array<{ query: string; value: number }> }>;
+  const topicsTop = (extra.topicsTop || []) as Array<{ title: string; type: string; value: string }>;
+  const topicsRising = (extra.topicsRising || []) as Array<{ title: string; type: string; value: string }>;
   const trendingList = (trending?.extra?.trending || []) as Array<{ query: string; searchVolume: number | null; increasePercentage: number | null; startedAt: string | null; categories: string[] }>;
   const combined = results ? mergeResponses('trends', terms, Object.values(results)) : null;
   // Trending searches that share a word with the topic.
@@ -174,7 +178,7 @@ export const TrendsSearchPage: React.FC = () => {
         <SearchModeToggle mode={searchMode} onChange={setSearchMode} />
         <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Show trend</button>
         {error && <div className="ex-notice" style={{ width: '100%' }}>{error}</div>}
-        <span className="ex-muted ex-small" style={{ width: '100%' }}>Searches Google Trends, the country's Google News edition, each main social platform, Google web search, and what is trending now in that country (about 11 SerpApi searches).</span>
+        <span className="ex-muted ex-small" style={{ width: '100%' }}>Searches Google Trends (interest over time, related queries, interest by region, related topics), news, 6 social platforms, Google web search and what is trending now: {trendsCost(country || undefined, Math.max(1, terms.split(',').map(t => t.trim()).filter(Boolean).length))} SerpApi searches with these settings (comparing several terms skips related queries and topics).</span>
       </form>
 
       {running || qi.checking ? <SearchLoader query={terms} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (
@@ -220,6 +224,47 @@ export const TrendsSearchPage: React.FC = () => {
                   {list.length === 0 ? <div className="ex-pad ex-muted ex-small">None reported.</div> : list.map(q => (
                     <button type="button" key={q.query} className="ex-kv ex-kv-btn" onClick={() => setTerms(q.query)} title="Use this term">
                       <span>{q.query}</span><span className="ex-muted ex-mono">{q.value}</span>
+                    </button>
+                  ))}
+                </section>
+              ))}
+            </div>
+          )}
+          {!running && results && (
+            <section className="ex-card">
+              <div className="ex-card-head">
+                <h2 className="ex-card-title">Interest by region</h2>
+                <span className="ex-muted ex-small">{country ? `Regions of ${COUNTRY_OPTIONS.find(c => c.code === country)?.label || country.toUpperCase()}` : 'Countries'} · 100 = the place with the most interest</span>
+              </div>
+              {byRegion.length === 0 ? (
+                <div className="ex-pad ex-muted ex-small">Google Trends reported no regional breakdown for this term (too little search volume).</div>
+              ) : (
+                <div className="ex-pad" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {byRegion.filter(r => r.values.some(v => v.value > 0)).slice(0, 15).map(r => (
+                    <div key={r.location} className="ex-trend-region">
+                      <span className="ex-trend-region-name">{r.location}</span>
+                      <span className="ex-trend-region-bars">
+                        {r.values.map((v, s2) => (
+                          <span key={`${r.location}-${s2}`} className="ex-bar-track" title={`${v.query || terms}: ${v.value}`}>
+                            <span className="ex-bar-fill" style={{ width: `${v.value}%`, background: SERIES_COLORS[s2 % SERIES_COLORS.length] }} />
+                          </span>
+                        ))}
+                      </span>
+                      <span className="ex-muted ex-mono">{r.values.map(v => v.value).join(' / ')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+          {!running && (topicsTop.length > 0 || topicsRising.length > 0) && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              {([['Top related topics', topicsTop], ['Rising related topics', topicsRising]] as const).map(([title, list]) => (
+                <section className="ex-card" key={title}>
+                  <div className="ex-card-head"><h2 className="ex-card-title">{title}</h2></div>
+                  {list.length === 0 ? <div className="ex-pad ex-muted ex-small">None reported.</div> : list.map(t => (
+                    <button type="button" key={`${t.title}-${t.type}`} className="ex-kv ex-kv-btn" onClick={() => setTerms(t.title)} title="Use this topic">
+                      <span>{t.title}{t.type ? <span className="ex-muted"> · {t.type}</span> : null}</span><span className="ex-muted ex-mono">{t.value}</span>
                     </button>
                   ))}
                 </section>
