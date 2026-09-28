@@ -1103,7 +1103,11 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
   .ws-org-table td.ws-org-k { width: 100% !important; padding: 0; font-size: 14px; color: var(--ws-text); word-break: break-word; }
   .ws-org-table td.ws-org-v { width: 100% !important; padding: 0; font-size: 14px; word-break: break-word; overflow-wrap: anywhere; }
   .ws-org-stats, .ws-org-sections { grid-template-columns: minmax(0, 1fr); }
-  .ws-org-news { grid-template-columns: 24px minmax(0, 1fr); }
+  .ws-org-news { grid-template-columns: 24px minmax(0, 1fr); word-break: break-word; overflow-wrap: anywhere; }
+  .ws-org-news .name { word-break: break-word; overflow-wrap: anywhere; }
   .ws-org-news .ws-trunc { display: none; }
+  .ws-org-videos { grid-template-columns: minmax(0, 1fr); }
+  .ws-section-head { flex-wrap: wrap; gap: 8px 12px; }
+  .ws-chip { max-width: 100%; }
 }
 .ws-org-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 14px; }
