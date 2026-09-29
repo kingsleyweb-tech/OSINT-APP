@@ -26,7 +26,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SignOutPromptProvider, useSignOutPrompt } from './context/SignOutPromptContext';
-import { SearchLoader } from './components/ui/SearchLoader';
 
 // Landing Page Integration
 import { LandingLayout } from './landing/LandingLayout';
@@ -69,13 +68,8 @@ const AppRoutes: React.FC = () => {
   const { user, loading } = useSession();
 
   // Wait for Firebase to restore the saved session so a refresh never bounces a signed-in user.
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: 20, backgroundColor: 'var(--bg-dark)', color: 'var(--text-secondary)' }}>
-        <SearchLoader title="Restoring your session…" />
-      </div>
-    );
-  }
+  // Nothing is shown meanwhile, only the page background.
+  if (loading) return <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }} />;
 
   return (
     <SignOutPromptProvider>

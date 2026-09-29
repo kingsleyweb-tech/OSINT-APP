@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { PlatformIcon } from '../../components/ui/PlatformIcon';
 import { SearchLoader } from '../../components/ui/SearchLoader';
+import { RadarLoader } from '../../components/ui/RadarLoader';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
 import { useProfilerSearch } from '../../components/search/useProfilerSearch';
@@ -305,8 +306,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
 
           <div className="dash-investigations-list">
             {invLoading ? (
-              <div className="no-cards-placeholder" style={{ padding: '24px', color: 'var(--text-muted, #94a3b8)', fontSize: '0.9rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <Loader2 size={16} className="spinner-icon" /> Loading investigations...
+              <div className="no-cards-placeholder" style={{ padding: '24px', color: 'var(--text-muted, #94a3b8)', fontSize: '0.9rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                <RadarLoader size={64} /> Loading investigations...
               </div>
             ) : displayList.length === 0 ? (
               <div className="no-cards-placeholder" style={{ padding: '24px', color: 'var(--text-muted, #94a3b8)', fontSize: '0.9rem', textAlign: 'center' }}>

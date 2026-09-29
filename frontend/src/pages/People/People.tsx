@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AtSign, BookmarkX, Calendar, Globe, Loader2, MapPin, Search, User, Users } from 'lucide-react';
+import { AtSign, BookmarkX, Calendar, Globe, MapPin, Search, User, Users } from 'lucide-react';
+import { RadarLoader } from '../../components/ui/RadarLoader';
 import {
   getUserInvestigationsFromDb, subscribeToTrackedPeople, trackPersonInDb, untrackPersonInDb, type TrackedPerson
 } from '../../firebase/firestore';
@@ -83,7 +84,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ currentUser }) => {
       </div>
 
       {loading ? (
-        <div className="empty-people-state"><Loader2 className="empty-icon spinning-people" size={32} /><h3>Loading…</h3></div>
+        <div className="empty-people-state"><RadarLoader size={72} /><h3>Loading…</h3></div>
       ) : people.length === 0 ? (
         <div className="empty-people-state">
           <Users className="empty-icon" size={40} />

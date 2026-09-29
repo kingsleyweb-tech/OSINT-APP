@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, PlusCircle, Trash2, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
+import { RadarLoader } from '../../components/ui/RadarLoader';
 import '../../styles/InvestigationsList.css';
 import type { Investigation } from '../../types/investigation';
 import { subscribeToUserInvestigations, deleteInvestigationFromDb } from '../../firebase/firestore';
@@ -105,8 +106,8 @@ export const InvestigationsListPage: React.FC<InvestigationsListPageProps> = ({ 
             {loading ? (
               <tr>
                 <td colSpan={6} className="empty-row">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '24px 0' }}>
-                    <Loader2 size={18} className="animate-spin" /> Loading investigations...
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '24px 0' }}>
+                    <RadarLoader size={64} /> Loading investigations...
                   </div>
                 </td>
               </tr>

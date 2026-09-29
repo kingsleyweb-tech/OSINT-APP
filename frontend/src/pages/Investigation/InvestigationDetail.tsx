@@ -28,6 +28,7 @@ import { useOrgPipelineAutoRun } from '../../components/investigations/workspace
 /** Runs the organisation data pipeline for organisation cases (renders nothing). */
 const OrgPipelineRunner: React.FC = () => { useOrgPipelineAutoRun(); return null; };
 import { SearchLoader } from '../../components/ui/SearchLoader';
+import { RadarLoader } from '../../components/ui/RadarLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
 import '../../styles/Workspace.css';
@@ -218,7 +219,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   } : null;
 
   if (loading) {
-    return <div className="ws-root"><div className="ws-empty" style={{ marginTop: 40 }}><Loader2 size={22} className="spinning" /><b>Loading investigation…</b></div></div>;
+    return <div className="ws-root"><div className="ws-empty" style={{ marginTop: 40 }}><RadarLoader size={72} /><b>Loading investigation…</b></div></div>;
   }
 
   if (!investigation || !api || !d) {

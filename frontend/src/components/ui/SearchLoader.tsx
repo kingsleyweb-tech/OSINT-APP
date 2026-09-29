@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '../../styles/SearchLoader.css';
+import { RadarLoader } from './RadarLoader';
 
 export type LoaderStepState = 'waiting' | 'active' | 'done' | 'empty' | 'failed';
 
@@ -26,7 +27,7 @@ const FINISHED: LoaderStepState[] = ['done', 'empty', 'failed'];
 
 /**
  * The one loader used for every search. Progress only moves when a source really finishes;
- * with no sources it shows an indeterminate spinner and the elapsed time.
+ * with no sources the radar shows the elapsed time.
  */
 export const SearchLoader: React.FC<SearchLoaderProps> = ({ query, title, steps = [], onCancel, overlay }) => {
   const [elapsed, setElapsed] = useState(0);
@@ -47,30 +48,24 @@ export const SearchLoader: React.FC<SearchLoaderProps> = ({ query, title, steps 
 
   const card = (
     <section className="sl-card" role="status" aria-live="polite" aria-busy="true">
-      <div className="sl-ring">
-        <svg className="sl-spin" width="96" height="96" viewBox="0 0 96 96" fill="none" aria-hidden="true">
-          <circle cx="48" cy="48" r="42" stroke="var(--sl-track)" strokeWidth="6" />
-          <path d="M90 48A42 42 0 0 0 48 6" stroke="var(--sl-accent)" strokeWidth="6" strokeLinecap="round" />
-        </svg>
-        <svg className="sl-spin-rev" width="96" height="96" viewBox="0 0 96 96" fill="none" aria-hidden="true">
-          <path d="M48 70a22 22 0 0 1-22-22" stroke="var(--sl-accent-2)" strokeWidth="4" strokeLinecap="round" />
-        </svg>
-        <span className="sl-pct">{pct != null ? `${pct}%` : ''}</span>
-      </div>
+      <RadarLoader
+        className="sl-radar"
+        size={200}
+        label={pct != null ? `${pct}%` : `${elapsed}s`}
+        sub={steps.length ? `${finished} / ${steps.length}` : 'WORKING'}
+        blips={steps.map(s => s.state)}
+      />
       <div className="sl-text">
         <h2>{title || (query ? `Searching for “${query}”` : 'Searching…')}</h2>
         <p>{status}{steps.length > 0 && elapsed >= 5 ? ` · ${elapsed}s` : ''}</p>
       </div>
-      {pct != null && (
-        <div className="sl-bar"><div style={{ width: `${Math.max(pct, 4)}%` }} /></div>
-      )}
       {steps.length > 0 && (
         <div className="sl-steps">
           {steps.map(s => (
             <div key={s.id} className="sl-step">
               <span className="sl-step-icon">
                 {s.state === 'active' && (
-                  <svg className="sl-spin" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--sl-track)" strokeWidth="3" /><path d="M21 12a9 9 0 0 0-9-9" stroke="var(--sl-accent)" strokeWidth="3" strokeLinecap="round" /></svg>
+                  <span className="sl-dot sl-dot-active" />
                 )}
                 {s.state === 'waiting' && <span className="sl-dot" />}
                 {FINISHED.includes(s.state) && (
