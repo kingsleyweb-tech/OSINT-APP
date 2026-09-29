@@ -58,6 +58,7 @@ export const OrganizationTab: React.FC = () => {
   const { running, enrich, readSite } = useOrgPipeline();
   const org = inv.organization;
   const [section, setSection] = useState<OrgSection>(ORG_SECTIONS.some(s => s.key === focus) ? focus as OrgSection : 'summary');
+  const [showOlder, setShowOlder] = useState(false);
   const profile = useMemo(() => orgProfile(inv), [inv]);
   const site = inv.websiteIntel;
   const enr = inv.orgEnrich;
@@ -124,7 +125,6 @@ export const OrganizationTab: React.FC = () => {
       ))}
     </div>
   );
-  const typeText = facts.type?.[0]?.value;
 
   const body = () => {
     switch (section) {
@@ -132,6 +132,21 @@ export const OrganizationTab: React.FC = () => {
         return (
           <>
             {table(<>
+              <tr key="entity-type">
+                <td className="ws-org-k"><b>Entity type</b></td>
+                <td className="ws-org-v">
+                  <div className="ws-org-fact">
+                    <div><b>{cls.category}</b>{cls.parent && <span className="ws-sub"> · {cls.parent}</span>}</div>
+                    <div className="ws-sub">
+                      <span className={`ws-loc-status ${cls.confidence === 'Strong evidence' ? 'ok' : cls.confidence === 'Possible match' ? 'muted' : 'warn'}`}>{cls.confidence}</span>
+                      {cls.basis.length ? ` · based on ${cls.basis.join('; ')}` : ' · no source describes what kind of organisation it is'}
+                    </div>
+                    {cls.alternatives.length > 0 && (
+                      <div className="ws-sub">Also suggested by some sources: {cls.alternatives.map(a => a.category).join(', ')}</div>
+                    )}
+                  </div>
+                </td>
+              </tr>
               {row('official_name', { max: 2 })}
               {row('alt_name', { max: 6 })}
               {row('type', { max: 5 })}
@@ -343,35 +358,56 @@ export const OrganizationTab: React.FC = () => {
         );
 
       case 'news': {
+        // Latest first: the last 12 months are shown; older or undated items are kept but folded away.
         const yearAgo = Date.now() - 365 * 86400000;
-        const recent = news.filter(n => (parseLooseDate(n.date, ref)?.getTime() || 0) >= yearAgo);
-        const older = news.filter(n => !recent.includes(n));
+        const when = (d?: string) => parseLooseDate(d, ref)?.getTime() || 0;
+        const byDate = <T extends { date?: string }>(items: T[]) => [...items].sort((a, b) => when(b.date) - when(a.date));
+        const seen = new Set<string>();
+        const allNews = byDate([...news, ...mentions.filter(m => (enr?.mentions || []).some(x => x.url === m.url && x.engine === 'google_news'))])
+          .filter(n => (seen.has(n.url) ? false : (seen.add(n.url), true)));
+        const recentNews = allNews.filter(n => when(n.date) >= yearAgo);
+        const olderNews = allNews.filter(n => when(n.date) < yearAgo);
+        const pages = mentions.filter(m => !allNews.some(n => n.url === m.url));
+        const videos = byDate(enr?.videos || []);
+        const recentVideos = videos.filter(v => when(v.date) >= yearAgo);
+        const olderVideos = videos.filter(v => when(v.date) < yearAgo);
+        const videoGrid = (list: typeof videos) => (
+          <div className="ws-org-videos">
+            {list.map(v => (
+              <a key={v.url} href={v.url} target="_blank" rel="noopener noreferrer" className="ws-org-video">
+                {v.thumbnail && <img src={v.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }} />}
+                <span className="t">{v.title}</span>
+                <span className="ws-sub">{v.source}{v.date ? ` · ${v.date}` : ''}</span>
+              </a>
+            ))}
+          </div>
+        );
+        const olderToggle = (n: number, what: string) => n > 0 && (
+          <button type="button" className="ws-link" style={{ marginTop: 10 }} onClick={() => setShowOlder(s => !s)}>
+            {showOlder ? `Hide older ${what}` : `Show older or undated ${what} (${n})`}
+          </button>
+        );
         return (
           <>
-            <SectionHead title="News coverage" count={news.length} noRule right={<button type="button" className="ws-link" onClick={() => goTab('news')}>News tab →</button>} />
-            {news.length === 0
-              ? <p className="ws-sub">{inv.newsCheckedAt ? 'No news article naming the organisation was found.' : 'The News tab has not been opened yet — it searches Google News and Bing News for the organisation.'}</p>
-              : <>
-                  {recent.length > 0 && <><div className="ws-label" style={{ margin: '10px 0 4px' }}>Last 12 months</div>{linkList(recent)}</>}
-                  {older.length > 0 && <><div className="ws-label" style={{ margin: '14px 0 4px' }}>Older or undated</div>{linkList(older)}</>}
-                </>}
+            <SectionHead title="Latest news · last 12 months" count={recentNews.length} noRule right={<button type="button" className="ws-link" onClick={() => goTab('news')}>News tab →</button>} />
+            {recentNews.length > 0 ? linkList(recentNews) : (
+              <p className="ws-sub">
+                {allNews.length ? 'No news from the last 12 months was found.' : inv.newsCheckedAt || enr ? 'No news article naming the organisation was found.' : 'Not searched yet — the News tab searches Google News and Bing News.'}
+              </p>
+            )}
+            {olderToggle(olderNews.length, 'news')}
+            {showOlder && olderNews.length > 0 && <div style={{ marginTop: 8 }}>{linkList(olderNews)}</div>}
+
             <div className="ws-loc-section">
-              <SectionHead title="Pages that mention it" count={mentions.length} />
-              {mentions.length === 0 ? <p className="ws-sub">{enr ? 'Not found.' : 'Not searched yet.'}</p> : linkList(mentions)}
+              <SectionHead title="Latest videos · last 12 months" count={recentVideos.length} right={<button type="button" className="ws-link" onClick={() => goTab('images')}>Images tab →</button>} />
+              {recentVideos.length > 0 ? videoGrid(recentVideos) : <p className="ws-sub">{videos.length ? 'No video from the last 12 months was found.' : enr ? 'Not found — no video naming the organisation.' : 'Not searched yet.'}</p>}
+              {olderToggle(olderVideos.length, 'videos')}
+              {showOlder && olderVideos.length > 0 && <div style={{ marginTop: 8 }}>{videoGrid(olderVideos)}</div>}
             </div>
+
             <div className="ws-loc-section">
-              <SectionHead title="Videos" count={enr?.videos.length || 0} right={<button type="button" className="ws-link" onClick={() => goTab('images')}>Images tab →</button>} />
-              {!enr?.videos.length ? <p className="ws-sub">{enr ? 'Not found — no video naming the organisation.' : 'Not searched yet.'}</p> : (
-                <div className="ws-org-videos">
-                  {enr.videos.map(v => (
-                    <a key={v.url} href={v.url} target="_blank" rel="noopener noreferrer" className="ws-org-video">
-                      {v.thumbnail && <img src={v.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }} />}
-                      <span className="t">{v.title}</span>
-                      <span className="ws-sub">{v.source}{v.date ? ` · ${v.date}` : ''}</span>
-                    </a>
-                  ))}
-                </div>
-              )}
+              <SectionHead title="Pages that mention it" count={pages.length} />
+              {pages.length === 0 ? <p className="ws-sub">{enr ? 'Not found.' : 'Not searched yet.'}</p> : linkList(pages)}
             </div>
           </>
         );
@@ -432,7 +468,7 @@ export const OrganizationTab: React.FC = () => {
                   </tbody>
                 </table>
               )}
-              {enr && <p className="ws-sub" style={{ marginTop: 8 }}>Searched {fmtDate(enr.checkedAt, true)}. Uses 5–7 SerpApi searches (Google Maps, Google ×2, Google News, DuckDuckGo, social platforms, YouTube — repeats within 12 hours are free); Wikidata and the website are read directly at no cost.</p>}
+              {enr && <p className="ws-sub" style={{ marginTop: 8 }}>Searched {fmtDate(enr.checkedAt, true)}. Uses 6–7 SerpApi searches (Google Maps, Google ×2, Google News for the last 12 months, DuckDuckGo, social platforms, YouTube for this year — repeats within 12 hours are free); Wikidata and the website are read directly at no cost.</p>}
             </div>
             <div className="ws-loc-section">
               <SectionHead title="Key sources" count={profile.sources.length} />
@@ -457,7 +493,7 @@ export const OrganizationTab: React.FC = () => {
     <div className="ws-loc">
       <SectionHead title={<span className="ws-loc-place"><Building2 size={16} /> {facts.official_name?.[0]?.value || org.name}</span>} noRule right={
         <span className="ws-org-kind" title={cls.basis.length ? `Based on: ${cls.basis.join('; ')}` : 'No source states what kind of organisation it is'}>
-          <Building2 size={14} /> {cls.category}{typeText && typeText.toLowerCase() !== cls.category.toLowerCase() ? ` · ${typeText}` : ''} · {cls.confidence}
+          <Building2 size={14} /> {cls.category}{cls.parent ? ` (${cls.parent})` : ''} · {cls.confidence}
         </span>
       } />
       <p className="ws-sub ws-loc-intro">

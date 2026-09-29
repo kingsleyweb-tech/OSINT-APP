@@ -54,8 +54,8 @@ export const COST_GROUPS: CostGroup[] = [
       { search: 'Name search · Deep (default)', tokens: '9 – 12', notes: `The same 9 searches + up to 3 Facebook/Instagram profile confirmations. +1 per location or organisation. ${SPELLING}.` },
       { search: 'Name search · if Google fails', tokens: '+1', notes: 'A Bing search replaces the broad Google search only when Google could not be reached.' },
       { search: 'Username search · Quick', tokens: '5', notes: 'Google, DuckDuckGo, Facebook, Instagram, X. The direct platform checks (GitHub, Reddit, TikTok, Snapchat, Mastodon, Bluesky…) are free.' },
-      { search: 'Username search · Standard', tokens: '11', notes: 'Quick + Yahoo, TikTok (Google and DuckDuckGo), Snapchat, LinkedIn, YouTube.' },
-      { search: 'Username search · Deep (default)', tokens: '14', notes: 'Standard + Threads/GitHub/Reddit/Medium, Facebook profile lookup, Instagram profile lookup.' },
+      { search: 'Username search · Standard', tokens: '11 – 12', notes: 'Quick + Yahoo, TikTok (Google and DuckDuckGo), Snapchat, LinkedIn, YouTube, + 1 for looser variations (number removed or shortened, e.g. humblechild for humblechild_99) when the username has a number.' },
+      { search: 'Username search · Deep (default)', tokens: '14 – 15', notes: 'Standard + Threads/GitHub/Reddit/Medium, Facebook profile lookup, Instagram profile lookup (the looser-variations search included).' },
       { search: 'Re-run a case’s searches', tokens: 'Same as the original search', notes: 'Runs the case’s name or username search again at its depth.' }
     ]
   },
@@ -84,7 +84,7 @@ export const COST_GROUPS: CostGroup[] = [
       { search: 'Location tab (automatic)', tokens: '9 – 11', notes: 'Runs once when first opened: Google web, Bing web, news (2), Google Maps, 4 social platforms, + 1 Google Maps lookup per organisation of the person (up to 2).' },
       { search: 'Location tab · Search more sources', tokens: '8', notes: 'LinkedIn/Threads/YouTube/Reddit (4), videos (2), images (2).' },
       { search: 'Contact tab (automatic)', tokens: '4', notes: 'Runs once when first opened: Google, Bing, DuckDuckGo and social profiles, for public emails and phone numbers of the person. Contact details already on the case’s profiles cost nothing.' },
-      { search: 'Organisation sources (automatic, organisation cases)', tokens: '5 – 7', notes: 'Runs once when an organisation case opens (and again if it failed or after “Re-run searches”): Google Maps, Google pages 1–2, Google News, DuckDuckGo, social platforms and YouTube. Google page 1 and YouTube reuse the name search’s own queries, so they are usually free from the 12-hour cache. Wikidata and the official website are read at no cost. “Search again” in Sources & verification runs it again.' }
+      { search: 'Organisation sources (automatic, organisation cases)', tokens: '6 – 7', notes: 'Runs once when an organisation case opens (and again if it failed or after “Re-run searches”): Google Maps, Google pages 1–2, Google News, DuckDuckGo, social platforms and YouTube. Google page 1 reuses the name search’s own query, so it is usually free from the 12-hour cache. News is limited to the last 12 months and videos to this year. Wikidata and the official website are read at no cost. “Search again” in Sources & verification runs it again.' }
     ]
   },
   {

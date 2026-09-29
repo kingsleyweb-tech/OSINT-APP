@@ -151,6 +151,10 @@ export interface SocialProfile {
   platform: string;
   /** "similar": an account whose handle only resembles the searched username (another person). */
   relation?: 'subject' | 'similar';
+  /** Username searches: exact / variation / possibly related / other person, with the reasons. */
+  usernameMatch?: 'exact' | 'variation' | 'related' | 'similar';
+  matchExplanation?: string[];
+  matchedHandle?: string;
   username: string;
   url: string;
   canonicalUrl?: string;
@@ -432,6 +436,8 @@ export interface Investigation {
   orgEnrich?: OrgEnrichment;
   /** Abbreviation searches ("UPSA"): the full names the results give for it, with support. */
   entityResolution?: EntityResolution;
+  /** Username searches: the variations searched, with what changed. */
+  usernameVariations?: Array<{ value: string; kind: string }>;
   /** Email searches: usernames the address suggests (shown as suggestions, never attributed). */
   derivedUsernames?: string[];
   /**

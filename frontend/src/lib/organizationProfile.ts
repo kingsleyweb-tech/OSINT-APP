@@ -7,6 +7,7 @@
  * silently. Nothing is inferred: a field no source gives is simply empty ("Not found").
  */
 import type { Investigation, OrgClaim, OrgField } from '../types/investigation';
+import { isCountryName } from './locationEvidence';
 
 /** Sections of the Organisation tab (also linked from the Overview). */
 export type OrgSection = 'summary' | 'locations' | 'products' | 'people' | 'online' | 'news' | 'activities' | 'sources';
@@ -139,6 +140,11 @@ export function orgClaims(inv: Investigation): Claim[] {
     (site.units || []).forEach(u => push({ field: 'unit', value: u.name, source: 'Official website', sourceKind: 'website', sourceUrl: u.url, quote: `Listed under “${u.group}” on ${hostOf(u.foundOn)}` }, 'website'));
     site.socialLinks.forEach(s => self('social', s.url.replace(/(linkedin\.com\/(?:company|school|showcase|in)\/[^/?#]+).*/i, '$1').replace(/[?#].*$/, ''), s.foundOn, s.platform));
   }
+  // An address that ends in a country is also that source's statement of the country ("…, Accra, Ghana").
+  out.filter(c => c.field === 'address').forEach(c => {
+    const last = c.value.split(',').pop()?.trim() || '';
+    if (isCountryName(last)) out.push({ ...c, field: 'country', value: last, quote: c.quote || `Address: ${c.value}` });
+  });
   return out;
 }
 
@@ -325,68 +331,165 @@ export function orgActivityInputs(
 // ─── Entity type (category) ──────────────────────────────────────────────────
 
 export type EntityCategory =
-  | 'University' | 'College' | 'School' | 'Company' | 'Government agency' | 'Military organisation' | 'NGO / charity'
-  | 'Foundation' | 'Association' | 'Hospital / health institution' | 'Religious organisation' | 'Media organisation'
-  | 'Sports organisation' | 'International organisation' | 'Brand' | 'Institution' | 'Organisation';
+  | 'University' | 'College' | 'School' | 'Educational institution' | 'Research institution'
+  | 'Company' | 'Brand' | 'Government agency' | 'Military organisation' | 'International organisation'
+  | 'NGO / charity' | 'Foundation' | 'Professional body' | 'Association'
+  | 'Hospital / health institution' | 'Religious organisation' | 'Media organisation' | 'Sports organisation'
+  | 'Organisation' | 'Unknown';
 
-const CATEGORY_RULES: Array<[EntityCategory, RegExp]> = [
-  ['Military organisation', /\b(military|armed forces?|army|navy|air force|defen[cs]e force|marines?|coast guard)\b/i],
-  ['University', /\b(university|universit[äé]|polytechnic)\b/i],
-  ['College', /\b(college|institute of technology|academy)\b/i],
-  ['School', /\b(school|high school|secondary|primary|kindergarten|basic school)\b/i],
-  ['Hospital / health institution', /\b(hospital|clinic|health (centre|center|service)|medical cent(re|er)|teaching hospital)\b/i],
-  ['International organisation', /\b(united nations|specialized agency|intergovernmental|international organi[sz]ation)\b/i],
-  ['Government agency', /\b(government|ministry|agency|authority|commission|department of|public body|regulator|parliament|municipal|district assembly|state-owned|revenue)\b/i],
-  ['NGO / charity', /\b(ngo|non-?governmental|non-?profit|charit(y|able)|humanitarian)\b/i],
-  ['Foundation', /\bfoundation\b/i],
-  ['Association', /\b(association|federation|society|union|chamber|guild|club|council)\b/i],
-  ['Religious organisation', /\b(church|mosque|diocese|ministries|religious|temple|parish)\b/i],
-  ['Media organisation', /\b(newspaper|broadcaster|radio|television|tv station|media (company|organi[sz]ation)|publisher|news agency)\b/i],
-  ['Sports organisation', /\b(football club|sports? (club|team|organi[sz]ation)|league|athletic)\b/i],
-  ['Brand', /\bbrand\b/i],
-  ['Company', /\b(company|corporation|business|enterprise|firm|limited|ltd|plc|inc|llc|startup|manufacturer|retailer|provider|conglomerate|bank|airline|operator|drone shop|store)\b/i],
-  ['Institution', /\b(institution|institute|centre|center)\b/i]
+/**
+ * What each type looks like in the sources' own words — type statements, descriptions, the website's title,
+ * description and About text, the Google Maps category. Not the searched name alone: an association need
+ * not be called "association"; membership language, a mission, accreditation or a statute say it instead.
+ */
+const TYPE_EVIDENCE: Array<[EntityCategory, RegExp]> = [
+  ['Military organisation', /\b(military|armed forces?|army|navy|air force|defen[cs]e (force|staff)|marines?|coast guard|arms of service|regiment|battalion)\b/i],
+  ['University', /\b(universit(y|ies)|polytechnic|vice[- ]chancellor|undergraduate|postgraduate|bachelor'?s|master'?s degree|doctoral|phd programmes?)\b/i],
+  ['College', /\b(college of education|nursing (and midwifery )?(training )?college|university college|community college|(training|technical|teacher) college|college\b(?! of (basic|health|humanities|education|agriculture|engineering|sciences?)))/i],
+  ['School', /\b(senior high school|junior high school|high school|secondary school|primary school|basic school|kindergarten|international school|boarding school|day school|shs\b|jhs\b)\b/i],
+  ['Educational institution', /\b(educational institution|tertiary (institution|education)|accredit(ed|ation) by|national accreditation board|higher education|admissions?|students|academic (programmes?|calendar|year)|curriculum|faculty|lecturers?|campus(es)?|alumni|graduation)\b/i],
+  ['Research institution', /\b(research (institute|institution|centre|center|organi[sz]ation|council)|think[- ]tank|laborator(y|ies)|scientific research|policy research)\b/i],
+  ['Hospital / health institution', /\b(hospital|clinic|medical cent(re|er)|health (centre|center|facility|service)|teaching hospital|polyclinic|patients|out-?patient|in-?patient|emergency (care|department))\b/i],
+  ['International organisation', /\b(united nations|specialized agency|intergovernmental|international organi[sz]ation|member states|multilateral)\b/i],
+  ['Government agency', /\b(government (agency|body|institution|organi[sz]ation|department|office|ministry)|ministry of|state (agency|institution|body)|statutory (body|corporation|agency|authority)|public (institution|body|agency|authority|service)|established (by|under) (an )?act|act of parliament|regulatory (body|authority|agency)|revenue authority|municipal|district assembly|metropolitan assembly|semi-autonomous)\b/i],
+  ['Professional body', /\b(professional (body|association|institute|society|membership)|chartered institute|institute of chartered|(institute|society|association|council) of ([a-z]+ ){0,3}(accountants|engineers|surveyors|bankers|architects|planners|pharmacists|physicians|lawyers|nurses|teachers|journalists|management|marketing)|licens(ed|ing) (body|professionals)|regulat(es|ing) the (practice|profession)|continuing professional development|cpd points?|professional (members|membership|qualification))\b/i],
+  ['Association', /\b(associations?|federation|society|guild|chamber of|trade union|labou?r union|union of|club|alliance|coalition|network of|membership|our members|member(s)? of the association|become a member|join (us|the association|as a member)|annual general meeting|\bagm\b|national executive council|regional branches|umbrella body)\b/i],
+  ['NGO / charity', /\b(ngo|non-?governmental|non-?profit|not-for-profit|charit(y|able)|humanitarian|civil society organi[sz]ation|cso\b|volunteers?|donate|donations)\b/i],
+  ['Foundation', /\bfoundation\b(?! (stone|course|year|degree|programme))/i],
+  ['Religious organisation', /\b(church|mosque|diocese|parish|ministries|religious|temple|congregation|denomination|pastor|bishop|imam|worship)\b/i],
+  ['Media organisation', /\b(newspaper|broadcaster|broadcasting|radio station|television station|tv station|media (company|house|group|organi[sz]ation)|publisher|news agency|news portal|fm\b)\b/i],
+  ['Sports organisation', /\b(football club|sports? (club|team|organi[sz]ation|association|federation)|league|athletic|stadium|fc\b)\b/i],
+  ['Brand', /\b(brand|product line)\b/i],
+  ['Company', /\b(company|corporation|business|enterprise|firm|limited|ltd\.?|plc|inc\.?|llc|startup|start-up|manufacturer|retailer|supplier|provider|conglomerate|bank|airline|operator|multinational|subsidiary of|shareholders|customers|clients|products and services|drone shop|store|distributor)\b/i]
 ];
+
+/** More specific types win over the general type they belong to when both are supported. */
+const PARENT: Partial<Record<EntityCategory, EntityCategory>> = {
+  University: 'Educational institution', College: 'Educational institution', School: 'Educational institution',
+  'Professional body': 'Association'
+};
 
 export interface EntityClass {
   category: EntityCategory;
-  /** Strong: the type comes from the knowledge panel, Wikidata or the official website, or 2+ sources agree. */
+  /** The broader type it belongs to, when there is one (University → Educational institution). */
+  parent?: EntityCategory;
+  /** Strong: an authoritative source states it, or several independent sources agree. */
   confidence: 'Strong evidence' | 'Possible match' | 'Not established';
   basis: string[];
+  /** Runner-up types with some support (shown so the investigator can judge). */
+  alternatives: Array<{ category: EntityCategory; score: number }>;
 }
 
-/** What kind of organisation it is, from the type statements of the sources (and, last, the name's own words). */
-export function entityClass(inv: Investigation, profile: OrgProfile): EntityClass {
-  const typeGroups = [...(profile.facts.type || []), ...(profile.facts.industry || []), ...(profile.facts.description || [])];
-  for (const [category, re] of CATEGORY_RULES) {
-    const hits = typeGroups.filter(g => re.test(g.value));
-    if (!hits.length) continue;
-    const claims = hits.flatMap(g => g.claims);
-    const families = new Set(claims.map(c => c.family));
-    const authoritative = claims.some(c => ['knowledge_panel', 'wikidata', 'website'].includes(c.sourceKind));
-    return {
-      category,
-      confidence: authoritative || families.size >= 2 ? 'Strong evidence' : 'Possible match',
-      basis: Array.from(new Set(claims.map(c => c.source))).slice(0, 4)
-    };
+interface Evidence { text: string; weight: number; kind: string; label: string; authoritative: boolean }
+
+/** Everything the sources say about what the organisation is, with how much each source counts. */
+function typeEvidence(inv: Investigation, profile: OrgProfile): Evidence[] {
+  const out: Evidence[] = [];
+  const add = (text: string | undefined, weight: number, kind: string, label: string, authoritative = false) => {
+    if (text && text.trim()) out.push({ text, weight, kind, label, authoritative });
+  };
+  // Type statements and descriptions (knowledge panel, Wikidata, website schema, search snippets).
+  for (const field of ['type', 'industry', 'sector', 'description'] as OrgField[]) {
+    (profile.facts[field] || []).forEach(g => g.claims.forEach(c => {
+      const auth = ['knowledge_panel', 'wikidata', 'website'].includes(c.sourceKind);
+      const w = field === 'type' ? (auth ? 6 : 3) : field === 'description' ? (auth ? 4 : 2) : (auth ? 4 : 2);
+      add(c.value, w, c.family, c.source, auth && field !== 'description');
+    }));
   }
-  const name = inv.organization?.name || '';
-  const byName = CATEGORY_RULES.find(([, re]) => re.test(name));
-  if (byName) return { category: byName[0], confidence: 'Possible match', basis: [`The name contains “${name.match(byName[1])?.[0]}”`] };
-  return { category: 'Organisation', confidence: 'Not established', basis: [] };
+  // The official website's own words: title, description, About page (only when it is the official site).
+  const site = inv.websiteIntel;
+  if (site?.reachable && site.verification.status !== 'unverified') {
+    site.pages.filter(p => ['home', 'about'].includes(p.kind)).forEach(p => {
+      add(`${p.title}. ${p.description || ''}`, 3, 'website', 'Official website');
+      add(p.text.join(' '), 2, 'website-text', 'Official website (About / home text)');
+    });
+    site.structured.filter(s => s.label === 'Type' || s.label === 'Description').forEach(s => add(s.value, 4, 'website-schema', 'Official website (structured data)', s.label === 'Type'));
+    if (site.pages.some(p => p.kind === 'admissions')) add('admissions', 2, 'website-pages', 'Official website (Admissions page)');
+  }
+  // Google Maps category of the organisation's own listing(s) — counted once.
+  // Its own listing: every word of its name in the listing's name ("Knutsford University College" for
+  // "Knutsford University"), or the listing links to the official website.
+  const nameWords = (inv.organization?.name || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 1 && !['the', 'of', 'and'].includes(w));
+  const siteHost = site?.reachable ? hostOf(site.finalUrl || site.requestedUrl) : '';
+  const own = (inv.orgEnrich?.mapsListings || []).filter(l => l.category && (
+    (nameWords.length > 0 && nameWords.every(w => l.title.toLowerCase().split(/[^a-z0-9]+/).includes(w)))
+    || (siteHost && l.website && hostOf(l.website) === siteHost)));
+  if (own.length) add(own.map(l => l.category).join(', '), 3, 'maps', 'Google Maps category');
+  // Web domain: .edu / .ac → education, .gov → government, .mil → military (the verified official site only).
+  const host = site?.reachable && site.verification.status !== 'unverified' ? hostOf(site.finalUrl || site.requestedUrl) : '';
+  if (/\.(edu|ac)(\.[a-z]{2})?$/.test(host)) add('educational institution', 2, 'domain', `Web address ${host}`);
+  if (/\.gov(\.[a-z]{2})?$/.test(host)) add('government institution', 2, 'domain', `Web address ${host}`);
+  if (/\.mil(\.[a-z]{2})?$/.test(host)) add('military', 2, 'domain', `Web address ${host}`);
+  // The name's own words count least.
+  add(inv.organization?.name, 1, 'name', 'The organisation’s name');
+  return out;
+}
+
+/**
+ * What kind of organisation it is. Each source that describes it adds weight to the types its words fit
+ * (one source counts once per type); the most specific well-supported type is chosen. With too little
+ * evidence it stays "Organisation" (or "Unknown") — nothing is guessed.
+ */
+export function entityClass(inv: Investigation, profile: OrgProfile): EntityClass {
+  const ev = typeEvidence(inv, profile);
+  const scores = new Map<EntityCategory, { byKind: Map<string, number>; labels: Set<string>; authoritative: boolean }>();
+  for (const e of ev) {
+    for (const [cat, re] of TYPE_EVIDENCE) {
+      if (!re.test(e.text)) continue;
+      const s = scores.get(cat) || { byKind: new Map(), labels: new Set(), authoritative: false };
+      s.byKind.set(e.kind, Math.max(s.byKind.get(e.kind) || 0, e.weight));
+      s.labels.add(e.label);
+      if (e.authoritative) s.authoritative = true;
+      scores.set(cat, s);
+    }
+  }
+  const total = (cat: EntityCategory) => Array.from(scores.get(cat)?.byKind.values() || []).reduce((a, b) => a + b, 0);
+  const ranked = Array.from(scores.keys()).map(cat => ({ category: cat, score: total(cat) })).sort((a, b) => b.score - a.score);
+  if (!ranked.length || ranked[0].score < 2) {
+    return { category: inv.entityKind === 'organization' ? 'Organisation' : 'Unknown', confidence: 'Not established', basis: [], alternatives: [] };
+  }
+
+  // A specific type beats its general parent when it has at least half the parent's support
+  // ("University" over "Educational institution"; "Professional body" over "Association").
+  let best = ranked[0];
+  const child = ranked.find(r => PARENT[r.category] === best.category && r.score >= Math.max(2, best.score / 2));
+  if (child) best = child;
+  // A type only suggested by the name itself is not enough.
+  const s = scores.get(best.category)!;
+  const kinds = Array.from(s.byKind.keys()).filter(k => k !== 'name');
+  if (!kinds.length) return { category: 'Organisation', confidence: 'Not established', basis: [], alternatives: ranked.slice(0, 3) };
+
+  const parent = PARENT[best.category] && (scores.has(PARENT[best.category]!) || best.category !== 'Professional body') ? PARENT[best.category] : undefined;
+  // Independent sources for the broader type also support the specific one ("Private educational
+  // institution" on Google Maps + "Knutsford University is a …" in a search result).
+  const p = parent ? scores.get(parent) : undefined;
+  const allKinds = new Set([...kinds, ...Array.from(p?.byKind.keys() || []).filter(k => k !== 'name')]);
+  const labels = new Set([...Array.from(s.labels), ...Array.from(p?.labels || [])]);
+  return {
+    category: best.category,
+    ...(parent ? { parent } : {}),
+    confidence: s.authoritative || allKinds.size >= 2 || best.score >= 6 ? 'Strong evidence' : 'Possible match',
+    basis: Array.from(labels).filter(l => l !== 'The organisation’s name').slice(0, 5),
+    // Only close runners-up (at least 60% of the chosen type's support), e.g. a company that is also a brand.
+    alternatives: ranked.filter(r => r.category !== best.category && r.category !== parent && r.score >= Math.max(4, best.score * 0.6)).slice(0, 3)
+  };
 }
 
 /** Section names that fit the kind of organisation (a university has faculties and programmes, a company products). */
 export function sectionLabels(category: EntityCategory): Partial<Record<OrgSection, string>> {
   switch (category) {
-    case 'University': case 'College': case 'School':
+    case 'University': case 'College': case 'School': case 'Educational institution':
       return { locations: 'Campuses & locations', products: 'Faculties, departments & programmes', people: 'Leadership & officers' };
     case 'Military organisation':
       return { locations: 'Headquarters & bases', products: 'Units, services & departments', people: 'Command & leadership' };
     case 'Government agency': case 'International organisation':
       return { locations: 'Headquarters & offices', products: 'Services, programmes & departments', people: 'Leadership' };
-    case 'NGO / charity': case 'Foundation': case 'Association': case 'Religious organisation':
+    case 'Professional body': case 'Association':
+      return { locations: 'Secretariat & branches', products: 'Membership, services & programmes', people: 'Executives & council' };
+    case 'NGO / charity': case 'Foundation': case 'Religious organisation':
       return { products: 'Mission, programmes & projects', locations: 'Headquarters & offices' };
+    case 'Research institution':
+      return { products: 'Research areas, centres & programmes', locations: 'Headquarters & offices' };
     case 'Hospital / health institution':
       return { products: 'Services & departments', locations: 'Facilities & locations' };
     default:
@@ -425,7 +528,9 @@ export function websitesAround(inv: Investigation, profile: OrgProfile): { relat
 export function unitLabel(category: EntityCategory): string {
   switch (category) {
     case 'Military organisation': return 'Units / arms of service';
-    case 'University': case 'College': return 'Colleges, faculties & schools';
+    case 'University': case 'College': case 'Educational institution': return 'Colleges, faculties & schools';
+    case 'Professional body': case 'Association': return 'Branches, chapters & committees';
+    case 'Research institution': return 'Institutes, centres & divisions';
     case 'School': return 'Departments & sections';
     case 'Company': case 'Brand': return 'Divisions & business units';
     case 'Government agency': case 'International organisation': return 'Divisions, departments & offices';

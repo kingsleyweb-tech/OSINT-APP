@@ -732,3 +732,8 @@ const ENGINE_LABEL: Record<string, string> = {
   youtube: 'YouTube', google_videos: 'Google Videos', google_images: 'Google Images', bing_images: 'Bing Images'
 };
 export const engineLabel = (engine?: string) => (engine ? ENGINE_LABEL[engine] || engine : '');
+
+/** Whether a place name is a country ("Ghana", "United States"). */
+export function isCountryName(place: string): boolean {
+  return COUNTRY_SET.has(place.trim().toLowerCase());
+}

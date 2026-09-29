@@ -238,6 +238,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   const place = investigation.targetProfile?.location && investigation.targetProfile.location !== 'Not specified'
     ? investigation.targetProfile.location
     : null;
+  const trackLabel = investigation.entityKind === 'organization' ? 'Track organisation' : 'Track person';
   const statusText = investigation.isTracked ? 'Tracked' : investigation.status || 'Completed';
 
   const copyId = () => {
@@ -314,11 +315,11 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
               <MoreHorizontal size={18} />
             </button>
             <button type="button" className={`ws-btn hide-mobile${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack} aria-pressed={Boolean(investigation.isTracked)}>
-              {investigation.isTracked ? <><BookmarkCheck size={16} /> Tracked</> : <><Bookmark size={16} /> Track person</>}
+              {investigation.isTracked ? <><BookmarkCheck size={16} /> Tracked</> : <><Bookmark size={16} /> {trackLabel}</>}
             </button>
             {menuOpen && (
               <div className="ws-menu" onMouseLeave={() => setMenuOpen(false)}>
-                <button type="button" onClick={toggleTrack}><Bookmark size={15} /> {investigation.isTracked ? 'Stop tracking' : 'Track person'}</button>
+                <button type="button" onClick={toggleTrack}><Bookmark size={15} /> {investigation.isTracked ? 'Stop tracking' : trackLabel}</button>
                 {canRerun && <button type="button" onClick={() => { setMenuOpen(false); rerun(); }} disabled={isRescanning}><RotateCw size={15} /> Re-run searches</button>}
                 <button type="button" onClick={() => { setMenuOpen(false); exportCsv(); }}><Download size={15} /> Export CSV (spreadsheet)</button>
                 <button type="button" onClick={() => { setMenuOpen(false); exportJson(); }}><Download size={15} /> Export JSON</button>
@@ -361,7 +362,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
 
         <div className="ws-mobile-bar">
           {canRerun && <button type="button" className="ws-btn" onClick={rerun} disabled={isRescanning}>{isRescanning ? 'Re-running…' : 'Re-run searches'}</button>}
-          <button type="button" className={`ws-btn${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack}>{investigation.isTracked ? 'Tracked ✓' : 'Track person'}</button>
+          <button type="button" className={`ws-btn${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack}>{investigation.isTracked ? 'Tracked ✓' : trackLabel}</button>
         </div>
 
         {sheetOpen && (

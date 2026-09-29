@@ -106,22 +106,27 @@ export function titleName(title: string, org: string): string | null {
 
 
 /** A search result that is probably the organisation's own website (the website check confirms it later). */
-function siteCandidate(url: string, title: string, org: string): string | null {
-  if (platformOf(url)) return null;
-  // A site named exactly after the organisation (sokoaerial.com) whose page names it, even with a longer title.
-  const exactHost = hostOf(url).split('.')[0] === words(org).join('') && words(org).join('').length >= 4;
-  if (!titleName(title, org) && !(exactHost && names(title, org))) return null;
+/**
+ * The web address carries the organisation's name or its initials (sokoaerial.com, gra.gov.gh,
+ * gafonline.mil.gh, knutsford.edu.gh). A portal or directory page about it (ghana.gov.gh/…) does not.
+ */
+function hostCarriesName(url: string, org: string): boolean {
   const host = hostOf(url);
-  if (!host || /wikipedia|wikidata|britannica|crunchbase|bloomberg|dnb\.com|zoominfo|glassdoor|indeed|facebook|google\./i.test(host)) return null;
+  if (!host || /wikipedia|wikidata|britannica|crunchbase|bloomberg|dnb\.com|zoominfo|glassdoor|indeed|facebook|google\./i.test(host)) return false;
   const label = host.split('.')[0];
   const c = words(org).join('');
   const w = words(org);
   const initials = w.length >= 3 ? w.map(x => x[0]).join('') : '';
-  const nameInHost = (c.length >= 4 && (label === c || label.startsWith(c) || (label.length >= 5 && c.startsWith(label))))
+  return (c.length >= 4 && (label === c || label.startsWith(c) || (label.length >= 5 && c.startsWith(label))))
     || (initials.length >= 3 && label.startsWith(initials) && label.length <= initials.length + 8);
-  // The address must carry the name or its initials (gra.gov.gh, gafonline.mil.gh): a government portal
-  // page about the organisation (ghana.gov.gh/…) is not its website.
-  if (!nameInHost) return null;
+}
+
+/** A search result that is probably the organisation's own website (the website check confirms it later). */
+function siteCandidate(url: string, title: string, org: string): string | null {
+  if (platformOf(url)) return null;
+  // The page names the organisation (exactly, or within a longer title) and its address carries the name.
+  if (!titleName(title, org) && !names(title, org)) return null;
+  if (!hostCarriesName(url, org)) return null;
   try { return `${new URL(url).origin}/`; } catch { return null; }
 }
 
@@ -388,8 +393,8 @@ function failure(r: { error: string | null; data: any; quotaExhausted?: boolean 
   return { error: 'The source could not be reached' };
 }
 
-/** 2: units (Wikidata parts, "consisting of …"), people named with the organisation, DuckDuckGo, Google News. */
-export const ENRICHMENT_VERSION = 2;
+/** 2: units, people, DuckDuckGo, Google News. 3: websites from renamed Maps listings and addresses carrying the name. 4: latest news (12 months) and newest videos. */
+export const ENRICHMENT_VERSION = 4;
 
 export async function enrichOrganization(org: string, websiteHints: string[] = []): Promise<OrgEnrichment> {
   const serp = new SerpApiProvider();
@@ -406,9 +411,10 @@ export async function enrichOrganization(org: string, websiteHints: string[] = [
     // quotation marks and returns results for the server's region, so it is not used here).
     serp.request('duckduckgo', { q: quoted }),
     serp.request('google', { q: `${quoted} ${socialSites}`, num: 20, hl: 'en' }),
-    // The name search's own YouTube query, so it is usually cached too.
-    serp.request('youtube', { search_query: org }),
-    serp.request('google_news', { q: quoted, hl: 'en' }),
+    // Recent videos only (YouTube's "upload date: this year" filter), not the most viewed of all time.
+    serp.request('youtube', { search_query: org, sp: 'EgIIBQ==' }),
+    // Recent news only: Google News' own time filter (last 12 months).
+    serp.request('google_news', { q: `${quoted} when:1y`, hl: 'en' }),
     wikidataClaims(org, websiteHosts).then(r => ({ ...r, error: null as string | null })).catch(e => {
       console.warn('[orgEnrichment] Wikidata:', (e as Error)?.message, (e as any)?.cause?.code || '');
       return { claims: [] as OrgClaim[], info: undefined, error: (e as Error).message || 'Wikidata could not be reached' };
@@ -434,6 +440,10 @@ export async function enrichOrganization(org: string, websiteHints: string[] = [
     if (l.hours) claims.push({ field: 'hours', value: l.hours, ...base });
     if (l.latitude !== undefined && l.longitude !== undefined) claims.push({ field: 'coordinates', value: `${l.latitude.toFixed(5)}, ${l.longitude.toFixed(5)}`, ...base });
   });
+  // A listing under a longer or older name ("Knutsford University College") that links to a website carrying
+  // the organisation's name: its website is a candidate (the website check confirms it before it is used).
+  listings.filter(l => words(l.title).join(' ') !== orgWords && !l.matchedBy.includes('website') && l.website && hostCarriesName(l.website, org))
+    .forEach(l => claims.push({ field: 'website', value: l.website!, source: `Google Maps listing “${l.title}”`, sourceKind: 'maps', sourceUrl: l.mapsUrl }));
   const mapsRaw = maps.data?.place_results ? 1 : (maps.data?.local_results || []).length;
   sources.push({ label: 'Google Maps', status: status(maps, mapsRaw), results: mapsRaw, used: listings.length, ...failure(maps) });
 

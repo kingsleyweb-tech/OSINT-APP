@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { EntityAnalyzer } from '../services/intelligence/entityAnalyzer';
 import { TrackingEngine } from '../services/intelligence/trackingEngine';
 import { DeepSearchEngine } from '../services/search/deepSearchEngine';
+import { annotateUsernameMatches } from '../services/search/usernameMatch';
 import { NormalizedResultItem, OSINTQuery } from '../types/search';
 import { NameSearchEngine } from '../services/nameSearch/nameSearchEngine';
 import { buildIdentityPayload, buildNameInvestigation, buildOrganizationIdentity, rescanNameInvestigation } from '../services/nameSearch/nameInvestigationBuilder';
@@ -115,6 +116,8 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
     possibleIdentities.forEach((identity: any) => {
       if (!identity.investigation) return;
       const t = tagSimilarAccounts(identity.investigation, similarKeys);
+      // Exact / variation / possibly related / other person, with the reasons (no extra searches).
+      annotateUsernameMatches(identity.investigation, String(query.username || query.queryValue || ''));
       identity.profilesCount = t.own;
       identity.activitiesCount = t.ownActivities;
       identity.similarAccountsCount = t.similarCount;

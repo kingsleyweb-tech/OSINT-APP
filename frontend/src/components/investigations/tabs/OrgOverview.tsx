@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Building2, Loader2 } from 'lucide-react';
-import { shortUrl } from '../../../lib/workspace';
+import { parseLooseDate, shortUrl } from '../../../lib/workspace';
 import {
   entityClass, orgActivities, orgActivityInputs, orgProfile, sectionLabels, unitLabel, type FactGroup, type OrgSection
 } from '../../../lib/organizationProfile';
@@ -21,6 +21,8 @@ const OFFICIAL_KINDS = ['website', 'wikidata', 'knowledge_panel'];
 export const OrgOverview: React.FC<{ contact: React.ReactNode; platforms: string[] }> = ({ contact, platforms }) => {
   const { inv, d, goTab } = useWorkspace();
   const { running } = useOrgPipeline();
+  // The time the Overview was opened (reading the clock during render is not allowed).
+  const [now] = useState(() => Date.now());
   const org = inv.organization!;
   const profile = useMemo(() => orgProfile(inv), [inv]);
   const cls = useMemo(() => entityClass(inv, profile), [inv, profile]);
@@ -42,7 +44,13 @@ export const OrgOverview: React.FC<{ contact: React.ReactNode; platforms: string
   const website = first('website');
   const pageHeadings = official ? site!.pages.filter(p => ['services', 'products', 'programs', 'departments'].includes(p.kind)).flatMap(p => p.headings).slice(0, 6) : [];
   const products = [...values('product', 4), ...values('service', 3)];
-  const latest = inputs.news[0] || inputs.mentions[0];
+  // Recent coverage only (last 12 months), newest first.
+  const yearAgo = now - 365 * 86400000;
+  const when = (d?: string) => parseLooseDate(d, inv.lastSearched || inv.createdAt)?.getTime() || 0;
+  const recentNews = [...inputs.news, ...inputs.mentions.filter(m => (inv.orgEnrich?.mentions || []).some(x => x.url === m.url && x.engine === 'google_news'))]
+    .filter(n => when(n.date) >= yearAgo).sort((a, b) => when(b.date) - when(a.date));
+  const recentVideos = (inv.orgEnrich?.videos || []).filter(v => when(v.date) >= yearAgo);
+  const latest = recentNews[0];
   const activityCounts = activities.reduce<Record<string, number>>((m, a) => ({ ...m, [a.kind]: (m[a.kind] || 0) + 1 }), {});
   const abbreviations = values('alt_name', 3).filter(a => /^[A-Z0-9&.]{2,8}$/.test(a));
   const industry = [...values('industry', 3), ...values('sector', 2)];
@@ -86,9 +94,9 @@ export const OrgOverview: React.FC<{ contact: React.ReactNode; platforms: string
       content: `${(f.social || []).length} account${(f.social || []).length === 1 ? '' : 's'}${f.social?.length ? `: ${Array.from(new Set(f.social.map(g => g.roles[0]).filter(Boolean))).slice(0, 5).join(', ')}` : ''}`
     },
     {
-      title: 'News & activities', section: 'news', has: Boolean(inputs.news.length || inputs.mentions.length || activities.length),
+      title: 'News & activities', section: 'news', has: Boolean(recentNews.length || recentVideos.length || inputs.mentions.length || activities.length),
       content: <>
-        <div>{inputs.news.length} news · {inputs.mentions.length} mentions · {inv.orgEnrich?.videos.length || 0} videos{activities.length ? ` · ${Object.entries(activityCounts).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(', ')}` : ''}</div>
+        <div>Last 12 months: {recentNews.length} news · {recentVideos.length} videos · {inputs.mentions.length} mentions{activities.length ? ` · ${Object.entries(activityCounts).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(', ')}` : ''}</div>
         {latest && <div className="ws-sub">Latest: <a className="ws-link" href={latest.url} target="_blank" rel="noopener noreferrer">{latest.title}</a></div>}
       </>
     },
@@ -109,7 +117,7 @@ export const OrgOverview: React.FC<{ contact: React.ReactNode; platforms: string
   return (
     <div className="ws-infobox" style={{ display: 'block' }}>
       <div className="ws-infobox-head">
-        <span className="ws-org-kind" title={cls.basis.join('; ')}><Building2 size={15} /> {cls.category} · {cls.confidence}</span>
+        <span className="ws-org-kind" title={cls.basis.join('; ')}><Building2 size={15} /> {cls.category}{cls.parent ? ` (${cls.parent})` : ''} · {cls.confidence}</span>
         <span className="ws-sub">
           {cls.basis.length ? `Type from ${cls.basis.slice(0, 2).join(' and ')}.` : 'The sources do not state what kind of organisation it is.'}
           {inv.entityResolution?.kind === 'resolved' && ` “${inv.entityResolution.query.toUpperCase()}” stands for ${inv.entityResolution.candidates[0].name} in ${inv.entityResolution.candidates[0].support} sources.`}

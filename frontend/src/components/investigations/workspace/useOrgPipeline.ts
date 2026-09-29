@@ -11,7 +11,7 @@ import { useWorkspace } from './WorkspaceContext';
 const inflight = new Set<string>();
 
 /** Must match ENRICHMENT_VERSION in backend/src/services/organization/orgEnrichment.ts. */
-const ENRICHMENT_VERSION = 2;
+const ENRICHMENT_VERSION = 4;
 
 const hostOf = (u?: string) => { try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch { return ''; } };
 

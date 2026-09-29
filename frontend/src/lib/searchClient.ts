@@ -248,6 +248,7 @@ export function identityToInvestigation(
     scanHistory: Array.isArray(inv.scanHistory) ? inv.scanHistory : undefined,
     ...(inv.entityKind === 'organization' && inv.organization ? { entityKind: 'organization', organization: inv.organization } : {}),
     ...(inv.entityResolution ? { entityResolution: inv.entityResolution } : {}),
+    ...(Array.isArray(inv.usernameVariations) ? { usernameVariations: inv.usernameVariations } : {}),
     createdBy: opts.userId,
     createdAt: inv.createdAt || nowIso,
     updatedAt: nowIso

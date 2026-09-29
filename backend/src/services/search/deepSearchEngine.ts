@@ -279,6 +279,11 @@ export class DeepSearchEngine {
         google('g-ig', 'Instagram', `site:instagram.com ${q}`, 'soc-instagram'),
         google('g-x', 'X (Twitter)', `(site:x.com OR site:twitter.com) ${q}`, 'soc-x')
       ];
+      // Looser variations (humblechild for humblechild_99) in one query of their own (standard/deep).
+      const loose = looseUsernameVariants(u);
+      if (searchDepth !== 'quick' && loose.length) {
+        steps.push(google('g-loose', 'Google · looser variations', `(${loose.map(v => `"${v}"`).join(' OR ')}) (instagram OR tiktok OR facebook OR twitter OR snapchat OR youtube)`, 'gen-broad'));
+      }
       if (searchDepth !== 'quick') {
         steps.push(
           {
@@ -748,19 +753,51 @@ export class DeepSearchEngine {
 }
 
 /**
- * Common spellings of a username: the same letters and digits with "_", "." or nothing between
- * the parts, and a leading number moved to the end (99_name → name99). At most 5, original first.
+ * Sensible variations of a username, most likely first, each with what changed:
+ * humblechild_99 → humblechild99, humblechild.99, 99_humblechild, 99humblechild, 99.humblechild,
+ * humblechild (without the number), 9humblechild / humblechild9 (a repeated digit shortened).
+ * Only these systematic changes are made — no invented names. Every one is labelled when it is found.
  */
-export function usernameSpellings(username: string): string[] {
+export function usernameVariants(username: string, max = 8): Array<{ value: string; kind: string }> {
   const u = username.trim().replace(/^@/, '').toLowerCase();
-  const parts = u.split(/[._-]+/).filter(Boolean);
-  const out = new Set<string>([u]);
-  if (parts.length > 1) {
-    out.add(parts.join('_'));
-    out.add(parts.join('.'));
+  const out = new Map<string, string>();
+  const add = (v: string, kind: string) => { if (v.length >= 3 && !out.has(v)) out.set(v, kind); };
+  add(u, 'Exact username');
+  // Words and numbers: separators, and letter/digit boundaries ("humblechild99" → humblechild, 99).
+  const tokens = u.split(/[._-]+|(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])/).filter(Boolean);
+  const words = tokens.filter(t => !/^\d+$/.test(t));
+  const nums = tokens.filter(t => /^\d+$/.test(t));
+  if (tokens.length > 1) ['_', '.', ''].forEach(sep => add(tokens.join(sep), 'Different separator'));
+  if (words.length && nums.length) {
+    const w = words.join(''), n = nums.join('');
+    const numFirst = /^\d/.test(u.replace(/[._-]/g, ''));
+    // The number on the other side, written the common ways.
+    (numFirst
+      ? [`${w}${n}`, `${w}_${n}`, `${w}.${n}`]
+      : [`${n}_${w}`, `${n}${w}`, `${n}.${w}`]).forEach(v => add(v, 'Number moved'));
+    // Only a distinctive word without its number ("humblechild"): a short common one ("kwame") would fill
+    // the results with unrelated people and push the real matches out.
+    if (w.length >= 7) add(w, 'Without the number');
+    if (/^(\d)\1+$/.test(n)) {
+      const d = n[0];
+      add(numFirst ? `${d}${w}` : `${w}${d}`, 'Repeated digit shortened');
+      add(numFirst ? `${w}${d}` : `${d}${w}`, 'Repeated digit shortened');
+    }
   }
-  out.add(parts.join(''));
-  const m = parts.join('').match(/^(\d+)([a-z].*)$/) || parts.join('').match(/^([a-z].*?)(\d+)$/);
-  if (m) out.add(/^\d/.test(m[1]) ? `${m[2]}${m[1]}` : `${m[2]}${m[1]}`);
-  return Array.from(out).filter(v => v.length >= 3).slice(0, 5);
+  return Array.from(out.entries()).slice(0, max).map(([value, kind]) => ({ value, kind }));
+}
+
+const LOOSE = new Set(['Without the number', 'Repeated digit shortened']);
+
+/** The close spellings put into every username query (OR'd, so they cost no extra searches). */
+export function usernameSpellings(username: string): string[] {
+  return usernameVariants(username).filter(v => !LOOSE.has(v.kind)).map(v => v.value);
+}
+
+/**
+ * Looser variations (number removed, repeated digit shortened) — searched in a query of their own, so
+ * their many unrelated results never push the exact username's profiles out of the other queries.
+ */
+export function looseUsernameVariants(username: string): string[] {
+  return usernameVariants(username).filter(v => LOOSE.has(v.kind)).map(v => v.value);
 }

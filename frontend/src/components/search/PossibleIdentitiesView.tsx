@@ -14,6 +14,7 @@ import {
   Users
 } from 'lucide-react';
 import { PlatformIcon } from '../ui/PlatformIcon';
+import { UsernameResults } from './UsernameResults';
 import '../../styles/PossibleIdentities.css';
 
 export type NeutralConfidenceLabel = 'Verified' | 'Strong evidence' | 'Possible match' | 'Mention only' | 'Uncertain';
@@ -84,6 +85,9 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
     if (t) thumbByUrl.set(normUrl(w.url), t);
   }));
 
+  // Username searches get the overview + platform tabs view instead of the plain profile grid.
+  const isUsernameSearch = identities.some(i => i.investigation?.usernameVariations || i.investigation?.searchType === 'username' || i.investigation?.searchInputs?.searchType === 'username');
+
   const getConfidenceBadgeClass = (label: NeutralConfidenceLabel) => {
     switch (label) {
       case 'Verified': return 'verified';
@@ -110,11 +114,13 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
         </button>
       </div>
 
+      {isUsernameSearch && <UsernameResults query={query} identities={identities} onSelectIdentity={onSelectIdentity} />}
+
       {/* SECTION 1: POSSIBLE PEOPLE */}
       <div className="search-section-block">
         <div className="section-block-header">
           <Users size={18} className="section-block-icon" />
-          <h2 className="section-block-title">POSSIBLE PEOPLE</h2>
+          <h2 className="section-block-title">{isUsernameSearch ? 'POSSIBLE IDENTITY — PROFILES GROUPED BY EVIDENCE' : 'POSSIBLE PEOPLE'}</h2>
           <span className="section-count-tag">{identities.length}</span>
         </div>
         <p className="section-block-sub">
@@ -190,8 +196,8 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 2: PROFILES */}
-      {uniqueProfiles.length > 0 && (
+      {/* SECTION 2: PROFILES (username searches show them above, by platform) */}
+      {!isUsernameSearch && uniqueProfiles.length > 0 && (
         <div className="search-section-block">
           <div className="section-block-header">
             <PlatformIcon platform="LinkedIn" size={18} />
@@ -224,7 +230,7 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
         </div>
       )}
 
-      {similarProfiles.length > 0 && (
+      {!isUsernameSearch && similarProfiles.length > 0 && (
         <div className="search-section-block pi-similar-block">
           <div className="section-block-header">
             <Users size={18} className="section-block-icon" />

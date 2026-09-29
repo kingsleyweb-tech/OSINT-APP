@@ -220,3 +220,6 @@ input, select, textarea {
   right: 12px;
 }
 
+
+/* Media never wider than its container (all screen sizes). */
+img, video, iframe, svg { max-width: 100%; }

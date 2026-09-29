@@ -230,6 +230,22 @@ export function parseLooseDate(value?: string, referenceIso?: string): Date | nu
     if (unit === 'year') d.setFullYear(d.getFullYear() - n);
     return d;
   }
+  // Short forms used by YouTube and news listings: "4y ago", "10mo ago", "4w ago", "3d ago", "5h ago", "20m ago".
+  const short = value.match(/(\d+)\s*(y|yr|yrs|mo|mos|w|wk|wks|d|h|hr|hrs|m|min|mins)\.?\s+ago/i);
+  if (short) {
+    const ref = referenceIso ? new Date(referenceIso) : new Date();
+    if (Number.isNaN(ref.getTime())) return null;
+    const n = Number(short[1]);
+    const d = new Date(ref);
+    const u = short[2].toLowerCase();
+    if (u.startsWith('y')) d.setFullYear(d.getFullYear() - n);
+    else if (u.startsWith('mo')) d.setMonth(d.getMonth() - n);
+    else if (u.startsWith('w')) d.setDate(d.getDate() - 7 * n);
+    else if (u === 'd') d.setDate(d.getDate() - n);
+    else if (u.startsWith('h')) d.setHours(d.getHours() - n);
+    else d.setMinutes(d.getMinutes() - n);
+    return d;
+  }
   const t = Date.parse(value);
   if (Number.isNaN(t)) return null;
   const d = new Date(t);
