@@ -239,3 +239,12 @@
 .hd-costs .hd-table td:first-child { width: 220px; white-space: normal; }
 .hd-tokens { white-space: nowrap; font-weight: 700; color: var(--text-primary) !important; }
 @media (max-width: 700px) { .hd-tokens { white-space: normal; } }
+.hd-table td { overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .hd-table thead { display: none; }
+  .hd-table, .hd-table tbody, .hd-table tr, .hd-table td { display: block; width: 100%; }
+  .hd-table tr { padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+  .hd-table tr:last-child { border-bottom: 0; }
+  .hd-table td, .hd-costs .hd-table td:first-child { width: auto; padding: 2px 0; border-bottom: 0; }
+  .hd-table td.hd-tokens::before { content: 'Tokens: '; font-weight: 500; color: var(--text-muted); }
+}

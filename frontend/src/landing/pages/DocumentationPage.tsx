@@ -28,9 +28,9 @@ const DOCS: DocSection[] = [
     paragraphs: [],
     list: [
       'Open the sign-in page and choose Continue with Google (or sign in with email and password).',
-      'Start from the Dashboard or New Search: choose Name or Username, and optionally add a location or organisation.',
+      'Start from the Dashboard or New Investigation: choose Name or Username (organisations are found with a Name search), and optionally add a location or organisation.',
       'Watch the progress loader: every engine shows its own status, and you can cancel at any time.',
-      'Pick the possible identity that matches your subject to create a case.',
+      'Pick the person or organisation that matches your subject to create a case.',
       'Review the case tabs, save extra findings from the Social, News, Media, Geo and Trends pages, and export when you are done.'
     ]
   },
@@ -50,13 +50,28 @@ const DOCS: DocSection[] = [
   {
     id: 'username-search', label: 'Username search', category: 'Search', title: 'Username Search',
     paragraphs: [
-      'A username search finds accounts that use a handle, including versions written with different punctuation — for example 99_humblechild, 99.humblechild_ and 99-humblechild.'
+      'A username search finds accounts that use a username, including common variations — for example humblechild_99, humblechild99, humblechild.99 and 99_humblechild.'
     ],
     list: [
-      'Free direct checks: GitHub, Reddit, Mastodon, Bluesky, Docker Hub, npm, DEV, Medium, Telegram, Twitch, Vimeo, YouTube and Wikipedia.',
-      'Search engines: Google, DuckDuckGo and Yahoo (which find punctuation variants), plus TikTok and YouTube searches.',
-      'Post and video links (an X post, a TikTok video) are traced back to the account that owns them.',
-      'Handles that only look similar are listed as similar usernames, never as the subject’s own accounts.'
+      'Direct checks: GitHub, Reddit, Mastodon, Bluesky, Docker Hub, npm, DEV, Medium, Telegram, Twitch, Vimeo, YouTube, Wikipedia, and TikTok and Snapchat profile pages.',
+      'Search engines: Google, DuckDuckGo and Yahoo search the username and its close variations in the same searches. Looser variations (the number removed or shortened) get one search of their own in standard and deep searches.',
+      'Each account is labelled Exact match, Username variation, Possibly related or Other person, with the reason. “Possibly related” needs real evidence, such as the same display name or website.',
+      'Results open with an overview — the username you searched highlighted, counts and the variations searched — and are shown by platform.',
+      'Post and video links (an X post, a TikTok video) are traced back to the account that owns them. Look-alike accounts are never merged.'
+    ]
+  },
+  {
+    id: 'organisations', label: 'Organisations & abbreviations', category: 'Search', title: 'Organisations and Abbreviations',
+    paragraphs: [
+      'Type an organisation’s name in a Name search. The platform recognises companies, universities and schools, government agencies, military organisations, associations, NGOs, hospitals and other organisations, and lists an Organisation card first.',
+      'A short form such as “UPSA” is matched to its full name only when several independent sites agree. If several organisations use the same short form, you are shown the choices and pick one.'
+    ],
+    list: [
+      'Entity type — worked out from what the sources say (knowledge panel, Wikidata, the website’s own words, the Google Maps category, the web address), shown with “Strong evidence” or “Possible match”.',
+      'Sources — Google’s knowledge panel, Wikidata, Google Maps, Google, Google News, DuckDuckGo, public social pages and the organisation’s own website.',
+      'Official website — checked before it is trusted and marked Verified, Probably official or Could not be verified. Its About, Contact, Services, Products, Programmes, Departments, Leadership, Locations, News, Events and Careers pages are read.',
+      'Profile — official name and short forms, description, industry, founding year, headquarters and addresses, Maps listings with coordinates and opening hours, units or divisions, leadership, contact details, social accounts, related websites, and news and videos from the last 12 months.',
+      'Verification — each fact shows how many independent sources agree; when sources disagree, both answers are shown with their sources.'
     ]
   },
   {
@@ -66,8 +81,8 @@ const DOCS: DocSection[] = [
       'Social search — public posts and pages on X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Reddit, Threads, Telegram, WhatsApp public groups, VK and Weibo (one search per platform), or forums and discussions.',
       'News — Google News and Bing News. Choosing a country shows only that country’s edition; several words are matched as an exact phrase in the article text.',
       'Media — images (Google & Bing) and videos (YouTube & Google Videos).',
-      'Geo search — places and businesses with reviews (Google Maps), news, social posts, web pages and events for a location; with “Any country”, places with the same name elsewhere are listed.',
-      'Trends — interest over time and related queries (Google Trends), trending now in a country, and what news, social media and the web are saying.'
+      'Geo search — places and businesses with reviews (Google Maps), news, social posts, web pages, events and similar places for a location, on a map with a satellite view; with “Any country”, places with the same name elsewhere are listed.',
+      'Trends — interest over time and by region, related searches and topics (Google Trends), what is trending now in a country, and what news, social media and the web are saying. Several topics can be compared.'
     ]
   },
   {
@@ -86,20 +101,20 @@ const DOCS: DocSection[] = [
     id: 'loader', label: 'Progress, caching & quota', category: 'Search', title: 'Progress, Caching & Quota',
     paragraphs: [
       'Every search shows a progress loader listing each engine it calls, with real status for each. You can cancel at any time. A slow engine times out after 30 seconds and is retried once, so a search never freezes.',
-      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick), 9–10 (standard) or 9–12 (deep) searches plus one per location or organisation; a username search uses 5, 11 or 14 (quick / standard / deep), and its direct platform checks are free. The Contact tab uses 4 to look for the person’s public email addresses and phone numbers. Recognising an organisation and reading its website use none. The in-app Help page lists the exact cost of every search.'
+      'Identical SerpApi requests are cached on the server for 12 hours. A name search uses 4 (quick), 9–10 (standard) or 9–12 (deep) searches plus one per location or organisation; a username search uses 5, 11–12 or 14–15 (quick / standard / deep), and its direct platform checks are free. The Contact tab uses 4. An organisation case uses 6–7 once, for its extra sources; recognising the organisation and reading its website and Wikidata cost nothing. The in-app Help page lists the exact cost of every search.'
     ]
   },
   {
     id: 'possible-people', label: 'Possible identities', category: 'Results', title: 'Possible Identities & Match Labels',
     paragraphs: [
-      'Common names return results about many different people. The platform groups results that share a handle, location or organisation into separate possible identities rather than merging them.',
-      'Each result is labelled Exact match, Likely match, Similar match (a close spelling, such as one letter different) or Possible match, with the signals that support it.'
+      'Common names return results about many different people. The platform groups results that share a handle, location or organisation into separate possible people rather than merging them. When the search is an organisation, an Organisation card is listed first.',
+      'Each card shows how strong the evidence is (Verified, Strong evidence, Possible match, Mention only or Uncertain), and each profile shows its match (Profile match, Likely match or Possible match) with the signals that support it. In username searches, accounts are labelled Exact match, Username variation, Possibly related or Other person.'
     ]
   },
   {
     id: 'similar', label: 'Similar accounts', category: 'Results', title: 'Similar Accounts',
     paragraphs: [
-      'Accounts whose name or handle is close to — but not the same as — your subject’s are shown in their own “Similar accounts” section. Their posts and activity are never shown as belonging to your subject. Treat them as unconfirmed until evidence links them.'
+      'Accounts whose name or handle is close to — but not the same as — your subject’s are shown in their own “Similar accounts” section. Their posts and activity are never shown as belonging to your subject. Treat them as unconfirmed until evidence links them. Click one to open a separate investigation about that account.'
     ]
   },
   {
@@ -107,7 +122,7 @@ const DOCS: DocSection[] = [
     paragraphs: ['Each case is organised into twelve tabs, plus an Organisation tab when the name search found an organisation:'],
     list: [
       'Overview — summary of the selected identity and its key facts.',
-      'Organisation (organisation cases only) — official name, type, description, industry, headquarters, website, key people and products, each with its source; the official website’s About, Services, Products, Leadership, Locations, Contact and News pages; and whether the website could be verified as official.',
+      'Organisation (organisation cases only) — the full organisation profile in sections: summary, headquarters and locations, products and services or units, leadership, website and online presence, news and media, activities and events, and sources and verification.',
       'Profiles — the subject’s own profiles, with link checks; similar accounts listed separately.',
       'Activity — public posts, videos, articles and code activity in date order.',
       'Associations — organisations, co-mentioned people and linked usernames.',
@@ -115,10 +130,17 @@ const DOCS: DocSection[] = [
       'Web — pages linked to the identity and pages that only mention the name.',
       'News — news articles naming the subject, gathered automatically.',
       'Images — public images of or about the subject, gathered automatically.',
-      'Location — places public sources connect to the person, each with the source’s exact words and whether it is a profile location, stated residence, hometown, workplace or only a mention. Nothing is guessed.',
-      'Contact — public email addresses and phone numbers the person’s own profiles or linked pages show (Google, Bing, DuckDuckGo and social profiles are searched), each with its source. Nothing is generated.',
+      'Location — places public sources connect to the subject, each with the source’s exact words and how strong the evidence is (stated, reported, only mentioned or unconfirmed). Nothing is guessed.',
+      'Contact — public email addresses and phone numbers shown on the subject’s own profiles, on linked pages or on an organisation’s official website (Google, Bing, DuckDuckGo and social profiles are searched), each with its source. Nothing is generated.',
       'Metrics — result counts and the full SerpApi search log.',
       'Audit — time-stamped log of every search and change, exportable as CSV.'
+    ]
+  },
+  {
+    id: 'evidence', label: 'Evidence levels & “Not found”', category: 'Results', title: 'Evidence Levels and “Not found”',
+    paragraphs: [
+      'There is no separate notes tab: you record what you checked on the evidence itself. Mark each result Raw (found, not reviewed), Relevant or Validated (checked by you). Every search, change and level is written to the Audit tab with the time.',
+      'When the sources checked do not give a detail, the platform shows “Not found” (or “Could not be verified”) instead of guessing. “Unable to retrieve” means a source did not answer — try again later. Gender is only shown when a profile states it.'
     ]
   },
   {
@@ -137,8 +159,8 @@ const DOCS: DocSection[] = [
   {
     id: 'people-analysis', label: 'People, Network & Content analysis', category: 'Cases', title: 'People, Network & Content Analysis',
     paragraphs: [
-      'People lists the people you track from your cases; “View person” opens the saved case immediately, without searching again.',
-      'Network shows how the people, usernames, organisations and websites in your cases connect, and can compare two cases. Content analysis breaks saved results down by platform, type, date and words. Both are built only from data already in your cases and use no searches.'
+      'People lists the people and organisations you track from your cases; opening one shows its saved case immediately, without searching again.',
+      'Network shows how the people, usernames, organisations and websites in your cases connect, and can compare two cases. Content analysis charts saved results by month, platform, type, website, hashtags, most active accounts, languages and locations, with a word cloud. Both are built only from data already in your cases and use no searches.'
     ]
   },
   {
@@ -157,7 +179,7 @@ const DOCS: DocSection[] = [
   {
     id: 'security', label: 'Sign-in & security', category: 'Platform', title: 'Sign-in & Security',
     paragraphs: [
-      'Sign in with Google or with email and password through Firebase Authentication. Credentials are held by Google and Firebase; the platform never stores passwords. Guest access is not available.',
+      'Sign in with Google or with email and password through Firebase Authentication. Credentials are held by Google and Firebase; the platform never stores passwords, and a forgotten password can be reset from the sign-in page. Guest access is not available.',
       'Every app page requires sign-in, and the server verifies your sign-in on every search, so the search engine cannot be used without an account. Searches are limited per account to prevent abuse, and optional App Check (reCAPTCHA v3) blocks automated clients.',
       'Cases, history, tracked people and notifications are stored in your own account; database rules stop anyone else from reading them. You can export or delete all your data in Settings.'
     ]
@@ -169,7 +191,7 @@ const DOCS: DocSection[] = [
       'Private accounts, private messages, deleted content and pages search engines have not indexed cannot be found.',
       'Some platforms (Facebook, Instagram, LinkedIn) show only what Google has indexed about them.',
       'News engines match the exact wording of the article; a different spelling may need its own search.',
-      'Facial recognition is not connected yet.'
+      'The platform does not do facial recognition.'
     ]
   },
   {

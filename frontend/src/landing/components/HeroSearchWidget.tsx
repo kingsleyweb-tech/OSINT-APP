@@ -16,7 +16,9 @@ export const HeroSearchWidget: React.FC<HeroSearchWidgetProps> = ({ currentUser 
     'e.g. Kwame Mensah, John Mahama',
     'e.g. Alex Rivera, San Francisco',
     'e.g. Dr. Jane Smith, Researcher',
-    'e.g. Michael Chen, Founder'
+    'e.g. Michael Chen, Founder',
+    'e.g. University of Ghana',
+    'e.g. UPSA'
   ];
   
   const usernamePlaceholders = [
@@ -77,7 +79,8 @@ export const HeroSearchWidget: React.FC<HeroSearchWidgetProps> = ({ currentUser 
     e.preventDefault();
     const finalQuery = query.trim() || displayedPlaceholder.replace('e.g. ', '');
     if (currentUser) {
-      navigate(`/new-investigation?type=${searchMode}&q=${encodeURIComponent(finalQuery)}`);
+      // The New Investigation page expects "Name" or "Username".
+      navigate(`/new-investigation?type=${searchMode === 'username' ? 'Username' : 'Name'}&q=${encodeURIComponent(finalQuery)}`);
     } else {
       navigate(`/auth?q=${encodeURIComponent(finalQuery)}`);
     }

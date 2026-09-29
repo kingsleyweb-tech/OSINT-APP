@@ -138,8 +138,13 @@
 /* 2-Column Main Dashboard Layout */
 .dash-main-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …): a long case name must not stretch the columns wider than the screen. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px;
+}
+
+.dash-main-grid > * {
+  min-width: 0;
 }
 
 .dash-card {
@@ -237,12 +242,29 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 1px;
+  /* At most three lines; long detection notes end with an ellipsis. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .inv-row-right {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Phones: the date and status move under the case name instead of pushing the card off-screen. */
+@media (max-width: 600px) {
+  .dash-card { padding: 16px; }
+  .dash-inv-row { flex-wrap: wrap; align-items: flex-start; }
+  .dash-inv-row .inv-info-meta { flex: 1 1 calc(100% - 60px); }
+  .dash-inv-row .inv-row-right { width: 100%; padding-left: 48px; justify-content: flex-start; }
+  .dash-inv-row .inv-row-chevron { margin-left: auto; }
+  .dash-inv-row:hover { transform: none; }
 }
 
 .inv-time-ago {
@@ -637,7 +659,7 @@
    ============================ */
 @media (max-width: 1100px) {
   .dash-main-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

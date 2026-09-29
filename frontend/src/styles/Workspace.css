@@ -650,8 +650,9 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
 }
 .ws-facet label .n { margin-left: auto; color: var(--ws-muted); font-family: var(--ws-mono); font-size: 13px; }
 .ws-facet input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--ws-accent); }
-.ws-date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ws-date-row .ws-input { width: 100%; }
+.ws-date-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.ws-date-row .ws-input { width: 100%; min-width: 0; box-sizing: border-box; }
+@media (max-width: 380px) { .ws-date-row { grid-template-columns: minmax(0, 1fr); } }
 
 /* ─── Web & News cards ─── */
 

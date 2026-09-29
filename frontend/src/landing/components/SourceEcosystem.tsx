@@ -114,6 +114,9 @@ export const SourceEcosystem: React.FC = () => {
         { name: 'News Media Mentions', color: '#a1a1aa' },
         { name: 'Public Indexed PDFs', color: '#ef4444' },
         { name: 'Conference Events', color: '#a1a1aa' },
+        { name: 'Google Maps Listings', color: '#34a853' },
+        { name: 'Organisation Websites', color: '#a1a1aa' },
+        { name: 'Wikidata', color: '#339966' },
       ]
     }
   ];

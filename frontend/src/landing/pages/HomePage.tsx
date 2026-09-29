@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowRight, ShieldCheck, Search, UserCheck,
-  Layers, Activity, Share2, FileText, Globe, CheckCircle2,
-  AlertTriangle, HelpCircle, ExternalLink, Database, Cpu
+  ArrowRight, ShieldCheck, Search, Layers, FileText, CheckCircle2,
+  AlertTriangle, HelpCircle, Cpu, Building2
 } from 'lucide-react';
 import appLogo from '../../assets/images/icon.png';
 import entityGraphImg from '../../assets/images/entity-graph.png';
@@ -15,25 +14,82 @@ interface HomePageProps {
   currentUser?: any;
 }
 
+interface Capability { num: string; title: string; sub: string; desc: string; left: [string, string]; right: [string, string]; tags: string[] }
+
+const CAPABILITIES: Capability[] = [
+  {
+    num: '01', title: 'NAME INVESTIGATION', sub: 'People found by their full name',
+    desc: 'Searches the exact name on Google and the main platforms, then groups the results into possible people, so different people with the same name are kept apart.',
+    left: ['What it covers', 'LinkedIn, Facebook, Instagram, X, TikTok, Threads, YouTube, GitHub and more, plus web pages and news. A location or organisation can be added to narrow a common name.'],
+    right: ['Spelling help', 'A misspelt name is checked first (“Did you mean…”). While typing, the page can suggest matching organisations.'],
+    tags: ['Exact name', 'Possible people', 'Did you mean', 'Name suggestions']
+  },
+  {
+    num: '02', title: 'USERNAME INVESTIGATION', sub: 'One handle, many platforms',
+    desc: 'Looks for a username on many platforms, including common variations such as humblechild_99, humblechild99 and 99_humblechild. The username you searched is highlighted.',
+    left: ['Clear match labels', 'Each account is marked Exact match, Username variation, Possibly related or Other person — with the reason — and results are shown by platform.'],
+    right: ['Never merged', 'Look-alike accounts are kept apart. Any of them can be opened as its own investigation.'],
+    tags: ['Variations', 'Platform tabs', 'Direct checks', 'Match reasons']
+  },
+  {
+    num: '03', title: 'ORGANISATION INTELLIGENCE', sub: 'Companies, schools, agencies and more',
+    desc: 'Recognises when a search is an organisation — even a short form such as “UPSA” — and builds a profile from Google’s knowledge panel, Wikidata, Google Maps, news, social pages and its own official website.',
+    left: ['What it shows', 'Organisation type, official name, website (checked before it is trusted), headquarters and locations, units, leadership, contact details, social accounts and news from the last 12 months.'],
+    right: ['Cross-checked', 'Each fact shows how many independent sources agree. When sources disagree, both answers are shown.'],
+    tags: ['Entity type', 'Official website', 'Units & leadership', 'Source agreement']
+  },
+  {
+    num: '04', title: 'CASE WORKSPACE', sub: 'Everything about a subject, in tabs',
+    desc: 'Each investigation is split into clear tabs: Overview, Profiles, Activity, Associations, Sources, Web, News, Images, Location, Contact, Metrics and Audit — plus an Organisation tab for organisations.',
+    left: ['Record your review', 'Mark each result Raw, Relevant or Validated. Every search and change is written to the Audit tab with the time.'],
+    right: ['Follow and export', 'Re-run a case to see what changed, track the subject on the People page, and export to JSON or CSV.'],
+    tags: ['12+ tabs', 'Evidence levels', 'Audit trail', 'Export']
+  },
+  {
+    num: '05', title: 'SEARCH PAGES', sub: 'Social, news, media, places and trends',
+    desc: 'Separate pages for public social posts and forums, news, images and videos, places (with a map and satellite view) and search trends. Useful results can be saved to a case.',
+    left: ['Filters', 'Date range, country, language and platform choice, depending on the page.'],
+    right: ['Trends', 'Interest over time and by region, related searches and topics, and what is trending now in a country.'],
+    tags: ['Social search', 'News', 'Media', 'Geo search', 'Trends']
+  },
+  {
+    num: '06', title: 'ANALYSIS & EVIDENCE', sub: 'See connections and patterns',
+    desc: 'The Network page shows how people, usernames, organisations and websites in your cases connect. Content Analysis charts your saved results by time, platform, hashtags, accounts, languages and locations.',
+    left: ['Location evidence', 'A place is only recorded when a source states it, with how strong the evidence is: stated, reported, only mentioned or unconfirmed.'],
+    right: ['Public contact details', 'Emails and phone numbers are only shown when a public source shows them, each with its source.'],
+    tags: ['Network', 'Content analysis', 'Location', 'Contact']
+  }
+];
+
+const STEPS: Array<{ step: string; title: string; desc: string }> = [
+  { step: '01', title: 'Start a search', desc: 'Enter a name, a username or an organisation. Add a location or organisation to narrow a common name.' },
+  { step: '02', title: 'Search public sources', desc: 'The platform searches search engines, news, maps, public social pages, Wikidata and official websites at the same time, and shows the progress of each source.' },
+  { step: '03', title: 'Remove what does not match', desc: 'Results that do not name your subject are dropped, links are cleaned, and each result is labelled with how well it matches.' },
+  { step: '04', title: 'Keep look-alikes apart', desc: 'Results are grouped into possible people or organisations. Similar names and usernames are listed separately, never merged.' },
+  { step: '05', title: 'Choose and open a case', desc: 'Pick the right person or organisation. The case opens with its tabs and gathers news, images, locations and contact details automatically.' },
+  { step: '06', title: 'Review and record', desc: 'Check each finding on its original source and mark it Raw, Relevant or Validated. The Audit tab keeps a record of every step.' },
+  { step: '07', title: 'Follow up', desc: 'Re-run the case later to see what changed, track the subject, and export the case and its sources for your report.' }
+];
+
 export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
 
   const titlePhrases = [
     'Person Profiles',
     'Username Handles',
+    'Organisations',
     'Public Footprints',
-    'Professional Mentions',
-    'Social Associations'
+    'Places & News'
   ];
 
   return (
     <div className="lp-route-container">
       <section className="lp-section-wide" style={{ paddingTop: '50px', paddingBottom: '50px', textAlign: 'center' }}>
         <div className="lp-container-wide">
-          
+
           <div className="lp-badge" style={{ margin: '0 auto 20px' }}>
             <img src={appLogo} alt="Logo" style={{ width: '16px', height: '16px', borderRadius: '4px' }} />
-            <span>Search powered by SerpApi</span>
+            <span>Public sources only · every result cites its source</span>
           </div>
 
           <h1 className="lp-title" style={{ maxWidth: '1040px', margin: '0 auto 20px' }}>
@@ -42,7 +98,8 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
           </h1>
 
           <p className="lp-subtitle" style={{ maxWidth: '840px', margin: '0 auto 32px' }}>
-            Automate public digital footprint research. Aggregate search engine index signals, verify live social profiles, and organize structured subject investigation records — ethically, transparently, and securely.
+            Find public information about people, usernames and organisations across search engines, news, maps, social media and
+            official websites — and keep every finding, with its source, in one organised case.
           </p>
 
           <HeroSearchWidget currentUser={currentUser} />
@@ -58,7 +115,7 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
                   Launch Investigation Workspace <ArrowRight size={18} />
                 </Link>
                 <Link to="/how-it-works" className="btn-outline" style={{ padding: '14px 24px', fontSize: '1rem' }}>
-                  Explore Architecture
+                  See how it works
                 </Link>
               </>
             )}
@@ -68,6 +125,7 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             <ul className="lp-showcase-trust" aria-label="Principles">
               <li><CheckCircle2 size={15} /> Public sources only</li>
               <li><CheckCircle2 size={15} /> Every result cites its source</li>
+              <li><CheckCircle2 size={15} /> Nothing is guessed</li>
               <li><CheckCircle2 size={15} /> Full audit trail</li>
             </ul>
             <figure className="lp-showcase-frame">
@@ -93,19 +151,19 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             <div className="lp-grid lp-grid-4" style={{ textAlign: 'center', gap: '20px' }}>
               <div>
                 <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--accent-warm-light)' }}>30+</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Supported Public Platforms</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Public platforms and sources</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--accent-warm-light)' }}>3</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Subjects: people, usernames, organisations</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--accent-warm-light)' }}>12+</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Tabs in every case</div>
               </div>
               <div>
                 <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--accent-warm-light)' }}>100%</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Public Index Scope</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--accent-warm-light)' }}>SerpApi</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Real-Time Search Backend</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--accent-warm-light)' }}>Firestore</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Isolated User Cases</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>Public sources — no private data</div>
               </div>
             </div>
           </div>
@@ -116,43 +174,48 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
       <section className="lp-section-wide" style={{ background: 'var(--bg-mid)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
         <div className="lp-container-wide">
           <div className="lp-responsive-grid-split">
-            
+
             <div>
               <div className="lp-badge" style={{ marginBottom: '16px' }}>
                 <HelpCircle size={14} />
-                <span>Foundational Principles</span>
+                <span>The basics</span>
               </div>
               <h2 className="lp-title" style={{ fontSize: '2.4rem', marginBottom: '20px' }}>
-                Understanding Open-Source Intelligence (OSINT)
+                What is open-source intelligence (OSINT)?
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.75 }}>
-                Open-Source Intelligence (OSINT) refers to the collection, processing, and analysis of publicly available data to produce actionable research. In open-source research, "open source" denotes that the information is accessible in the public domain without requiring covert techniques, unauthorized access, or private system intrusion.
+                OSINT means collecting and studying information that is already public — web pages, news, public social media profiles,
+                maps and official websites — to answer a question. “Open source” means anyone can find the information, without secret
+                methods, hacking or access to private systems.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={{ paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  Public vs Private Data Boundaries
+                  Public and private information
                 </h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.925rem', lineHeight: 1.65 }}>
-                  Public data includes indexed web pages, news articles, public social profiles, developer commits, and corporate registrations. Private data—such as non-public emails, password-protected messages, financial accounts, or telecom logs—is strictly outside the scope of open-source research.
+                  Public information includes web pages, news articles, public social profiles, map listings and organisations’ own websites.
+                  Private information — private messages, private accounts, passwords, bank or phone company records — is outside OSINT and outside this platform.
                 </p>
               </div>
 
               <div style={{ paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  Source Verification & False Matches
+                  Check before you conclude
                 </h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.925rem', lineHeight: 1.65 }}>
-                  Search engine indexes frequently contain duplicate names, shared usernames, or outdated references. Professional OSINT requires evaluating multiple independent sources and reviewing original URLs before concluding identity correlation.
+                  Many people share a name or a username, and search results can be old. Good research compares several independent sources
+                  and opens the original page before deciding that a result belongs to the subject.
                 </p>
               </div>
 
               <div style={{ display: 'flex', gap: '14px', alignItems: 'center', paddingTop: '4px' }}>
                 <ShieldCheck size={24} style={{ color: 'var(--accent-warm-light)', flexShrink: 0 }} />
                 <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Ethical OSINT Rule:</strong> The platform operates strictly as a public index search aggregator. It does not provide consumer credit reporting, surveillance, or access to private non-public records.
+                  <strong style={{ color: 'var(--text-primary)' }}>Our rule:</strong> the platform only collects public information. It is not a
+                  consumer reporting service, does not do surveillance or facial recognition, and never accesses private records.
                 </div>
               </div>
             </div>
@@ -163,165 +226,46 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
 
       <section className="lp-section-wide">
         <div className="lp-container-wide">
-          
+
           <div style={{ marginBottom: '44px' }}>
             <div className="lp-badge" style={{ marginBottom: '12px' }}>
               <Layers size={14} />
-              <span>Platform Capabilities</span>
+              <span>Platform capabilities</span>
             </div>
             <h2 className="lp-title" style={{ fontSize: '2.4rem' }}>
               What the Platform Investigates
             </h2>
             <p className="lp-subtitle" style={{ maxWidth: '780px' }}>
-              Deep, structured intelligence collection structured around person identities, username digital footprints, and verified web profiles.
+              People, usernames and organisations — with search pages for social media, news, media, places and trends, and tools to review and analyse what you find.
             </p>
           </div>
 
           <div className="lp-editorial-list">
-            
-            <div className="lp-editorial-row">
-              <div className="lp-editorial-num">01</div>
-              <div className="lp-editorial-title-box">
-                <h3>NAME INVESTIGATION</h3>
-                <p>Multi-dork Google search engine aggregation</p>
-              </div>
-              <div className="lp-editorial-body">
-                <p className="lp-editorial-desc">
-                  Executes multi-dork search engine queries to locate a subject's public mentions, directory listings, publications, and professional affiliations.
-                </p>
-                <div className="lp-editorial-grid-2">
-                  <div className="lp-editorial-spec-item">
-                    <strong>Core Capabilities</strong>
-                    <p>Exact phrase quotes, location/role dorking, directory isolation (LinkedIn, Scholar, Wikipedia).</p>
-                  </div>
-                  <div className="lp-editorial-spec-item">
-                    <strong>Verification Rule</strong>
-                    <p>Verify city, employment history, and bio context on original target pages before assuming match.</p>
-                  </div>
+            {CAPABILITIES.map(c => (
+              <div key={c.num} className="lp-editorial-row">
+                <div className="lp-editorial-num">{c.num}</div>
+                <div className="lp-editorial-title-box">
+                  <h3>{c.title}</h3>
+                  <p>{c.sub}</p>
                 </div>
-                <div className="lp-editorial-tags">
-                  <span className="lp-editorial-tag">SerpApi Engine</span>
-                  <span className="lp-editorial-tag">Google Dorks</span>
-                  <span className="lp-editorial-tag">LinkedIn Filter</span>
-                  <span className="lp-editorial-tag">News & Press</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="lp-editorial-row">
-              <div className="lp-editorial-num">02</div>
-              <div className="lp-editorial-title-box">
-                <h3>USERNAME INVESTIGATION</h3>
-                <p>Cross-platform handle discovery & probing</p>
-              </div>
-              <div className="lp-editorial-body">
-                <p className="lp-editorial-desc">
-                  Checks 13 platforms directly for free and searches Google, DuckDuckGo and Yahoo — which also find the handle written with different punctuation — including TikTok accounts.
-                </p>
-                <div className="lp-editorial-grid-2">
-                  <div className="lp-editorial-spec-item">
-                    <strong>Platform Scope</strong>
-                    <p>GitHub, Reddit, Mastodon, Bluesky, TikTok, Instagram, Facebook, X, Medium, Telegram, Twitch, YouTube.</p>
+                <div className="lp-editorial-body">
+                  <p className="lp-editorial-desc">{c.desc}</p>
+                  <div className="lp-editorial-grid-2">
+                    <div className="lp-editorial-spec-item">
+                      <strong>{c.left[0]}</strong>
+                      <p>{c.left[1]}</p>
+                    </div>
+                    <div className="lp-editorial-spec-item">
+                      <strong>{c.right[0]}</strong>
+                      <p>{c.right[1]}</p>
+                    </div>
                   </div>
-                  <div className="lp-editorial-spec-item">
-                    <strong>Identity Disclaimer</strong>
-                    <p>Identical handles on different services do not guarantee they belong to the same human individual.</p>
+                  <div className="lp-editorial-tags">
+                    {c.tags.map(t => <span key={t} className="lp-editorial-tag">{t}</span>)}
                   </div>
                 </div>
-                <div className="lp-editorial-tags">
-                  <span className="lp-editorial-tag">Handle Probing</span>
-                  <span className="lp-editorial-tag">HTTP Status Check</span>
-                  <span className="lp-editorial-tag">Canonical Cleaning</span>
-                  <span className="lp-editorial-tag">Avatar Alignment</span>
-                </div>
               </div>
-            </div>
-
-            <div className="lp-editorial-row">
-              <div className="lp-editorial-num">03</div>
-              <div className="lp-editorial-title-box">
-                <h3>PROFILE DISCOVERY</h3>
-                <p>Canonical cleaning & string proximity scoring</p>
-              </div>
-              <div className="lp-editorial-body">
-                <p className="lp-editorial-desc">
-                  Sanitizes raw search engine links to strip tracking parameters, verify canonical profile status, and score name proximity.
-                </p>
-                <div className="lp-editorial-grid-2">
-                  <div className="lp-editorial-spec-item">
-                    <strong>URL Sanitization</strong>
-                    <p>Strips utm_*, ref, and tracking parameters; suppresses dead 404 redirects.</p>
-                  </div>
-                  <div className="lp-editorial-spec-item">
-                    <strong>Confidence Scoring</strong>
-                    <p>Calculates token alignment and flags Strong, Possible, or Mention-only matches.</p>
-                  </div>
-                </div>
-                <div className="lp-editorial-tags">
-                  <span className="lp-editorial-tag">Clean URLs</span>
-                  <span className="lp-editorial-tag">Domain Classification</span>
-                  <span className="lp-editorial-tag">Proximity Scoring</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="lp-editorial-row">
-              <div className="lp-editorial-num">04</div>
-              <div className="lp-editorial-title-box">
-                <h3>ACTIVITY & ASSOCIATIONS</h3>
-                <p>Public mentions, commits & affiliations</p>
-              </div>
-              <div className="lp-editorial-body">
-                <p className="lp-editorial-desc">
-                  Extracts publicly indexed commits, articles, co-authorships, and organization memberships into structured investigation records.
-                </p>
-                <div className="lp-editorial-grid-2">
-                  <div className="lp-editorial-spec-item">
-                    <strong>Public Activity</strong>
-                    <p>Aggregates code commits, posted articles, media interviews, and conference speeches.</p>
-                  </div>
-                  <div className="lp-editorial-spec-item">
-                    <strong>Affiliation Mapping</strong>
-                    <p>Identifies co-occurring corporate employers, university affiliations, and co-authors.</p>
-                  </div>
-                </div>
-                <div className="lp-editorial-tags">
-                  <span className="lp-editorial-tag">GitHub Commits</span>
-                  <span className="lp-editorial-tag">Articles & Blogs</span>
-                  <span className="lp-editorial-tag">Co-Authors</span>
-                  <span className="lp-editorial-tag">Organizations</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="lp-editorial-row">
-              <div className="lp-editorial-num">05</div>
-              <div className="lp-editorial-title-box">
-                <h3>WEBSITES & PUBLIC NEWS</h3>
-                <p>Indexed press mentions & portfolio discovery</p>
-              </div>
-              <div className="lp-editorial-body">
-                <p className="lp-editorial-desc">
-                  Surfaces personal blogs, portfolio sites, press release mentions, and public PDF documents citing the subject name.
-                </p>
-                <div className="lp-editorial-grid-2">
-                  <div className="lp-editorial-spec-item">
-                    <strong>News Coverage</strong>
-                    <p>Filters Google News indexes for independent third-party coverage and interviews.</p>
-                  </div>
-                  <div className="lp-editorial-spec-item">
-                    <strong>Document Search</strong>
-                    <p>Discovers public indexed PDF resumes, academic papers, and official releases.</p>
-                  </div>
-                </div>
-                <div className="lp-editorial-tags">
-                  <span className="lp-editorial-tag">Google News</span>
-                  <span className="lp-editorial-tag">Personal Domains</span>
-                  <span className="lp-editorial-tag">PDF Dorking</span>
-                </div>
-              </div>
-            </div>
-
+            ))}
           </div>
 
         </div>
@@ -331,32 +275,22 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
 
       <section className="lp-section-wide">
         <div className="lp-container-wide">
-          
+
           <div style={{ marginBottom: '44px' }}>
             <div className="lp-badge" style={{ marginBottom: '12px' }}>
               <Cpu size={14} />
-              <span>Investigation Pipeline</span>
+              <span>From search to report</span>
             </div>
             <h2 className="lp-title" style={{ fontSize: '2.4rem' }}>
               How the Platform Works
             </h2>
             <p className="lp-subtitle" style={{ maxWidth: '760px' }}>
-              A structured 9-step pipeline transforming raw search dorks into organized, bookmarked candidate intelligence records.
+              Seven steps from a name, username or organisation to a checked, source-backed case.
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-            {[
-              { step: '01', title: 'Start Investigation', desc: 'Enter a subject full name or username handle along with optional location/role qualifiers.' },
-              { step: '02', title: 'Search Public Sources', desc: 'The system constructs targeted dork expressions and routes search queries through SerpApi search backend.' },
-              { step: '03', title: 'Collect Results', desc: 'Organic search engine results are gathered, including profiles, articles, news, and organizational pages.' },
-              { step: '04', title: 'Normalize Data', desc: 'Raw result formats are parsed, URL parameters cleaned, and snippet metadata standardized.' },
-              { step: '05', title: 'Relevance Matching', desc: 'Candidate matches are evaluated against string proximity algorithms to flag likely profile matches.' },
-              { step: '06', title: 'Review Results', desc: 'Inspect findings categorized across Overview, Profiles, Activity, Associations, News, and Sources.' },
-              { step: '07', title: 'Save Case Findings', desc: 'Bookmark candidate profiles, write analyst notes, and record investigation state to Firestore.' },
-              { step: '08', title: 'Conduct Deep Search', desc: 'Trigger expanded secondary query sweeps to discover hidden or secondary public web references.' },
-              { step: '09', title: 'Verify Original Source', desc: 'Always open and inspect original target URLs directly to verify context before forming conclusions.' }
-            ].map((item) => (
+            {STEPS.map((item) => (
               <div key={item.step} className="lp-step-row">
                 <div className="lp-step-num">STEP {item.step}</div>
                 <div className="lp-step-title">{item.title}</div>
@@ -370,55 +304,64 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
 
       <section className="lp-section-wide" style={{ background: 'var(--bg-mid)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
         <div className="lp-container-wide">
-          
+
           <div style={{ marginBottom: '40px' }}>
             <div className="lp-badge" style={{ marginBottom: '12px' }}>
               <ShieldCheck size={14} />
-              <span>Accuracy & Verification</span>
+              <span>Accuracy & verification</span>
             </div>
             <h2 className="lp-title" style={{ fontSize: '2.4rem', marginBottom: '12px' }}>
-              Search Accuracy & Match Levels
+              How results are labelled
             </h2>
             <p className="lp-subtitle" style={{ maxWidth: '780px' }}>
-              Understanding match confidence levels, namesake risks, and verification requirements in open-source research.
+              Every result says how well it matches and why. Labels help you judge — they are not proof.
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-            
+
             <div className="lp-responsive-grid-row">
               <div style={{ color: '#22c55e', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle2 size={18} /> Strong Match
+                <CheckCircle2 size={18} /> Exact match
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                Target name, username handle, location, and professional bio align across multiple independent public platforms (e.g. GitHub and LinkedIn). High confidence.
+                The account uses exactly the name or username you searched. The platform notes when the platform itself confirmed the account exists.
               </div>
             </div>
 
             <div className="lp-responsive-grid-row">
-              <div style={{ color: 'var(--accent-warm-light)', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Search size={18} /> Possible Candidate
+              <div style={{ color: '#3b82f6', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Search size={18} /> Username variation
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                Target handle exists on a platform with partial profile information. Requires manual verification of bio context and activity history.
+                The same letters and numbers written differently (for example humblechild99 for humblechild_99). The page says whether anything links it to your subject.
               </div>
             </div>
 
             <div className="lp-responsive-grid-row">
-              <div style={{ color: '#eab308', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={18} /> Public Mention
+              <div style={{ color: '#7c3aed', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={18} /> Possibly related
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                Target name appears in a news article or document snippet alongside multiple individuals. May represent a shared namesake.
+                A different name or handle, but with real shared evidence — such as the same display name or website. Kept apart until you check it.
+              </div>
+            </div>
+
+            <div className="lp-responsive-grid-row">
+              <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} /> Other person
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                A similar name or handle with nothing linking it to your subject — most likely someone else. Never counted as your subject’s.
               </div>
             </div>
 
             <div className="lp-responsive-grid-row" style={{ borderBottom: '1px solid var(--border-color)' }}>
-              <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertTriangle size={18} /> Unverified / Generic
+              <div style={{ color: 'var(--accent-warm-light)', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={18} /> Organisation facts
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                Generic search engine index entry with insufficient context. Should not be assigned to a subject without corroborating proof.
+                Each fact shows “Confirmed by N independent sources”, “Single source” or “Sources disagree”. A detail no source gives is shown as “Not found”.
               </div>
             </div>
 
@@ -433,23 +376,25 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
             <div>
               <div className="lp-badge" style={{ marginBottom: '12px' }}>
                 <Cpu size={14} />
-                <span>Search Infrastructure</span>
+                <span>Where results come from</span>
               </div>
               <h2 className="lp-title" style={{ fontSize: '2.2rem', marginBottom: '12px' }}>
-                Search powered by SerpApi
+                Public sources, searched live
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.65 }}>
-                Configured Real-Time Search Engine Integration Provider
+                Search engines through SerpApi, plus Wikidata, public platform checks and official websites
               </p>
             </div>
             <div>
               <p style={{ color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1.7, marginBottom: '16px' }}>
-                All search requests submitted through the workspace are processed using <strong>SerpApi</strong>. SerpApi delivers real-time organic search engine results in structured JSON format without relying on fragile web scrapers.
+                Searches run through <strong>SerpApi</strong> on Google, Bing, DuckDuckGo, Yahoo, YouTube, Google News, Bing News, Google Images,
+                Bing Images, Google Maps and Google Trends. Usernames are also checked directly on platforms such as GitHub, Reddit, Mastodon and
+                Bluesky, organisations are looked up on Wikidata, and an organisation’s own website is read to build its profile.
               </p>
               <ul style={{ paddingLeft: '20px', color: 'var(--text-primary)', fontSize: '0.9rem', lineHeight: 1.8 }}>
-                <li>Search engines index public web content dynamically; results may fluctuate over time.</li>
-                <li>SerpApi executes raw search queries safely without exposing investigator identity to target subjects.</li>
-                <li>SerpApi acts as the infrastructure provider; it does not independently verify subject identities.</li>
+                <li>Searches come from our server; the people you search are not contacted or notified.</li>
+                <li>The same search repeated within 12 hours is answered from a saved copy and costs nothing.</li>
+                <li>Search engines change over time, so results can differ from one day to the next.</li>
               </ul>
             </div>
           </div>
@@ -459,17 +404,17 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
       <section className="lp-section-wide" style={{ paddingTop: '60px', paddingBottom: '80px', textAlign: 'center' }}>
         <div className="lp-container-wide" style={{ maxWidth: '960px' }}>
           <h2 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '16px' }}>
-            Ready to Launch Your Investigation?
+            Ready to start an investigation?
           </h2>
           <p className="lp-subtitle" style={{ maxWidth: '680px', margin: '0 auto 36px' }}>
-            Sign in to access your secure, user-isolated Firestore investigation workspace and start conducting ethical open-source research.
+            Sign in with Google or email to open your private workspace. Your cases, history and tracked subjects are visible only to you.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to={currentUser ? "/dashboard" : "/auth"} className="btn-primary-warm" style={{ padding: '14px 32px', fontSize: '1.05rem' }}>
               {currentUser ? "Open Workspace" : "Sign In & Get Started"} <ArrowRight size={18} />
             </Link>
             <Link to="/documentation" className="btn-outline" style={{ padding: '14px 28px', fontSize: '1.05rem' }}>
-              Read Technical Documentation
+              Read the documentation
             </Link>
           </div>
         </div>
