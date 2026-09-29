@@ -11,7 +11,7 @@ import { Empty, LevelBadge, LevelPicker, LinkStatus, Modal, SourceLogo } from '.
 const PAGE_SIZE = 10;
 
 export const SourcesTab: React.FC = () => {
-  const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
+  const { inv, d, focus, commit, setLevel, goTab, readOnly } = useWorkspace();
   const [query, setQuery] = useState('');
   const [type, setType] = useState('all');
   const [level, setLevel2] = useState('all');
@@ -72,13 +72,13 @@ export const SourcesTab: React.FC = () => {
           <span style={{ fontSize: 30, fontWeight: 600 }}>{d.sources.length}</span><span className="ws-sub">sources</span>
           {Array.from(typeCounts.entries()).map(([t, n]) => <span key={t} className="ws-tag"><b style={{ marginRight: 6 }}>{n}</b>{t}</span>)}
         </div>
-        <div className="ws-chips">
+        {!readOnly && <div className="ws-chips">
           <button type="button" className="ws-btn" onClick={exportCsv} disabled={d.sources.length === 0}>Export list</button>
           <button type="button" className="ws-btn ws-btn-primary" onClick={() => setAdding(true)}><Plus size={16} /> Add source</button>
-        </div>
+        </div>}
       </div>
 
-      {d.sources.length === 0 ? <Empty title="No sources yet">Sources are the pages behind every kept result. Add one manually if you found it elsewhere.</Empty> : (
+      {d.sources.length === 0 ? <Empty title="No sources yet">Sources are the pages behind every kept result.{readOnly ? '' : ' Add one manually if you found it elsewhere.'}</Empty> : (
         <>
           <div className="ws-toolbar">
             <div className="ws-chips">

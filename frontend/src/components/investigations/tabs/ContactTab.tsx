@@ -9,7 +9,7 @@ import {
 } from '../../../lib/contactEvidence';
 import { subjectMatcher } from '../../../lib/locationEvidence';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Empty, SectionHead, SourceLogo } from '../workspace/ui';
+import { Empty, ReadOnlyNote, SectionHead, SourceLogo } from '../workspace/ui';
 
 const STATUS_CLASS: Record<ContactStatus, string> = { stated: 'ok', linked: 'ok', unconfirmed: 'warn' };
 const ENGINE_LABEL: Record<string, string> = { google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo' };
@@ -20,11 +20,12 @@ const ENGINE_LABEL: Record<string, string> = { google: 'Google', bing: 'Bing', d
  * used to extract contact details; nothing else is added to the case.
  */
 function useContactScan() {
-  const { inv, commit } = useWorkspace();
+  const { inv, commit, readOnly } = useWorkspace();
   const { run, cancel, running, steps } = useSearchRun();
   const started = useRef(false);
 
   const scan = useCallback(async () => {
+    if (readOnly) return;
     const query = contactQuery(inv);
     const at = new Date().toISOString();
     let result: NonNullable<typeof inv.contactScan>;
@@ -54,20 +55,20 @@ function useContactScan() {
         detail: done.error ? `Failed: ${done.error}` : `${done.resultsChecked} results checked · ${done.refs.length} contact reference${done.refs.length === 1 ? '' : 's'}`
       })]
     );
-  }, [inv, run, commit]);
+  }, [inv, run, commit, readOnly]);
 
   useEffect(() => {
-    if (started.current || inv.contactScan) return undefined;
+    if (started.current || inv.contactScan || readOnly) return undefined;
     started.current = true;
     const t = setTimeout(() => { scan(); }, 0);
     return () => clearTimeout(t);
-  }, [inv.contactScan, scan]);
+  }, [inv.contactScan, scan, readOnly]);
 
   return { scan, cancel, running, steps };
 }
 
 export const ContactTab: React.FC = () => {
-  const { inv } = useWorkspace();
+  const { inv, readOnly } = useWorkspace();
   const { scan, cancel, running, steps } = useContactScan();
   const refs = useMemo(() => allContacts(inv), [inv]);
   const summary = useMemo(() => summariseContacts(refs), [refs]);
@@ -81,7 +82,7 @@ export const ContactTab: React.FC = () => {
 
   return (
     <div className="ws-loc">
-      <SectionHead title="Public contact details" count={summary.length} noRule right={
+      <SectionHead title="Public contact details" count={summary.length} noRule right={readOnly ? undefined :
         <button type="button" className="ws-btn ws-btn-sm" onClick={scan}><RotateCw size={14} /> Search again</button>
       } />
       <p className="ws-sub ws-loc-intro">
@@ -104,7 +105,7 @@ export const ContactTab: React.FC = () => {
               </span>
             )}
           </div>
-        ) : <span className="ws-sub">Uses 4 SerpApi searches (Google, Bing, DuckDuckGo, social profiles), plus this case’s profiles and pages.</span>}
+        ) : readOnly ? <ReadOnlyNote what="The contact search" /> : <span className="ws-sub">Uses 4 SerpApi searches (Google, Bing, DuckDuckGo, social profiles), plus this case’s profiles and pages.</span>}
       </div>
 
       {summary.length === 0 ? (

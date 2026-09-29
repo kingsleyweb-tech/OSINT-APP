@@ -15,7 +15,7 @@ function windowLabel(iso: string): string {
 }
 
 export const AuditTab: React.FC = () => {
-  const { inv } = useWorkspace();
+  const { inv, readOnly } = useWorkspace();
   const events = useMemo(() => allAuditEvents(inv), [inv]);
   const [group, setGroup] = useState('all');
   const [limit, setLimit] = useState(PAGE);
@@ -50,7 +50,7 @@ export const AuditTab: React.FC = () => {
             value={group}
             onChange={g => { setGroup(g); setLimit(PAGE); }}
           />
-          <button type="button" className="ws-btn" onClick={exportCsv}><Download size={16} /> Export CSV</button>
+          {!readOnly && <button type="button" className="ws-btn" onClick={exportCsv}><Download size={16} /> Export CSV</button>}
         </div>
         {filtered.length === 0 ? <Empty title="No events" /> : (
           <div className="ws-table-wrap">

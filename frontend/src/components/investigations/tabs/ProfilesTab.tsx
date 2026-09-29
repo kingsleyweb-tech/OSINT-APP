@@ -59,7 +59,7 @@ function investigateLink(p: SocialProfile): string | undefined {
 }
 
 export const ProfilesTab: React.FC = () => {
-  const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
+  const { inv, d, focus, commit, setLevel, goTab, readOnly } = useWorkspace();
   const allProfiles = useMemo(() => inv.socialProfiles || [], [inv.socialProfiles]);
   // Similar accounts are other people: listed separately below, not as this person's profiles.
   const profiles = useMemo(() => allProfiles.filter(p => !isSimilarProfile(p)), [allProfiles]);
@@ -73,7 +73,7 @@ export const ProfilesTab: React.FC = () => {
 
   // Server-side reachability check for profiles not checked in the last 24h. It only annotates; the URL never changes.
   useEffect(() => {
-    if (checkedFor.current === inv.id) return;
+    if (checkedFor.current === inv.id || readOnly) return;
     checkedFor.current = inv.id;
     const due = profiles.filter(p => (p.profileUrl || p.url) && Date.now() - (p.lastCheckedAt ? Date.parse(p.lastCheckedAt) : 0) > RECHECK_AFTER_MS);
     if (due.length === 0) return;

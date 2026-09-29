@@ -54,7 +54,7 @@ const FactValue: React.FC<{ g: FactGroup; link?: boolean }> = ({ g, link }) => {
 };
 
 export const OrganizationTab: React.FC = () => {
-  const { inv, d, focus, goTab } = useWorkspace();
+  const { inv, d, focus, goTab, readOnly } = useWorkspace();
   const { running, enrich, readSite } = useOrgPipeline();
   const org = inv.organization;
   const [section, setSection] = useState<OrgSection>(ORG_SECTIONS.some(s => s.key === focus) ? focus as OrgSection : 'summary');
@@ -291,7 +291,7 @@ export const OrganizationTab: React.FC = () => {
             {table(row('website', { max: 4, link: true }))}
             <div className="ws-loc-section">
               <SectionHead title={<span className="ws-loc-place"><Globe size={16} /> Website intelligence</span>} right={
-                facts.website && <button type="button" className="ws-btn ws-btn-sm" onClick={() => { readSite(); }} disabled={Boolean(running)}><RotateCw size={14} /> Read again</button>
+                facts.website && !readOnly && <button type="button" className="ws-btn ws-btn-sm" onClick={() => { readSite(); }} disabled={Boolean(running)}><RotateCw size={14} /> Read again</button>
               } />
               {!site && <p className="ws-sub">{facts.website ? 'The website has not been read yet.' : 'Not found — no source lists a website for the organisation.'}</p>}
               {site && !site.reachable && <p className="ws-loc-warn">Could not be read: {site.error || 'the website did not respond'}.</p>}
@@ -451,7 +451,7 @@ export const OrganizationTab: React.FC = () => {
               </div>
             )}
             <div className="ws-loc-section">
-              <SectionHead title="Sources searched" right={
+              <SectionHead title="Sources searched" right={readOnly ? undefined :
                 <button type="button" className="ws-btn ws-btn-sm" onClick={() => { enrich(); }} disabled={Boolean(running)}><RotateCw size={14} /> Search again</button>
               } />
               {!enr ? <p className="ws-sub">Not searched yet.</p> : enr.error ? <p className="ws-loc-warn">Unable to search the sources: {enr.error}</p> : (
@@ -508,7 +508,7 @@ export const OrganizationTab: React.FC = () => {
           {enr
             ? <>Sources searched {fmtDate(enr.checkedAt, true)} · {enr.error ? <span className="ws-loc-warn">{enr.error}</span> : `${enr.sources.filter(s => s.status !== 'failed').length} of ${enr.sources.length} sources answered`}{enr.sources.some(s => s.status === 'failed') && <> · <button type="button" className="ws-link" onClick={() => setSection('sources')}>see which failed</button></>}</>
             : 'The organisation sources have not been searched yet.'}{' '}
-          <button type="button" className="ws-btn ws-btn-sm" onClick={() => { enrich(); }}><RotateCw size={13} /> Search again</button>
+          {!readOnly && <button type="button" className="ws-btn ws-btn-sm" onClick={() => { enrich(); }}><RotateCw size={13} /> Search again</button>}
         </p>
       )}
       <Chips options={ORG_SECTIONS.map(s => ({ key: s.key, label: labels[s.key] || s.label }))} value={section} onChange={k => setSection(k as OrgSection)} />

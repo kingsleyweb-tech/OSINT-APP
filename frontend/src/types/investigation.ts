@@ -412,6 +412,8 @@ export interface Investigation {
   lastSearched?: string;
   lastUpdated?: string;
   isTracked?: boolean;
+  /** Token of the view-only share link (sharedCases/{token}); absent when the case is not shared. */
+  shareToken?: string;
   /** Pictures found by the Images tab (image search on the subject's exact name). */
   imageResults?: CaseImage[];
   imagesCheckedAt?: string;

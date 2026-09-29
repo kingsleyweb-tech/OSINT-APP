@@ -4,6 +4,7 @@ import { Layout } from './components/layout/Layout';
 import { DashboardPage } from './pages/Dashboard/Dashboard';
 import { NewInvestigationPage } from './pages/NewInvestigation/NewInvestigation';
 import { InvestigationDetailPage } from './pages/Investigation/InvestigationDetail';
+import { SharedInvestigationPage } from './pages/Investigation/SharedInvestigationPage';
 import { InvestigationsListPage } from './pages/Investigations/InvestigationsList';
 import { PeoplePage } from './pages/People/People';
 import { SourcesPage } from './pages/Sources/Sources';
@@ -89,6 +90,9 @@ const AppRoutes: React.FC = () => {
       </Route>
 
       <Route path="/auth" element={<AuthRoute />} />
+
+      {/* View-only share link: open to anyone with the link, no sign-in */}
+      <Route path="/shared/:token/:tab?" element={<SharedInvestigationPage />} />
 
       {/* Signed-in application */}
       <Route path="/dashboard" element={<AppPage><DashboardPage currentUser={user || undefined} /></AppPage>} />

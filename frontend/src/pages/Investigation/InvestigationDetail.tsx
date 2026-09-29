@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, Copy, Download, FolderSearch, Loader2, Menu, MoreHorizontal, RotateCw, User, X, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ChevronLeft, Copy, Download, Eye, FolderSearch, Link2, Loader2, Menu, MoreHorizontal, RotateCw, Share2, User, X, Bookmark, BookmarkCheck } from 'lucide-react';
 
 import type { AuditEvent, EvidenceLevel, Investigation } from '../../types/investigation';
-import { getInvestigationFromDb, saveInvestigationToDb, untrackPersonInDb } from '../../firebase/firestore';
+import {
+  getInvestigationFromDb, getSharedCaseFromDb, saveInvestigationToDb, shareInvestigationInDb, stopSharingInDb, untrackPersonInDb
+} from '../../firebase/firestore';
 import { useToast } from '../../components/ui/Toast';
 import { useNotifications } from '../../context/NotificationContext';
 import { getApiBase } from '../../lib/searchClient';
@@ -62,15 +64,22 @@ interface InvestigationDetailPageProps {
 }
 
 export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = ({ activeTabRoute }) => {
-  const { id, tab } = useParams<{ id: string; tab?: string }>();
+  const { id, tab, token } = useParams<{ id: string; tab?: string; token?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const { addNotification } = useNotifications();
 
+  // Opened from a view-only share link (/shared/:token): load the shared copy, change nothing.
+  const readOnly = Boolean(token);
+  const [sharedBy, setSharedBy] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+
   const currentTab = toTabKey(activeTabRoute || tab);
 
   const [investigation, setInvestigation] = useState<Investigation | null>(() => {
+    if (token) return null;
     const fromState = (location.state as any)?.investigation;
     if (fromState) return fromState;
     if (id) {
@@ -90,7 +99,12 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   invRef.current = investigation;
 
   useEffect(() => {
-    if (id && !investigation) {
+    if (token) {
+      getSharedCaseFromDb(token).then(shared => {
+        if (shared) { setInvestigation(shared.investigation); setSharedBy(shared.ownerName); }
+        setLoading(false);
+      });
+    } else if (id && !investigation) {
       getInvestigationFromDb(id).then(data => {
         if (data) setInvestigation(data);
         setLoading(false);
@@ -98,35 +112,37 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     } else {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, token]);
 
   useEffect(() => {
-    if (investigation && id) {
+    if (investigation && id && !readOnly) {
       try { sessionStorage.setItem(`osint_inv_${id}`, JSON.stringify(investigation)); } catch { /* quota */ }
     }
-  }, [investigation, id]);
+  }, [investigation, id, readOnly]);
 
   const persist = useCallback((next: Investigation) => {
+    if (readOnly) return;
     setInvestigation(next);
     saveInvestigationToDb(next).catch(() => toast.error('Not saved', 'The change could not be saved to the database.'));
-  }, [toast]);
+  }, [toast, readOnly]);
 
   const commit = useCallback((mutate: (inv: Investigation) => Investigation, events: AuditEvent[] = []) => {
     const current = invRef.current;
-    if (!current) return;
+    if (!current || readOnly) return;
     const changed = mutate(current);
     persist({
       ...changed,
       auditLog: [...events, ...(changed.auditLog || [])],
       updatedAt: new Date().toISOString()
     });
-  }, [persist]);
+  }, [persist, readOnly]);
 
   const goTab = useCallback((key: TabKey, focusKey?: string) => {
     setFocus(focusKey || null);
     setSheetOpen(false);
-    if (id) navigate(`/investigations/${id}/${key}`, { state: { investigation: invRef.current, focus: focusKey || null } });
-  }, [id, navigate]);
+    if (token) navigate(`/shared/${token}/${key}`, { state: { focus: focusKey || null } });
+    else if (id) navigate(`/investigations/${id}/${key}`, { state: { investigation: invRef.current, focus: focusKey || null } });
+  }, [id, token, navigate]);
 
   const setLevel = useCallback((key: string, level: EvidenceLevel, label: string, object: string) => {
     const current = invRef.current;
@@ -150,7 +166,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
 
   const rerun = useCallback(async () => {
     const current = invRef.current;
-    if (!current) return;
+    if (!current || readOnly) return;
     setIsRescanning(true);
     try {
       const response = await apiFetch(`${getApiBase()}/investigations/rescan`, {
@@ -186,7 +202,50 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     } finally {
       setIsRescanning(false);
     }
-  }, [persist, toast, addNotification]);
+  }, [persist, toast, addNotification, readOnly]);
+
+  const shareUrl = investigation?.shareToken ? `${window.location.origin}/shared/${investigation.shareToken}` : '';
+
+  const createShareLink = async () => {
+    const current = invRef.current;
+    if (!current || readOnly) return;
+    setShareBusy(true);
+    try {
+      const shared = await shareInvestigationInDb(current, ownerName(current));
+      commit(
+        () => shared,
+        [newAuditEvent({ action: 'View-only link created', object: current.id, detail: 'Anyone with the link can view this case', group: 'Investigation', kind: 'investigator' })]
+      );
+      toast.success('Link created', 'Anyone with the link can view this case, but cannot change anything.');
+    } catch {
+      toast.error('Link not created', 'The view-only link could not be created. Please try again.');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const stopSharing = async () => {
+    const current = invRef.current;
+    if (!current?.shareToken || readOnly) return;
+    setShareBusy(true);
+    try {
+      const next = await stopSharingInDb(current);
+      commit(
+        () => next,
+        [newAuditEvent({ action: 'View-only link removed', object: current.id, detail: 'The shared link no longer works', group: 'Investigation', kind: 'investigator' })]
+      );
+      toast.success('Sharing stopped', 'The link no longer opens this case.');
+    } catch {
+      toast.error('Not changed', 'Sharing could not be stopped. Please try again.');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard?.writeText(shareUrl).then(() => toast.success('Copied', 'View-only link copied.'), () => undefined);
+  };
 
   /** One CSV with every saved profile, web/news result, activity, association and source. */
   const exportCsv = () => {
@@ -215,7 +274,8 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     commit,
     setLevel,
     rerun,
-    isRescanning
+    isRescanning,
+    readOnly
   } : null;
 
   if (loading) {
@@ -223,6 +283,18 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   }
 
   if (!investigation || !api || !d) {
+    if (readOnly) {
+      return (
+        <div className="ws-root">
+          <div className="ws-empty" style={{ marginTop: 40 }}>
+            <FolderSearch size={36} />
+            <b>This link is no longer active</b>
+            The investigation was not found. The owner may have stopped sharing it or deleted it.
+            <div><Link className="ws-btn" style={{ marginTop: 14 }} to="/">Go to the homepage</Link></div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="ws-root">
         <div className="ws-empty" style={{ marginTop: 40 }}>
@@ -278,14 +350,21 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
 
   return (
     <WorkspaceContext.Provider value={api}>
-      {investigation.entityKind === 'organization' && <OrgPipelineRunner />}
+      {investigation.entityKind === 'organization' && !readOnly && <OrgPipelineRunner />}
       <div className="ws-root">
-        <nav className="ws-crumb" aria-label="Breadcrumb">
-          <Link to="/investigations"><ChevronLeft size={16} /> Investigations</Link>
-          <span>/</span>
-          <span className="ws-mono">{investigation.id}</span>
-          <button type="button" className="ws-copy" onClick={copyId} aria-label="Copy investigation ID"><Copy size={14} /></button>
-        </nav>
+        {readOnly ? (
+          <div className="ws-shared-note">
+            <Eye size={16} />
+            <span><b>View only.</b> Shared by {sharedBy || 'the investigator'}. You can look through every tab, but nothing can be searched or changed.</span>
+          </div>
+        ) : (
+          <nav className="ws-crumb" aria-label="Breadcrumb">
+            <Link to="/investigations"><ChevronLeft size={16} /> Investigations</Link>
+            <span>/</span>
+            <span className="ws-mono">{investigation.id}</span>
+            <button type="button" className="ws-copy" onClick={copyId} aria-label="Copy investigation ID"><Copy size={14} /></button>
+          </nav>
+        )}
 
         <header className="ws-head">
           <div className="ws-head-main">
@@ -300,14 +379,20 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
                 {place && <span>{place}</span>}
                 <span>Created <b>{fmtDate(investigation.createdAt, true)}</b></span>
                 <span>Updated <b>{fmtDate(investigation.updatedAt || investigation.createdAt, true)}</b></span>
-                <span>Owner <b>{ownerName(investigation)}</b></span>
+                <span>Owner <b>{readOnly ? sharedBy || 'Investigator' : ownerName(investigation)}</b></span>
               </div>
               <div className="ws-mobile-meta ws-sub" style={{ marginTop: 4 }}>
                 Created {fmtDate(investigation.createdAt, true)} · Updated {fmtTime(investigation.updatedAt)}
               </div>
             </div>
           </div>
+          {readOnly ? (
+            <div className="ws-actions"><span className="ws-pill"><Eye size={13} /> View only</span></div>
+          ) : (
           <div className="ws-actions">
+            <button type="button" className={`ws-btn${investigation.shareToken ? ' ws-btn-shared' : ''}`} onClick={() => setShareOpen(o => !o)} aria-expanded={shareOpen}>
+              <Share2 size={16} /> <span className="hide-mobile">{investigation.shareToken ? 'Shared' : 'Share'}</span>
+            </button>
             <button type="button" className="ws-btn hide-mobile" onClick={exportJson}><Download size={16} /> Export</button>
             {canRerun && <button type="button" className="ws-btn hide-mobile" onClick={rerun} disabled={isRescanning}>
               {isRescanning ? <Loader2 size={16} className="spinning" /> : <RotateCw size={16} />} {isRescanning ? 'Re-running…' : 'Re-run searches'}
@@ -324,11 +409,43 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
                 {canRerun && <button type="button" onClick={() => { setMenuOpen(false); rerun(); }} disabled={isRescanning}><RotateCw size={15} /> Re-run searches</button>}
                 <button type="button" onClick={() => { setMenuOpen(false); exportCsv(); }}><Download size={15} /> Export CSV (spreadsheet)</button>
                 <button type="button" onClick={() => { setMenuOpen(false); exportJson(); }}><Download size={15} /> Export JSON</button>
+                <button type="button" onClick={() => { setMenuOpen(false); setShareOpen(true); }}><Share2 size={15} /> Share view-only link</button>
                 <button type="button" onClick={() => { setMenuOpen(false); copyId(); }}><Copy size={15} /> Copy investigation ID</button>
               </div>
             )}
           </div>
+          )}
         </header>
+
+        {shareOpen && !readOnly && (
+          <section className="ws-share" aria-label="Share view-only link">
+            <div className="ws-share-head">
+              <div>
+                <div className="ws-h2"><Link2 size={16} /> View-only link</div>
+                <p className="ws-sub">
+                  Anyone with this link can open the case and see every tab, the searches that were run and all the data found.
+                  They cannot search, change, track, re-run or export anything. The link shows your latest changes.
+                </p>
+              </div>
+              <button type="button" className="ws-btn ws-btn-ghost ws-icon-btn" onClick={() => setShareOpen(false)} aria-label="Close"><X size={18} /></button>
+            </div>
+            {investigation.shareToken ? (
+              <>
+                <div className="ws-share-row">
+                  <input className="ws-input ws-share-url" value={shareUrl} readOnly onFocus={e => e.currentTarget.select()} aria-label="View-only link" />
+                  <button type="button" className="ws-btn ws-btn-primary" onClick={copyShareLink}><Copy size={15} /> Copy link</button>
+                </div>
+                <button type="button" className="ws-btn ws-share-stop" onClick={stopSharing} disabled={shareBusy}>
+                  {shareBusy ? <Loader2 size={15} className="spinning" /> : <X size={15} />} Stop sharing
+                </button>
+              </>
+            ) : (
+              <button type="button" className="ws-btn ws-btn-primary" onClick={createShareLink} disabled={shareBusy}>
+                {shareBusy ? <Loader2 size={15} className="spinning" /> : <Link2 size={15} />} Create view-only link
+              </button>
+            )}
+          </section>
+        )}
 
         <div className="ws-tabs" role="tablist">{tabs.map(tabButton)}</div>
 
@@ -361,10 +478,10 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           {currentTab === 'audit' && <AuditTab />}
         </div>
 
-        <div className="ws-mobile-bar">
+        {!readOnly && <div className="ws-mobile-bar">
           {canRerun && <button type="button" className="ws-btn" onClick={rerun} disabled={isRescanning}>{isRescanning ? 'Re-running…' : 'Re-run searches'}</button>}
           <button type="button" className={`ws-btn${investigation.isTracked ? '' : ' ws-btn-primary'}`} onClick={toggleTrack}>{investigation.isTracked ? 'Tracked ✓' : trackLabel}</button>
-        </div>
+        </div>}
 
         {sheetOpen && (
           <div className="ws-sheet-backdrop" onMouseDown={e => e.target === e.currentTarget && setSheetOpen(false)}>

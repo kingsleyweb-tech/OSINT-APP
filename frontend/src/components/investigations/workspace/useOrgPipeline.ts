@@ -29,12 +29,12 @@ async function postJson<T>(path: string, body: unknown, fallback: string): Promi
  * is computed from them.
  */
 export function useOrgPipeline() {
-  const { inv, commit } = useWorkspace();
+  const { inv, commit, readOnly } = useWorkspace();
   const [running, setRunning] = usePageState<'' | 'enrich' | 'website'>(`orgpipe:${inv.id}`, '');
   const org = inv.organization;
 
   const enrich = useCallback(async () => {
-    if (!org) return;
+    if (!org || readOnly) return;
     setRunning('enrich');
     inflight.add(inv.id);
     let result: OrgEnrichment;
@@ -56,10 +56,10 @@ export function useOrgPipeline() {
         detail: result.error ? `Failed: ${result.error}` : `${facts} fact${facts === 1 ? '' : 's'} · ${result.mapsListings.length} map listing(s) · ${result.sources.map(s => `${s.label}: ${s.status}`).join(', ')}`
       })]
     );
-  }, [inv.id, org, commit, setRunning]);
+  }, [inv.id, org, commit, setRunning, readOnly]);
 
   const readSite = useCallback(async () => {
-    if (!org) return;
+    if (!org || readOnly) return;
     const target = bestWebsite(inv);
     if (!target) return;
     setRunning('website');
@@ -83,7 +83,7 @@ export function useOrgPipeline() {
         detail: intel.reachable ? `${intel.pages.length} page(s) read · ${intel.verification.status}` : `Failed: ${intel.error || 'unreachable'}`
       })]
     );
-  }, [inv, org, commit, setRunning]);
+  }, [inv, org, commit, setRunning, readOnly]);
 
   return { running, enrich, readSite };
 }

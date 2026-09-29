@@ -1,14 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import type { EvidenceLevel } from '../../../types/investigation';
-import { hostOf, LEVEL_LABEL } from '../../../lib/workspace';
+import { fmtDate, hostOf, LEVEL_LABEL } from '../../../lib/workspace';
+import { WorkspaceContext } from './WorkspaceContext';
 import { PlatformIcon } from '../../ui/PlatformIcon';
 
 export const LevelBadge: React.FC<{ level: EvidenceLevel; dot?: boolean }> = ({ level, dot }) => (
   <span className={`ws-level ${level}${dot ? ' dot' : ''}`}>{LEVEL_LABEL[level]}</span>
 );
 
-export const LevelPicker: React.FC<{ value: EvidenceLevel; onChange: (l: EvidenceLevel) => void }> = ({ value, onChange }) => (
+/** True when the case was opened from a view-only share link. Safe outside the workspace (false). */
+export function useReadOnly(): boolean {
+  return Boolean(useContext(WorkspaceContext)?.readOnly);
+}
+
+/** Shown in a view-only case in place of the controls that would search for more data. */
+export const ReadOnlyNote: React.FC<{ checkedAt?: string; what: string }> = ({ checkedAt, what }) => (
+  <span className="ws-sub">
+    {checkedAt ? `${what} checked by the investigator on ${fmtDate(checkedAt, true)}.` : `${what} has not been gathered by the investigator yet.`}
+  </span>
+);
+
+export const LevelPicker: React.FC<{ value: EvidenceLevel; onChange: (l: EvidenceLevel) => void }> = ({ value, onChange }) => {
+  const readOnly = useReadOnly();
+  if (readOnly) return <LevelBadge level={value} />;
+  return (
   <div className="ws-level-picker" role="group" aria-label="Evidence level">
     {(['raw', 'relevant', 'validated'] as EvidenceLevel[]).map(l => (
       <button
@@ -22,7 +38,8 @@ export const LevelPicker: React.FC<{ value: EvidenceLevel; onChange: (l: Evidenc
       </button>
     ))}
   </div>
-);
+  );
+};
 
 export interface ChipOption {
   key: string;

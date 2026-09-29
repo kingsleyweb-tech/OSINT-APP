@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -27,10 +28,13 @@ import type { UserProfile, SearchHistoryEntry } from '../types/user';
  *   users/{uid}/searchResults/{historyId} full results of one search in the history
  *   investigations/{id}                  createdBy = owner uid
  *   trackedPeople/{uid}_{investigationId} userId = owner uid
+ *   sharedCases/{token}                  read-only copy of a shared investigation (ownerUid = owner);
+ *                                        anyone with the random token can read it, nobody can list them
  * The security rules in /firestore.rules enforce the same ownership on the server.
  */
 
 const INVESTIGATIONS = 'investigations';
+const SHARED = 'sharedCases';
 const USERS = 'users';
 const TRACKED = 'trackedPeople';
 const NOTIFICATIONS = 'notifications';
@@ -85,6 +89,11 @@ export async function saveInvestigationToDb(investigation: Investigation): Promi
   const toSave: Investigation = { ...investigation, createdBy: uid, updatedAt: new Date().toISOString() };
   await setDoc(doc(db, INVESTIGATIONS, toSave.id), clean(toSave), { merge: true });
   if (toSave.isTracked) await trackPersonInDb(toSave);
+  // A shared case keeps its view-only copy up to date, so the link always shows the latest data.
+  if (toSave.shareToken) {
+    await setDoc(doc(db, SHARED, toSave.shareToken), clean({ investigation: toSave, updatedAt: toSave.updatedAt }), { merge: true })
+      .catch(e => console.error('Shared copy not updated:', e));
+  }
 }
 
 /** Returns the investigation only if it belongs to the signed-in user. */
@@ -130,6 +139,8 @@ export function subscribeToUserInvestigations(
 
 export async function deleteInvestigationFromDb(id: string): Promise<void> {
   const uid = currentUid();
+  const token = (await getDoc(doc(db, INVESTIGATIONS, id)).catch(() => null))?.data()?.shareToken;
+  if (typeof token === 'string') await deleteDoc(doc(db, SHARED, token)).catch(() => undefined);
   await deleteDoc(doc(db, INVESTIGATIONS, id));
   await deleteDoc(doc(db, TRACKED, `${uid}_${id}`)).catch(() => undefined);
 }
@@ -239,6 +250,57 @@ export async function deleteAllNotificationsFromDb(uid: string): Promise<void> {
   await deleteRefsInBatches(snap.docs.map(d => d.ref));
 }
 
+// ─── View-only share links (sharedCases/{token}) ─────────────────────────────
+
+export interface SharedCase {
+  investigation: Investigation;
+  ownerName: string;
+  sharedAt: string;
+}
+
+/** 24 random bytes as base64url (32 characters): cannot be guessed, unlike investigation ids. */
+function newShareToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Creates a view-only link for an investigation of the signed-in user. Returns the updated case. */
+export async function shareInvestigationInDb(inv: Investigation, ownerName: string): Promise<Investigation> {
+  const uid = currentUid();
+  if (inv.shareToken) return inv;
+  const token = newShareToken();
+  const now = new Date().toISOString();
+  const shared: Investigation = { ...inv, createdBy: uid, shareToken: token, updatedAt: now };
+  // The case must exist (owned by this user) for the rules to accept the share.
+  await saveInvestigationToDb(inv);
+  await setDoc(doc(db, SHARED, token), clean({ investigationId: inv.id, ownerUid: uid, ownerName, sharedAt: now, updatedAt: now, investigation: shared }));
+  await setDoc(doc(db, INVESTIGATIONS, inv.id), { shareToken: token, updatedAt: now }, { merge: true });
+  return shared;
+}
+
+/** Removes the view-only link: the copy is deleted, so the link stops working. */
+export async function stopSharingInDb(inv: Investigation): Promise<Investigation> {
+  currentUid();
+  if (inv.shareToken) await deleteDoc(doc(db, SHARED, inv.shareToken));
+  await updateDoc(doc(db, INVESTIGATIONS, inv.id), { shareToken: deleteField(), updatedAt: new Date().toISOString() });
+  const next = { ...inv };
+  delete next.shareToken;
+  return next;
+}
+
+/** Reads a shared case by its link token. Works without signing in. */
+export async function getSharedCaseFromDb(token: string): Promise<SharedCase | null> {
+  try {
+    const snap = await getDoc(doc(db, SHARED, token));
+    if (!snap.exists()) return null;
+    const d = snap.data();
+    if (!d.investigation) return null;
+    return { investigation: d.investigation as Investigation, ownerName: d.ownerName || 'Investigator', sharedAt: d.sharedAt || '' };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Account data ────────────────────────────────────────────────────────────
 
 /** Everything stored for a user, for "Export my data". */
@@ -259,11 +321,12 @@ export async function exportUserDataFromDb(uid: string): Promise<Record<string, 
 }
 
 export async function deleteAllInvestigationsFromDb(uid: string): Promise<number> {
-  const [investigations, tracked] = await Promise.all([
+  const [investigations, tracked, shared] = await Promise.all([
     getDocs(query(collection(db, INVESTIGATIONS), where('createdBy', '==', uid))),
-    getDocs(query(collection(db, TRACKED), where('userId', '==', uid)))
+    getDocs(query(collection(db, TRACKED), where('userId', '==', uid))),
+    getDocs(query(collection(db, SHARED), where('ownerUid', '==', uid))).catch(() => null)
   ]);
-  await deleteRefsInBatches([...investigations.docs.map(d => d.ref), ...tracked.docs.map(d => d.ref)]);
+  await deleteRefsInBatches([...investigations.docs.map(d => d.ref), ...tracked.docs.map(d => d.ref), ...(shared?.docs.map(d => d.ref) || [])]);
   return investigations.size;
 }
 

@@ -393,6 +393,17 @@
   border-radius: 3px;
 }
 
+/* Search credits (SerpApi usage) */
+.credits-card .dash-card-header { margin-bottom: 14px; }
+.credits-numbers { display: flex; gap: 32px; margin-bottom: 14px; flex-wrap: wrap; }
+.credits-numbers > div { display: flex; align-items: baseline; gap: 6px; }
+.credits-big { font-size: 1.9rem; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; line-height: 1; }
+.credits-big.muted { color: var(--text-secondary); }
+.credits-big.low { color: #b42318; }
+.credits-label { font-size: 0.85rem; color: var(--text-muted); }
+.credits-note { margin: 12px 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+.credits-card > .credits-note:first-of-type:only-of-type { margin-top: 0; }
+
 /* Recent Sources List */
 .recent-sources-list {
   display: flex;

@@ -22,8 +22,46 @@ import { identityToInvestigation, SearchError } from '../../lib/searchClient';
 import { useNotifications } from '../../context/NotificationContext';
 import { useSession } from '../../context/SessionContext';
 import { DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
+import { useQuota } from '../../components/explore/exploreHooks';
+import type { QuotaStatus } from '../../lib/exploreClient';
 import appLogo from '../../assets/images/icon.png';
 import '../../styles/Dashboard.css';
+
+/** SerpApi searches used and left this month, read live from the SerpApi account (free, uses no search). */
+const SearchCreditsCard: React.FC<{ quota: QuotaStatus | null }> = ({ quota }) => {
+  const used = quota?.usedThisMonth ?? null;
+  const left = quota?.searchesLeft ?? null;
+  const total = quota?.searchesPerMonth ?? (used != null && left != null ? used + left : null);
+  const pctUsed = total && used != null ? Math.min(100, Math.round((used / total) * 100)) : 0;
+  const low = left != null && total ? left / total <= 0.1 : false;
+  const unavailable = !quota || !quota.configured || quota.error || left == null;
+  return (
+    <div className="dash-card credits-card">
+      <div className="dash-card-header">
+        <h3 className="dash-card-title">Search Credits</h3>
+        <span className="activity-timeframe">{quota?.plan ? `${quota.plan} · this month` : 'This month'}</span>
+      </div>
+      {!quota ? (
+        <p className="credits-note">Checking your SerpApi account…</p>
+      ) : unavailable ? (
+        <p className="credits-note">{quota.configured ? 'Could not read your SerpApi account right now.' : 'No SerpApi key is set on the server.'}</p>
+      ) : (
+        <>
+          <div className="credits-numbers">
+            <div><span className={`credits-big${low ? ' low' : ''}`}>{left}</span><span className="credits-label">left</span></div>
+            <div><span className="credits-big muted">{used ?? '—'}</span><span className="credits-label">used{total ? ` of ${total}` : ''}</span></div>
+          </div>
+          <div className="st-progress-bar" aria-label={`${pctUsed}% used`}>
+            <div className="st-progress-fill" style={{ width: `${pctUsed}%` }} />
+          </div>
+          <p className="credits-note">
+            {low ? 'Running low. ' : ''}About 11–15 per username search and 6–7 per organisation. Repeating a search within 12 hours is free.
+          </p>
+        </>
+      )}
+    </div>
+  );
+};
 
 interface DashboardPageProps {
   currentUser?: {
@@ -40,6 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
   const navigate = useNavigate();
   const { error: toastError } = useToast();
   const profiler = useProfilerSearch('dashboard');
+  const quota = useQuota(profiler.running); // re-read after each search finishes
   const [searchMode, setSearchMode] = useSearchMode();
   const { addNotification } = useNotifications();
   const { profile } = useSession();
@@ -344,6 +383,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
         </div>
 
         <div className="dash-right-column">
+          <SearchCreditsCard quota={quota} />
+
           <div className="dash-card search-activity-card">
             <div className="dash-card-header">
               <h3 className="dash-card-title">Search Activity</h3>

@@ -71,6 +71,8 @@ export interface WorkspaceApi {
   setLevel: (key: string, level: EvidenceLevel, label: string, object: string) => void;
   rerun: () => void;
   isRescanning: boolean;
+  /** Opened from a view-only share link: nothing can be searched, changed or saved. */
+  readOnly: boolean;
 }
 
 export const WorkspaceContext = createContext<WorkspaceApi | null>(null);

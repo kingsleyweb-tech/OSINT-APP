@@ -16,7 +16,7 @@ const MAX_IMAGES = 60;
  * The first visit searches by itself; results are saved in the case, so later visits cost nothing.
  */
 export const ImagesTab: React.FC = () => {
-  const { inv, commit } = useWorkspace();
+  const { inv, commit, readOnly } = useWorkspace();
   const { run, cancel, running, steps } = useSearchRun();
   const [error, setError] = useState('');
   const [hidden, setHidden] = useState(0);
@@ -56,17 +56,17 @@ export const ImagesTab: React.FC = () => {
   }, [inv, run, commit]);
 
   useEffect(() => {
-    if (started.current || inv.imagesCheckedAt) return undefined;
+    if (started.current || inv.imagesCheckedAt || readOnly) return undefined;
     started.current = true;
     const t = setTimeout(() => { search(); }, 0);
     return () => clearTimeout(t);
-  }, [inv.imagesCheckedAt, search]);
+  }, [inv.imagesCheckedAt, search, readOnly]);
 
   const shown = images.filter(i => !broken.has(i.id));
 
   return (
     <div>
-      <SectionHead title="Images" count={shown.length} noRule right={
+      <SectionHead title="Images" count={shown.length} noRule right={readOnly ? undefined :
         <button type="button" className="ws-btn" onClick={search} disabled={running}><RotateCw size={15} /> Search again</button>
       } />
       <p className="ws-sub" style={{ margin: '0 0 16px' }}>
@@ -80,7 +80,9 @@ export const ImagesTab: React.FC = () => {
         <SearchLoader title={`Searching for pictures of ${subjectQuery(inv)}`} steps={steps} onCancel={cancel} />
       ) : shown.length === 0 ? (
         <Empty title={inv.imagesCheckedAt ? 'No pictures naming the subject were found' : 'No image search yet'}>
-          {inv.imagesCheckedAt ? 'Try again later, or check the Profiles tab for profile photos.' : 'Press "Search again" to look for pictures.'}
+          {readOnly
+            ? (inv.imagesCheckedAt ? 'Check the Profiles tab for profile photos.' : 'Images have not been gathered by the investigator yet.')
+            : inv.imagesCheckedAt ? 'Try again later, or check the Profiles tab for profile photos.' : 'Press "Search again" to look for pictures.'}
         </Empty>
       ) : (
         <div className="ws-images">

@@ -17,7 +17,7 @@ function CategoryIcon({ category }: { category: string }) {
 }
 
 export const AssociationsTab: React.FC = () => {
-  const { inv, d, focus, commit, setLevel, goTab } = useWorkspace();
+  const { inv, d, focus, commit, setLevel, goTab, readOnly } = useWorkspace();
   const associations = inv.associations || [];
   const documented = associations.filter(a => DOCUMENTED.has(a.evidenceState));
   const candidates = associations.filter(a => !DOCUMENTED.has(a.evidenceState));
@@ -89,10 +89,10 @@ export const AssociationsTab: React.FC = () => {
                         {a.evidenceCitation}
                         {a.sourceUrl && <div><button type="button" className="ws-url" onClick={e => { e.stopPropagation(); openUrl(a.sourceUrl); }}>{shortUrl(a.sourceUrl)}</button></div>}
                       </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>
+                      {!readOnly && <td style={{ whiteSpace: 'nowrap' }}>
                         <button type="button" className="ws-btn ws-btn-sm" onClick={e => { e.stopPropagation(); document(a); }}>Document</button>{' '}
                         <button type="button" className="ws-btn ws-btn-sm ws-btn-ghost" onClick={e => { e.stopPropagation(); dismiss(a); }}>Dismiss</button>
-                      </td>
+                      </td>}
                     </tr>
                   ))}
                 </tbody>

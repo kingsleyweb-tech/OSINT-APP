@@ -6,7 +6,7 @@ import { useSearchRun } from '../../explore/useSearchRun';
 import { SearchLoader } from '../../ui/SearchLoader';
 import { hostOf, levelOf, openUrl, parseLooseDate, fmtDate, shortUrl, urlKey, type WebItem } from '../../../lib/workspace';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Empty, LevelBadge, LevelPicker, SectionHead, SourceLogo } from '../workspace/ui';
+import { Empty, LevelBadge, LevelPicker, ReadOnlyNote, SectionHead, SourceLogo } from '../workspace/ui';
 import { relevanceText } from './WebTab';
 
 function thumbnailOf(w: WebItem): string | undefined {
@@ -107,7 +107,7 @@ const NewsGatherer: React.FC = () => {
 };
 
 export const NewsTab: React.FC = () => {
-  const { inv, d, setLevel, goTab } = useWorkspace();
+  const { inv, d, setLevel, goTab, readOnly } = useWorkspace();
   const ref = inv.lastSearched || inv.createdAt;
   const items = [...d.buckets.news].sort((a, b) =>
     (parseLooseDate(b.metadata?.date, ref)?.getTime() || 0) - (parseLooseDate(a.metadata?.date, ref)?.getTime() || 0));
@@ -122,7 +122,7 @@ export const NewsTab: React.FC = () => {
     <div className="ws-with-rail">
       <div>
         <SectionHead title="News & articles" count={items.length} noRule right={<span className="ws-sub">Newest first</span>} />
-        <div style={{ margin: '4px 0 18px' }}><NewsGatherer /></div>
+        <div style={{ margin: '4px 0 18px' }}>{readOnly ? <ReadOnlyNote checkedAt={inv.newsCheckedAt} what="News" /> : <NewsGatherer />}</div>
         {items.length === 0 && <Empty title="No news coverage was kept">No news article naming the subject has been found yet.</Empty>}
         {items.map(w => {
           const key = urlKey(w.url);

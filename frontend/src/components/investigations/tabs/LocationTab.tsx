@@ -10,7 +10,7 @@ import {
 } from '../../../lib/locationEvidence';
 import type { Investigation } from '../../../types/investigation';
 import { useWorkspace } from '../workspace/WorkspaceContext';
-import { Empty, SectionHead, SourceLogo } from '../workspace/ui';
+import { Empty, ReadOnlyNote, SectionHead, SourceLogo } from '../workspace/ui';
 
 const STATUS_CLASS: Record<LocationStatus, string> = { stated: 'ok', reported: 'ok', mentioned: 'muted', unconfirmed: 'warn' };
 type Run = NonNullable<NonNullable<Investigation['locationScan']>['runs']>['core'];
@@ -25,11 +25,12 @@ const StatusTag: React.FC<{ status: LocationStatus }> = ({ status }) => (
  * to extract location references; nothing else is added to the case.
  */
 function useLocationScan() {
-  const { inv, commit } = useWorkspace();
+  const { inv, commit, readOnly } = useWorkspace();
   const { run, cancel, running, steps } = useSearchRun();
   const started = useRef(false);
 
   const scan = useCallback(async (level: LocationSearchLevel) => {
+    if (readOnly) return;
     const tasks = locationSearchPlan(inv, level);
     const at = new Date().toISOString();
     let result: Run;
@@ -73,14 +74,14 @@ function useLocationScan() {
         detail: done.error ? `Failed: ${done.error}` : `${done.resultsChecked} results checked · ${done.refs.length} location reference${done.refs.length === 1 ? '' : 's'}`
       })]
     );
-  }, [inv, run, commit]);
+  }, [inv, run, commit, readOnly]);
 
   useEffect(() => {
-    if (started.current || inv.locationScan?.runs?.core) return undefined;
+    if (started.current || inv.locationScan?.runs?.core || readOnly) return undefined;
     started.current = true;
     const t = setTimeout(() => { scan('core'); }, 0);
     return () => clearTimeout(t);
-  }, [inv.locationScan?.runs?.core, scan]);
+  }, [inv.locationScan?.runs?.core, scan, readOnly]);
 
   return { scan, cancel, running, steps };
 }
@@ -106,7 +107,7 @@ const SourceStatus: React.FC<{ title: string; run?: Run }> = ({ title, run }) =>
 };
 
 export const LocationTab: React.FC = () => {
-  const { inv } = useWorkspace();
+  const { inv, readOnly } = useWorkspace();
   const { scan, cancel, running, steps } = useLocationScan();
   const [showAllRefs, setShowAllRefs] = useState(false);
 
@@ -138,7 +139,7 @@ export const LocationTab: React.FC = () => {
 
   return (
     <div className="ws-loc">
-      <SectionHead title="Location summary" count={summary.length} noRule right={
+      <SectionHead title="Location summary" count={summary.length} noRule right={readOnly ? undefined :
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="ws-btn ws-btn-sm" onClick={() => scan('core')}><RotateCw size={14} /> Search again</button>
           <button type="button" className="ws-btn ws-btn-sm" onClick={() => scan('more')} title={`${locationSearchCost(inv, 'more')} SerpApi searches`}>
@@ -156,7 +157,8 @@ export const LocationTab: React.FC = () => {
       <div className="ws-loc-status-line">
         <SourceStatus title="Google, Bing, news, Google Maps and social media" run={runs.core} />
         <SourceStatus title="More social media, videos and images" run={runs.more} />
-        {!runs.more && (
+        {readOnly && !runs.core && <ReadOnlyNote what="The location search" />}
+        {!runs.more && !readOnly && (
           <span className="ws-sub">
             LinkedIn, Threads, YouTube and Reddit profiles and posts, videos (YouTube, Google Videos) and images (Google, Bing) have not been
             searched yet — use Search more sources ({locationSearchCost(inv, 'more')} SerpApi searches). The profiles, pages and news already

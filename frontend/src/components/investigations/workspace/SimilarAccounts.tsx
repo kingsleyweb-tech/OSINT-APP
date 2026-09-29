@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, ExternalLink, Search, Users } from 'lucide-react';
-import { SourceLogo } from './ui';
+import { SourceLogo, useReadOnly } from './ui';
 import { shortUrl } from '../../../lib/workspace';
 
 export interface SimilarItem {
@@ -20,6 +20,8 @@ export interface SimilarItem {
  */
 export const SimilarAccounts: React.FC<{ items: SimilarItem[]; what: 'profiles' | 'activity'; defaultOpen?: boolean }> = ({ items, what, defaultOpen }) => {
   const [open, setOpen] = useState(Boolean(defaultOpen));
+  // A view-only case can open the accounts, but not start a new investigation.
+  const canInvestigate = !useReadOnly();
   if (items.length === 0) return null;
   return (
     <section className="ws-similar">
@@ -28,7 +30,7 @@ export const SimilarAccounts: React.FC<{ items: SimilarItem[]; what: 'profiles' 
         <Users size={16} />
         <span>
           <b>{what === 'profiles' ? 'Similar accounts' : 'Activity of similar accounts'} · {items.length}</b>
-          <span className="ws-sub"> — other people with a similar username, not confirmed as this person.{what === 'profiles' ? ' Click one to investigate that person.' : ' Open to check.'}</span>
+          <span className="ws-sub"> — other people with a similar username, not confirmed as this person.{what === 'profiles' && canInvestigate ? ' Click one to investigate that person.' : ' Open to check.'}</span>
         </span>
       </button>
       {open && (
@@ -44,7 +46,7 @@ export const SimilarAccounts: React.FC<{ items: SimilarItem[]; what: 'profiles' 
                 <span className="ws-tag">Other person</span>
               </>
             );
-            if (!i.investigateTo) {
+            if (!i.investigateTo || !canInvestigate) {
               return <a key={i.key} className="ws-similar-row" href={i.url} target="_blank" rel="noopener noreferrer">{body}<ExternalLink size={14} /></a>;
             }
             // Clicking the account opens its own investigation; the icon opens the profile itself.

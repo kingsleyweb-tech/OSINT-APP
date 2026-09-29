@@ -246,6 +246,7 @@ const SECTIONS: HelpSection[] = [
     lead: 'Common questions and fixes.',
     faqs: [
       { q: 'Where can I find my saved cases?', a: 'Open Investigations in the sidebar. Cases created by “Save to case” from any search page are listed there too, newest first. Search history also links to the case made from each search.' },
+      { q: 'Can I share a case with someone?', a: 'Yes. Open the case and press Share, then Create view-only link and Copy link. Anyone with the link can see every tab, the searches that were run and all the data found, without signing in, but they cannot search, change, track, re-run or export anything. The link always shows your latest changes. Press Stop sharing at any time and the link stops working.' },
       { q: 'A search found nothing. What now?', a: 'Check the “Did you mean” suggestion, try Intelligent mode if you used Precise, remove a location or organisation, or search the username instead of the name. News searches restricted to a country only show that country’s coverage — try “Any country”.' },
       { q: 'Why is an account under “Similar accounts”?', a: 'Its name or handle is close to, but not the same as, your subject’s (e.g. one letter different). It may be a different person, so its activity is kept apart until you confirm it.' },
       { q: 'Why did news about my subject not appear?', a: 'News engines match the exact phrase in the article text. If the article uses a different spelling, search that spelling or use Intelligent mode. Articles found only on the web appear in the Web tab.' },
