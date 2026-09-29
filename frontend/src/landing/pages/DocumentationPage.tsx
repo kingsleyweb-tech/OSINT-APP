@@ -20,7 +20,7 @@ const DOCS: DocSection[] = [
     id: 'introduction', label: 'Platform introduction', category: 'Overview', title: 'Platform Introduction',
     paragraphs: [
       'The OSINT Investigation Platform is an open-source intelligence workspace for investigators, analysts, journalists and researchers. It searches public sources for a person, username, organisation, place or topic and organises what it finds into cases you can review, save and export.',
-      'Searches run live through SerpApi (Google, Bing, DuckDuckGo, Yahoo, YouTube, News, Images, Lens, Maps and Trends) and free public platform APIs (GitHub, Reddit, Mastodon, Bluesky and others). Nothing is invented: when nothing is found, the platform says so.'
+      'Searches run live through SerpApi (Google, Bing, DuckDuckGo, Yahoo, YouTube, News, Images, Maps and Trends) and free public platform APIs (GitHub, Reddit, Mastodon, Bluesky and others). Nothing is invented: when nothing is found, the platform says so.'
     ]
   },
   {

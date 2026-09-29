@@ -14,20 +14,27 @@ export const PublicHelpPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const faqs: FAQItem[] = [
-    { id: 'faq-1', category: 'general', question: 'What is the OSINT Investigation Platform?', answer: 'A workspace for lawful open-source investigations. It searches public sources for a person, username, organisation, place or topic — through SerpApi (Google, Bing, DuckDuckGo, Yahoo, YouTube, News, Images, Lens, Maps, Trends) and free public platform APIs — and organises the results into cases you can review, save and export.' },
-    { id: 'faq-2', category: 'general', question: 'What can I search?', answer: 'People by name, usernames, public social posts and forums, news, images and videos, places and locations, and search trends. Each has its own page, shows its search cost first, and can save results to a case.' },
-    { id: 'faq-3', category: 'search', question: 'How does a name search work?', answer: 'It runs exact-name Google searches: the name on its own, then one search per platform group (LinkedIn, Facebook, Instagram, X, TikTok & Threads, YouTube, developer and writing sites). Adding a location or organisation narrows common names. Results are grouped into possible identities, and you pick the one to investigate.' },
-    { id: 'faq-4', category: 'search', question: 'How does a username search work?', answer: 'It checks platforms directly for free (GitHub, Reddit, Mastodon, Bluesky, Docker Hub, npm, DEV, Medium, Telegram, Twitch, Vimeo, YouTube, Wikipedia) and searches Google, DuckDuckGo and Yahoo, which also find the handle written with different punctuation (99_humblechild, 99.humblechild_). TikTok accounts are included.' },
-    { id: 'faq-5', category: 'search', question: 'What happens if I misspell a search?', answer: 'In Intelligent mode the platform checks the spelling first. If it is sure, it searches the correction and shows “Showing results for … · Search instead for …”. If not, it runs your search and suggests “Did you mean …?”. Precise mode searches exactly what you typed.' },
-    { id: 'faq-6', category: 'search', question: 'Can I limit news to one country?', answer: 'Yes. Choosing a country on the News, Geo or Trends pages shows only that country’s news edition. Choose “Any country” for worldwide coverage.' },
-    { id: 'faq-7', category: 'accuracy', question: 'What should I do if a search returns nothing?', answer: 'Check the “Did you mean” suggestion, try Intelligent mode, remove the location or organisation, or search the username instead of the name. The platform never fills empty results with made-up data.' },
-    { id: 'faq-8', category: 'accuracy', question: 'How are similar names and usernames handled?', answer: 'Accounts that only look similar (for example one letter different) are shown separately as “Similar accounts”, and their activity is never shown as your subject’s. Review the original sources before linking them to your subject.' },
-    { id: 'faq-9', category: 'account', question: 'How do I sign in?', answer: 'Choose Continue with Google, or sign in with email and password. Your credentials are held by Google and Firebase; the platform never stores passwords. Guest access is not available.' },
-    { id: 'faq-10', category: 'account', question: 'Where are my saved cases and past searches?', answer: 'Cases are under Investigations in the sidebar — including cases created automatically when you save a result from any search page. Every search you run is listed in Search history, grouped by kind.' },
-    { id: 'faq-11', category: 'account', question: 'How is my data protected?', answer: 'Every page and every search requires sign-in, and the server verifies it on each request. Your cases, history and notifications are stored in your own account and database rules stop anyone else from reading them. You can export or delete all your data in Settings.' },
-    { id: 'faq-12', category: 'privacy', question: 'Does the platform access private data?', answer: 'No. It only uses publicly indexed pages and public platform APIs. Private accounts, private messages and non-public databases are never accessed.' },
-    { id: 'faq-13', category: 'privacy', question: 'Are people notified when I search for them?', answer: 'No. Searches go through search engines and public APIs; nobody is contacted or notified.' },
-    { id: 'faq-14', category: 'privacy', question: 'Is facial recognition available?', answer: 'Not yet. No face matching is done anywhere in the platform.' }
+    { id: 'faq-1', category: 'general', question: 'What is the OSINT Investigation Platform?', answer: 'A workspace for lawful open-source investigations. It finds public information about a person, a username or an organisation — and about places, news and topics — and keeps it in cases you can review, save, re-run and export. Every finding keeps a link to its source.' },
+    { id: 'faq-2', category: 'general', question: 'Where does the information come from?', answer: 'From public sources only: Google, Bing, DuckDuckGo, Yahoo and YouTube, Google News and Bing News, Google Images and Bing Images, Google Maps and Google Trends (through SerpApi), direct public checks on platforms such as GitHub, Reddit, Mastodon and Bluesky, Wikidata, and the public pages of organisations’ own websites.' },
+    { id: 'faq-3', category: 'general', question: 'What can I search?', answer: 'People by name, usernames, organisations, public social posts and forums, news, images and videos, places, and search trends. Each search page shows how many searches it will use, and results can be saved to a case.' },
+    { id: 'faq-4', category: 'search', question: 'How does a name search work?', answer: 'It searches the exact name on Google and the main platforms (LinkedIn, Facebook, Instagram, X, TikTok and Threads, YouTube, developer and writing sites). Adding a location or organisation narrows common names. Results are grouped into possible people, and you pick the one to investigate. While you type, the page can suggest matching organisations.' },
+    { id: 'faq-5', category: 'search', question: 'Can I search for an organisation or company?', answer: 'Yes. Type its name in a Name search. The platform recognises companies, universities and schools, government agencies, military organisations, associations and NGOs, and shows an Organisation card. Its case has an Organisation tab with the type, official name, website, locations, units, leadership, contact details, social accounts, recent news and the sources behind each fact.' },
+    { id: 'faq-6', category: 'search', question: 'What if I only know the short form, like UPSA or GRA?', answer: 'Search it. The platform reads what the results say it stands for and counts how many sites agree. If one full name is clearly supported it is used; if several organisations share the abbreviation, you are shown the choices and pick one. Nothing is assumed from one source only.' },
+    { id: 'faq-7', category: 'search', question: 'How does a username search work?', answer: 'It checks many platforms directly and searches Google, DuckDuckGo and Yahoo — also for common variations such as humblechild99 or 99_humblechild. Results are shown by platform, and each account is labelled Exact match, Username variation, Possibly related or Other person, with the reason. The exact username you searched is highlighted.' },
+    { id: 'faq-8', category: 'search', question: 'What happens if I misspell a search?', answer: 'In Intelligent mode the platform checks the spelling first. If it is sure, it searches the correction and shows “Showing results for … · Search instead for …”. If not, it runs your search and suggests “Did you mean …?”. Precise mode searches exactly what you typed. Usernames are never corrected.' },
+    { id: 'faq-9', category: 'search', question: 'Can I limit news to one country or to recent news?', answer: 'Yes. On the News, Geo and Trends pages you can choose a country, or “Any country” for worldwide results. For organisations, the news and videos shown are from the last 12 months; older items can still be opened if you ask for them.' },
+    { id: 'faq-10', category: 'accuracy', question: 'What should I do if a search returns nothing?', answer: 'Check the “Did you mean” suggestion, try Intelligent mode, remove the location or organisation, or search the username instead of the name. The platform never fills empty results with made-up data.' },
+    { id: 'faq-11', category: 'accuracy', question: 'What does “Not found” mean?', answer: 'The sources that were checked do not give that detail. The platform shows “Not found” (or “Could not be verified”) instead of guessing. “Unable to retrieve” means a source did not answer — try again later.' },
+    { id: 'faq-12', category: 'accuracy', question: 'How are similar names and usernames handled?', answer: 'Accounts that only look similar are kept apart and are never counted as your subject’s. They are labelled “Other person”, or “Possibly related” when real evidence links them (for example the same display name or website). You can open any of them as its own investigation.' },
+    { id: 'faq-13', category: 'accuracy', question: 'How do I record what I have checked?', answer: 'Mark each result as Raw (found, not reviewed), Relevant or Validated (checked by you). Every search and change is written to the case’s Audit tab with the time.' },
+    { id: 'faq-14', category: 'account', question: 'How do I sign in?', answer: 'Choose Continue with Google, or sign in with email and password. Passwords are handled by Google Firebase; the platform never stores them. If you forget your password, use “Forgot password?” on the sign-in page. Guest access is not available.' },
+    { id: 'faq-15', category: 'account', question: 'Where are my saved cases and past searches?', answer: 'Cases are under Investigations — including cases created when you save a result from a search page. Every search you run is in Search history, where you can view the results again without using a new search. People and organisations you track are on the People page.' },
+    { id: 'faq-16', category: 'account', question: 'Can I export my work?', answer: 'Yes. A case can be downloaded as a JSON file or a CSV spreadsheet, and its Sources and Audit lists as CSV files. In Settings you can export all of your data.' },
+    { id: 'faq-17', category: 'account', question: 'Do searches have a limit?', answer: 'Searches run through SerpApi, which has a monthly allowance. Each search page shows its cost before you search, and the same search repeated within 12 hours is free. Each account can run a limited number of searches in a short time, to prevent misuse.' },
+    { id: 'faq-18', category: 'account', question: 'How is my data protected?', answer: 'Every page and every search requires sign-in, and the server checks it on each request. Your cases, history, tracked people and notifications are stored in your own account, and other users cannot read them. You can export or delete all your data in Settings.' },
+    { id: 'faq-19', category: 'privacy', question: 'Does the platform access private data?', answer: 'No. It only uses publicly available pages and public platform services. Private accounts, private messages, passwords and non-public or paid databases are never accessed.' },
+    { id: 'faq-20', category: 'privacy', question: 'Are people notified when I search for them?', answer: 'No. Searches go through search engines and public services; nobody is contacted or notified.' },
+    { id: 'faq-21', category: 'privacy', question: 'Is facial recognition available?', answer: 'No. The platform does not do any face matching.' }
   ];
 
   const filteredFaqs = faqs.filter((faq) => {
@@ -52,7 +59,7 @@ export const PublicHelpPage: React.FC = () => {
               How can we help?
             </h1>
             <p className="lp-subtitle">
-              Answers about searching, accuracy, similar accounts, sign-in, saved cases and privacy.
+              Answers about searching people, usernames and organisations, accuracy, sign-in, saved cases, exports and privacy.
             </p>
 
             <div style={{ position: 'relative', marginTop: '28px' }}>
@@ -60,7 +67,7 @@ export const PublicHelpPage: React.FC = () => {
               <input
                 type="text"
                 aria-label="Search help"
-                placeholder="Search questions, e.g. similar accounts, Google sign-in, saved cases"
+                placeholder="Search questions, e.g. organisation, abbreviation, export, similar accounts"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -113,7 +120,7 @@ export const PublicHelpPage: React.FC = () => {
           <div className="pd-links">
             <div>
               <h3>Documentation</h3>
-              <p>How every search, result tab and case feature works.</p>
+              <p>How every search, case tab and organisation feature works.</p>
               <Link to="/documentation">Read the documentation →</Link>
             </div>
             <div>
@@ -123,7 +130,7 @@ export const PublicHelpPage: React.FC = () => {
             </div>
             <div>
               <h3>Open the workspace</h3>
-              <p>Sign in with Google to start an investigation.</p>
+              <p>Sign in with Google or email to start an investigation.</p>
               <Link to="/auth">Sign in →</Link>
             </div>
           </div>
