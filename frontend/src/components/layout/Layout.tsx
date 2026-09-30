@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
+import { ScrollManager } from './ScrollManager';
 import { ExternalLink, Sparkles } from 'lucide-react';
 import '../../styles/LayoutFooter.css';
 
@@ -25,6 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="app-container">
+      <ScrollManager />
       <Sidebar userName={userName} userRole={userRole} photoURL={photoURL} onSignOut={onSignOut} />
       <div className="main-content">
         <Topbar 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { InvestigationDetailPage } from './InvestigationDetail';
+import { ScrollManager } from '../../components/layout/ScrollManager';
 import appLogo from '../../assets/images/icon.png';
 
 /**
@@ -9,6 +10,7 @@ import appLogo from '../../assets/images/icon.png';
  */
 export const SharedInvestigationPage: React.FC = () => (
   <div className="ws-shared-page">
+    <ScrollManager />
     <header className="ws-shared-bar">
       <Link to="/" className="ws-shared-brand">
         <img src={appLogo} alt="" width={26} height={26} />

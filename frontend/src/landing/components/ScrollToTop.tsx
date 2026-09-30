@@ -6,16 +6,16 @@ export const ScrollToTopBtn: React.FC = () => {
   const [visible, setVisible] = useState(false);
   const location = useLocation();
 
-  // Scroll to top automatically when location changes
+  // A new page starts at the top straight away (no animated scroll across the old page).
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, [location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
       setVisible(window.scrollY > 320);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 

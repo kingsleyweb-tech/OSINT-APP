@@ -87,21 +87,45 @@ html, body {
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+/* "clip" stops sideways overflow without turning html/body into scroll containers, which
+   breaks page scrolling, window.scrollTo and sticky elements in some mobile browsers. */
+@supports (overflow-x: clip) {
+  html, body { overflow-x: clip; }
+}
+html { -webkit-text-size-adjust: 100%; }
 
-/* Custom Scrollbars */
+/* Scrollbars: visible in both themes */
+:root { --scrollbar-thumb: rgba(255, 255, 255, 0.22); --scrollbar-thumb-hover: var(--accent-warm); }
+:root[data-theme="light"] { --scrollbar-thumb: rgba(28, 25, 23, 0.22); }
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-dark);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--scrollbar-thumb);
   border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-warm);
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+/* While a full-screen overlay is open (mobile menu, bottom sheet, search progress), the page behind it stays still. */
+html:has(.brutalist-menu-overlay, .ws-sheet-backdrop, .sl-overlay),
+html:has(.brutalist-menu-overlay, .ws-sheet-backdrop, .sl-overlay) body {
+  overflow: hidden;
+}
+
+/* Scrolling inside a pop-up, sheet, menu or list does not carry on into the page behind it. */
+.sl-overlay, .ws-sheet, .ws-modal, .ws-menu, .brutalist-menu-content, .notif-list, .sidebar-nav,
+[role="dialog"], [role="listbox"] {
+  overscroll-behavior: contain;
 }
 
 /* Utilities */
@@ -142,6 +166,21 @@ input, select, textarea {
   overflow-y: auto;
   overflow-x: hidden;
   height: 100vh;
+  height: 100dvh; /* the visible screen, without browser toolbars */
+  overscroll-behavior-y: contain;
+}
+
+/* Phones and tablets: the page itself scrolls (natural momentum, the browser's address bar can
+   hide, nothing ends up under the toolbars) instead of a fixed-height panel inside the page. */
+@media (max-width: 1024px) {
+  .app-container { min-height: 100dvh; }
+  .main-content {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+  }
 }
 
 .page-wrapper {

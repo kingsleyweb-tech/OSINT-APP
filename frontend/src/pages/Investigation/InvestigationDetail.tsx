@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, Copy, Download, Eye, FolderSearch, Link2, Loader2, Menu, MoreHorizontal, RotateCw, Share2, User, X, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ChevronLeft, Copy, Download, Eye, FileText, FolderSearch, Link2, Loader2, Menu, MoreHorizontal, RotateCw, Share2, User, X, Bookmark, BookmarkCheck } from 'lucide-react';
 
 import type { AuditEvent, EvidenceLevel, Investigation } from '../../types/investigation';
 import {
@@ -75,6 +75,10 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   const [sharedBy, setSharedBy] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  // PDF report: built from the saved case only (no searches), then offered for download.
+  const [report, setReport] = useState<{ url: string; fileName: string; pages: number } | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
+  useEffect(() => () => { if (report) URL.revokeObjectURL(report.url); }, [report]);
 
   const currentTab = toTabKey(activeTabRoute || tab);
 
@@ -259,6 +263,24 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     downloadFile(`OSINT-${safeFileName(investigation.name)}-${Date.now()}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
   };
 
+  const exportPdf = async () => {
+    const current = invRef.current;
+    if (!current || readOnly || reportBusy) return;
+    setReportBusy(true);
+    setShareOpen(false);
+    try {
+      const [{ buildCaseReport }, { renderCaseReportPdf }] = await Promise.all([import('../../lib/caseReport'), import('../../lib/reportPdf')]);
+      const model = buildCaseReport(current, ownerName(current));
+      const { blob, pages } = await renderCaseReportPdf(model);
+      setReport({ url: URL.createObjectURL(blob), fileName: model.fileName, pages });
+    } catch (e) {
+      console.error('Report not generated:', e);
+      toast.error('Report not generated', 'The PDF report could not be created. Please try again.');
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
   const exportJson = () => {
     if (!investigation) return;
     downloadFile(`OSINT-${safeFileName(investigation.name)}-${Date.now()}.json`, JSON.stringify(investigation, null, 2), 'application/json');
@@ -393,7 +415,9 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
             <button type="button" className={`ws-btn${investigation.shareToken ? ' ws-btn-shared' : ''}`} onClick={() => setShareOpen(o => !o)} aria-expanded={shareOpen}>
               <Share2 size={16} /> <span className="hide-mobile">{investigation.shareToken ? 'Shared' : 'Share'}</span>
             </button>
-            <button type="button" className="ws-btn hide-mobile" onClick={exportJson}><Download size={16} /> Export</button>
+            <button type="button" className="ws-btn hide-mobile" onClick={exportPdf} disabled={reportBusy}>
+              {reportBusy ? <Loader2 size={16} className="spinning" /> : <Download size={16} />} {reportBusy ? 'Preparing…' : 'Export'}
+            </button>
             {canRerun && <button type="button" className="ws-btn hide-mobile" onClick={rerun} disabled={isRescanning}>
               {isRescanning ? <Loader2 size={16} className="spinning" /> : <RotateCw size={16} />} {isRescanning ? 'Re-running…' : 'Re-run searches'}
             </button>}
@@ -407,6 +431,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
               <div className="ws-menu" onMouseLeave={() => setMenuOpen(false)}>
                 <button type="button" onClick={toggleTrack}><Bookmark size={15} /> {investigation.isTracked ? 'Stop tracking' : trackLabel}</button>
                 {canRerun && <button type="button" onClick={() => { setMenuOpen(false); rerun(); }} disabled={isRescanning}><RotateCw size={15} /> Re-run searches</button>}
+                <button type="button" onClick={() => { setMenuOpen(false); exportPdf(); }} disabled={reportBusy}><FileText size={15} /> Export PDF report</button>
                 <button type="button" onClick={() => { setMenuOpen(false); exportCsv(); }}><Download size={15} /> Export CSV (spreadsheet)</button>
                 <button type="button" onClick={() => { setMenuOpen(false); exportJson(); }}><Download size={15} /> Export JSON</button>
                 <button type="button" onClick={() => { setMenuOpen(false); setShareOpen(true); }}><Share2 size={15} /> Share view-only link</button>
@@ -416,6 +441,25 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           </div>
           )}
         </header>
+
+        {report && !readOnly && (
+          <section className="ws-share" aria-label="PDF report">
+            <div className="ws-share-head">
+              <div>
+                <div className="ws-h2"><FileText size={16} /> Investigation report ready</div>
+                <p className="ws-sub">
+                  {report.pages} page{report.pages === 1 ? '' : 's'} · built from the data saved in this case (no new searches).
+                  Missing details are marked “Not found”, and search, tracking, image and duplicate links were left out.
+                </p>
+              </div>
+              <button type="button" className="ws-btn ws-btn-ghost ws-icon-btn" onClick={() => setReport(null)} aria-label="Close"><X size={18} /></button>
+            </div>
+            <div className="ws-share-row">
+              <a className="ws-btn ws-btn-primary" href={report.url} download={report.fileName}><Download size={15} /> Download PDF</a>
+              <a className="ws-btn" href={report.url} target="_blank" rel="noopener noreferrer"><Eye size={15} /> Open preview</a>
+            </div>
+          </section>
+        )}
 
         {shareOpen && !readOnly && (
           <section className="ws-share" aria-label="Share view-only link">
