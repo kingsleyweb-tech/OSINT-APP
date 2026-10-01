@@ -137,11 +137,83 @@ export const ProfilesTab: React.FC = () => {
     (!q || `${r.name} ${r.handle} ${r.url} ${r.platform}`.toLowerCase().includes(q))
   );
 
-  const selected = rows.find(r => r.key === selectedKey) || visible[0] || null;
+  // The clicked profile opens right beneath its row; clicking it again closes it.
+  const selected = rows.find(r => r.key === selectedKey) || null;
+  const toggle = (key: string) => { setSelectedKey(k => (k === key ? null : key)); setOpenError(null); };
+
+  // Opened from another tab with a profile in focus: bring that row into view.
+  useEffect(() => {
+    if (!focus) return;
+    const t = setTimeout(() => document.querySelector(`tr[data-key="${CSS.escape(focus)}"]`)?.scrollIntoView({ block: 'center' }), 50);
+    return () => clearTimeout(t);
+  }, [focus]);
 
   const open = (r: Row) => {
     if (r.profile) setOpenError(openProfile(r.profile));
     else openUrl(r.url);
+  };
+
+  /** Details of the clicked profile, shown in the row right beneath it. */
+  const detail = (sel: Row) => {
+    const g = sel.profile ? genderOfProfile(sel.profile) : null;
+    const evidence = sel.profile ? profileEvidence(sel.profile) : [];
+    return (
+      <div className="ws-profile-detail" onClick={e => e.stopPropagation()}>
+        <div className="ws-profile-detail-head">
+          <div className="ws-cell-flex" style={{ minWidth: 0 }}>
+            <SourceLogo url={sel.url} platform={sel.platform} lg />
+            <div style={{ minWidth: 0 }}>
+              <div className="ws-h3">{sel.name}</div>
+              <div className="ws-cell-sub">{sel.platform}{sel.handle ? ` · ${sel.handle}` : ''}</div>
+            </div>
+          </div>
+          <div className="ws-profile-detail-actions">
+            <button type="button" className="ws-btn ws-btn-primary" onClick={() => open(sel)}><ExternalLink size={15} /> Open {sel.profile ? 'profile' : 'page'}</button>
+            <button type="button" className="ws-btn" onClick={() => navigator.clipboard?.writeText(sel.url)}><Copy size={15} /> Copy link</button>
+          </div>
+        </div>
+        <div className="ws-urlbox"><span className="ws-url">{sel.url}</span></div>
+        {openError && <p className="ws-sub" style={{ color: 'var(--ws-bad)', margin: '8px 0 0' }}>{openError || UNAVAILABLE_MESSAGE}</p>}
+
+        <div className="ws-profile-detail-grid">
+          <div>
+            <div className="ws-kv-grid" style={{ marginTop: 0 }}>
+              <div><div className="k">Type</div><div className="v">{sel.typeLabel}</div></div>
+              <div><div className="k">Link status</div><div className="v"><LinkStatus status={sel.profile?.linkStatus} /></div></div>
+              <div><div className="k">Search match</div><div className="v">{sel.profile?.confidenceLabel || '—'}</div></div>
+              <div><div className="k">Discovered</div><div className="v">{fmtDate(sel.found, true)}</div></div>
+            </div>
+            {sel.profile && (
+              // Gender only when the profile states it (pronouns or a gender field); never inferred.
+              <div style={{ marginTop: 14 }}>
+                <div className="k ws-sub">Gender</div>
+                <div>{genderLabel(g)}</div>
+                <div className="ws-cell-sub" style={{ fontFamily: 'inherit' }}>
+                  {g ? `“${g.quote}”` : 'The profile does not state a gender or pronouns. Gender is never guessed from a name or photo.'}
+                </div>
+              </div>
+            )}
+            <div style={{ marginTop: 14 }}>
+              <div className="k ws-sub">Discovered by</div>
+              <div>{sel.profile?.source || sel.web?.metadata?.foundVia || '—'}</div>
+              {sel.profile?.sourceQuery && <div className="ws-cell-sub">{sel.profile.sourceQuery}</div>}
+            </div>
+          </div>
+          <div>
+            <div className="ws-label">Why it matches</div>
+            {sel.profile ? (
+              evidence.length > 0
+                ? evidence.map(t => <div key={t} className="ws-check"><Check size={16} />{t}</div>)
+                : <div className="ws-check off"><Minus size={16} />No match evidence was stored for this profile.</div>
+            ) : (
+              <div className="ws-check off"><Minus size={16} />Organization pages and groups are kept because a profile search returned them. They are not the subject's own profile.</div>
+            )}
+            <div className="ws-label" style={{ marginTop: 16 }}>Evidence level</div>
+            <LevelPicker value={levelOf(inv, sel.key)} onChange={l => setLevel(sel.key, l, sel.name, d.sourceByKey.get(sel.key)?.sid || sel.platform)} />
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const similarList = <SimilarAccounts what="profiles" items={similar.map(p => ({ key: profileKey(p), title: p.profileName || (p.username ? `@${p.username}` : p.platform), platform: p.platform, url: (p.profileUrl || p.url) as string, investigateTo: investigateLink(p) }))} />;
@@ -170,7 +242,7 @@ export const ProfilesTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="ws-with-rail wide-rail">
+      <div>
         <div>
           {rows.length > 0 && (
             <div className="ws-table-wrap">
@@ -189,7 +261,10 @@ export const ProfilesTab: React.FC = () => {
                       <React.Fragment key={g.title}>
                         <tr className="group"><td colSpan={6}>{g.title} · {inGroup.length}</td></tr>
                         {inGroup.map(r => (
-                          <tr key={r.key} className={`row${selected?.key === r.key ? ' selected' : ''}`} onClick={() => { setSelectedKey(r.key); setOpenError(null); }}>
+                          <React.Fragment key={r.key}>
+                          <tr data-key={r.key} className={`row${selected?.key === r.key ? ' selected' : ''}`} onClick={() => toggle(r.key)}
+                            aria-expanded={selected?.key === r.key}>
+
                             <td>
                               <div className="ws-cell-flex">
                                 <SourceLogo url={r.url} platform={r.platform} square={!r.profile} />
@@ -206,6 +281,12 @@ export const ProfilesTab: React.FC = () => {
                             <td><LevelBadge level={levelOf(inv, r.key)} /></td>
                             <td className="ws-mono ws-cell-muted">{fmtShortDate(r.found)}</td>
                           </tr>
+                          {selected?.key === r.key && (
+                            <tr className="detail ws-profile-detail-row">
+                              <td colSpan={6}>{detail(selected)}</td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         ))}
                       </React.Fragment>
                     );
@@ -246,77 +327,6 @@ export const ProfilesTab: React.FC = () => {
           )}
         </div>
 
-        {selected && (
-          <aside className="ws-rail-plain">
-            <div className="ws-panel">
-              <div className="ws-panel-sec">
-                <div className="ws-panel-head">
-                  <span className="ws-label" style={{ margin: 0 }}>Selected {selected.profile ? 'profile' : 'page'}</span>
-                  <LevelBadge level={levelOf(inv, selected.key)} />
-                </div>
-                <div className="ws-cell-flex">
-                  <SourceLogo url={selected.url} platform={selected.platform} lg />
-                  <div style={{ minWidth: 0 }}>
-                    <div className="ws-h3">{selected.name}</div>
-                    <div className="ws-cell-sub">{selected.platform}{selected.handle ? ` · ${selected.handle}` : ''}</div>
-                  </div>
-                </div>
-                <div className="ws-urlbox">
-                  <span className="ws-url">{selected.url}</span>
-                  <button type="button" className="ws-copy" onClick={() => navigator.clipboard?.writeText(selected.url)} aria-label="Copy URL"><Copy size={15} /></button>
-                  <button type="button" className="ws-copy" onClick={() => open(selected)} aria-label="Open"><ExternalLink size={15} /></button>
-                </div>
-                {openError && <p className="ws-sub" style={{ color: 'var(--ws-bad)', marginTop: 8 }}>{openError || UNAVAILABLE_MESSAGE}</p>}
-              </div>
-
-              <div className="ws-panel-sec">
-                <div className="ws-kv-grid" style={{ marginTop: 0 }}>
-                  <div><div className="k">Type</div><div className="v">{selected.typeLabel}</div></div>
-                  <div><div className="k">Link status</div><div className="v"><LinkStatus status={selected.profile?.linkStatus} /></div></div>
-                  <div><div className="k">Search match</div><div className="v">{selected.profile?.confidenceLabel || '—'}</div></div>
-                  <div><div className="k">Discovered</div><div className="v">{fmtDate(selected.found, true)}</div></div>
-                </div>
-                {selected.profile && (() => {
-                  // Gender only when the profile states it (pronouns or a gender field); never inferred.
-                  const g = genderOfProfile(selected.profile);
-                  return (
-                    <div style={{ marginTop: 14 }}>
-                      <div className="k ws-sub">Gender</div>
-                      <div>{genderLabel(g)}</div>
-                      <div className="ws-cell-sub" style={{ fontFamily: 'inherit' }}>
-                        {g ? `“${g.quote}”` : 'The profile does not state a gender or pronouns. Gender is never guessed from a name or photo.'}
-                      </div>
-                    </div>
-                  );
-                })()}
-                <div style={{ marginTop: 14 }}>
-                  <div className="k ws-sub">Discovered by</div>
-                  <div>{selected.profile?.source || selected.web?.metadata?.foundVia || '—'}</div>
-                  {selected.profile?.sourceQuery && <div className="ws-cell-sub">{selected.profile.sourceQuery}</div>}
-                </div>
-              </div>
-
-              <div className="ws-panel-sec">
-                <div className="ws-label">Why it matches</div>
-                {selected.profile ? (
-                  profileEvidence(selected.profile).length > 0
-                    ? profileEvidence(selected.profile).map(t => <div key={t} className="ws-check"><Check size={16} />{t}</div>)
-                    : <div className="ws-check off"><Minus size={16} />No match evidence was stored for this profile.</div>
-                ) : (
-                  <div className="ws-check off"><Minus size={16} />Organization pages and groups are kept because a profile search returned them. They are not the subject's own profile.</div>
-                )}
-              </div>
-
-              <div className="ws-panel-sec">
-                <div className="ws-label">Evidence level</div>
-                <LevelPicker value={levelOf(inv, selected.key)} onChange={l => setLevel(selected.key, l, selected.name, d.sourceByKey.get(selected.key)?.sid || selected.platform)} />
-                <div className="ws-panel-actions" style={{ marginTop: 18 }}>
-                  <button type="button" className="ws-btn ws-btn-primary" onClick={() => open(selected)}><ExternalLink size={15} /> Open {selected.profile ? 'profile' : 'page'}</button>
-                </div>
-              </div>
-            </div>
-          </aside>
-        )}
       </div>
     </>
   );
