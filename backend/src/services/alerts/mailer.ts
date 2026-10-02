@@ -18,6 +18,13 @@ const useBrevo = () => Boolean(process.env.BREVO_API_KEY);
 const senderAddress = () => process.env.MAIL_FROM || process.env.SMTP_USER || '';
 const senderName = () => (process.env.SMTP_FROM_NAME || 'OSINT Alerts').replace(/"/g, '');
 
+/** Which email settings are missing on the server (names only), so a failure can say exactly what to add. */
+export function missingMailSettings(): string[] {
+  if (useBrevo()) return senderAddress() ? [] : ['MAIL_FROM'];
+  const missing = ['BREVO_API_KEY', 'MAIL_FROM'].filter(k => !process.env[k]);
+  return process.env.SMTP_USER && process.env.SMTP_PASS ? [] : missing;
+}
+
 export function mailConfigured(): boolean {
   return useBrevo() ? Boolean(senderAddress()) : Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
@@ -56,8 +63,12 @@ async function deliver(m: Outgoing): Promise<void> {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        console.error(`[Mail] Brevo refused the email (HTTP ${res.status}${body?.code ? `, ${body.code}` : ''}).`);
-        throw new Error('The email service refused the message.');
+        // Brevo's own explanation (e.g. "unrecognised IP address") — it never contains the key.
+        const why = String(body?.message || body?.code || `HTTP ${res.status}`).slice(0, 200);
+        console.error(`[Mail] Brevo refused the email (HTTP ${res.status}): ${why}`);
+        throw new Error(/ip address/i.test(why)
+          ? 'Brevo blocked the server’s IP address. In Brevo: Settings → Security → Authorised IPs → deactivate blocking (or add the server’s IP).'
+          : `Brevo refused the email: ${why}`);
       }
     } finally {
       clearTimeout(timer);
@@ -68,7 +79,7 @@ async function deliver(m: Outgoing): Promise<void> {
     await mailer().sendMail({ from: fromHeader(), ...m });
   } catch (e: any) {
     console.error(`[Mail] SMTP send failed (${e?.code || 'error'}${e?.command ? ` during ${e.command}` : ''}). If the host blocks SMTP ports, set BREVO_API_KEY to send over HTTPS.`);
-    throw new Error('The email could not be sent.');
+    throw new Error(`SMTP could not send the email (${e?.code || 'error'}). If the host blocks SMTP ports, set BREVO_API_KEY.`);
   }
 }
 

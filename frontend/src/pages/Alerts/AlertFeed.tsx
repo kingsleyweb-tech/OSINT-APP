@@ -8,6 +8,7 @@ import {
 } from '../../lib/alertsClient';
 import { useToast } from '../../components/ui/Toast';
 import { fmtDate } from '../../lib/workspace';
+import { EmailStatus } from './Alerts';
 import '../../styles/Alerts.css';
 
 const sourceLabel = (id: string) => (id === 'news' ? 'News' : SOCIAL_PLATFORM_OPTIONS.find(p => p.id === id)?.label || id);
@@ -105,6 +106,7 @@ export const AlertFeedPage: React.FC = () => {
           {alert.active && alert.lastRunAt && <span>Next check {fmtDate(alert.nextRunAt, true)}</span>}
         </div>
         {alert.lastResult?.message && <div className="ex-notice ex-small">{alert.lastResult.message}</div>}
+        <EmailStatus alert={alert} />
         <div className="al-feed-stats">
           <div><b>{matches?.length ?? '…'}</b><span>results in total</span></div>
           <div className={newCount ? 'new' : ''}><b>{matches ? newCount : '…'}</b><span>{firstVisit ? 'new (first visit)' : `new since your last visit${seenBefore ? ` (${fmtDate(seenBefore, true)})` : ''}`}</span></div>

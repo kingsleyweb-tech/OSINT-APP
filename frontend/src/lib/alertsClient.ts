@@ -44,6 +44,8 @@ export interface Alert {
   unseenCount?: number;
   /** Address of the site the alert was used on; email links point there. */
   appUrl?: string;
+  /** What happened to the last alert email (set by the server). */
+  lastEmail?: { status: 'sent' | 'off' | 'not-configured' | 'no-address' | 'failed'; at: string; message?: string };
 }
 
 export interface AlertMatch {

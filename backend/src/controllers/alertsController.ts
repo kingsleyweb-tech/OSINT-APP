@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { adminAuth, adminConfigured, adminDb } from '../services/alerts/admin';
-import { mailConfigured, sendTestEmail } from '../services/alerts/mailer';
+import { mailConfigured, missingMailSettings, sendTestEmail } from '../services/alerts/mailer';
 import { alertsStatus, runAlert, runDueAlerts } from '../services/alerts/alertRunner';
 import { rateLimited } from './exploreController';
 
@@ -62,7 +62,8 @@ export const handleRunAlert = async (req: Request, res: Response): Promise<void>
 export const handleTestEmail = async (req: Request, res: Response): Promise<void> => {
   const uid = uidOf(req);
   if (!uid || !adminConfigured() || !mailConfigured()) {
-    res.status(503).json({ error: 'Email is not configured on the server.' });
+    const missing = missingMailSettings();
+    res.status(503).json({ error: missing.length ? `Email is not set up on the server: add ${missing.join(' and ')} and redeploy.` : 'Email is not configured on the server.' });
     return;
   }
   try {
@@ -73,8 +74,9 @@ export const handleTestEmail = async (req: Request, res: Response): Promise<void
     }
     await sendTestEmail(user.email);
     res.json({ sentTo: user.email });
-  } catch {
-    res.status(502).json({ error: 'The test email could not be sent. Check the email settings on the server.' });
+  } catch (e) {
+    // The mailer's messages say what went wrong (e.g. Brevo blocked the IP) and never contain credentials.
+    res.status(502).json({ error: e instanceof Error ? e.message : 'The test email could not be sent.' });
   }
 };
 

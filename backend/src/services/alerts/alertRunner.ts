@@ -4,7 +4,7 @@ import { explore, quotaStatus } from '../explore/exploreService';
 import { exactPhrase, SOCIAL_PLATFORMS } from '../explore/engineCatalog';
 import type { ExploreItem } from '../../types/explore';
 import { adminAuth, adminDb } from './admin';
-import { mailConfigured, sendAlertEmail, type MailMatch } from './mailer';
+import { mailConfigured, missingMailSettings, sendAlertEmail, type MailMatch } from './mailer';
 
 /**
  * Keyword alerts. An alert belongs to one user (ownerUid). Each run searches Google News and the chosen
@@ -197,7 +197,10 @@ export async function runAlert(id: string, opts: { manual?: boolean } = {}): Pro
   batch.update(ref, { lastRunAt: at, nextRunAt, lastResult: result, matchCount: FieldValue.increment(fresh.length), unseenCount: FieldValue.increment(fresh.length) });
   await batch.commit();
 
-  if (fresh.length > 0) await notifyOwner(alert, fresh.map(f => toMail(f.item, f.keyword)), firstRun, id);
+  if (fresh.length > 0) {
+    const email = await notifyOwner(alert, fresh.map(f => toMail(f.item, f.keyword)), firstRun, id);
+    await ref.update({ lastEmail: email }).catch(() => undefined);
+  }
   return result;
 }
 
@@ -207,7 +210,10 @@ const toMail = (item: ExploreItem, keyword: string): MailMatch => ({
 });
 
 /** Email + in-app notification to the alert's owner — never to anyone else. */
-async function notifyOwner(alert: AlertDoc, matches: MailMatch[], firstRun: boolean, alertId: string): Promise<void> {
+/** What happened to an alert email — stored on the alert so the owner can see it (no silent failures). */
+export type EmailOutcome = { status: 'sent' | 'off' | 'not-configured' | 'no-address' | 'failed'; at: string; message?: string };
+
+async function notifyOwner(alert: AlertDoc, matches: MailMatch[], firstRun: boolean, alertId: string): Promise<EmailOutcome> {
   const db = adminDb();
   const id = `alert-${alertId}-${Date.now()}`;
   await db.collection('users').doc(alert.ownerUid).collection('notifications').doc(id).set({
@@ -216,13 +222,22 @@ async function notifyOwner(alert: AlertDoc, matches: MailMatch[], firstRun: bool
     message: `${matches.length} ${firstRun ? 'result' : 'new result'}${matches.length === 1 ? '' : 's'} — e.g. "${matches[0].title.slice(0, 90)}"`
   }).catch(() => undefined);
 
-  if (!alert.emailEnabled || !mailConfigured()) return;
+  const at = new Date().toISOString();
+  if (!alert.emailEnabled) return { status: 'off', at };
+  if (!mailConfigured()) {
+    const missing = missingMailSettings().join(' and ') || 'email settings';
+    console.error(`[Alerts] email not sent: missing ${missing} on the server.`);
+    return { status: 'not-configured', at, message: `Email is not set up on the server: add ${missing} (e.g. on Render → Environment) and redeploy.` };
+  }
   try {
     const user = await adminAuth().getUser(alert.ownerUid);
-    if (!user.email) return;
+    if (!user.email) return { status: 'no-address', at, message: 'Your account has no email address.' };
     await sendAlertEmail(user.email, alert.name, matches, firstRun, alertId, alert.appUrl);
-  } catch {
-    console.error('[Alerts] email could not be sent for an alert.');
+    return { status: 'sent', at };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'The email could not be sent.';
+    console.error(`[Alerts] email not sent: ${message}`);
+    return { status: 'failed', at, message };
   }
 }
 

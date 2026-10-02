@@ -135,6 +135,14 @@ const AlertForm: React.FC<{ initial?: Alert; budgetPerDay?: number; onDone: (cre
   );
 };
 
+/** The last alert email: sent, or why it was not (so a failure is never silent). */
+export const EmailStatus: React.FC<{ alert: Alert }> = ({ alert }) => {
+  const e = alert.lastEmail;
+  if (!e || e.status === 'off') return null;
+  if (e.status === 'sent') return <div className="ex-muted ex-small"><Mail size={12} /> Last email sent {fmtDate(e.at, true)} — check Spam if you do not see it.</div>;
+  return <div className="ex-notice ex-small"><Mail size={12} /> Last email was not sent ({fmtDate(e.at, true)}): {e.message || 'unknown reason'}</div>;
+};
+
 const statusPill = (a: Alert) => {
   if (!a.active) return <span className="ex-pill ex-pill-low">Paused</span>;
   if (a.lastResult?.status === 'waiting') return <span className="ex-pill ex-pill-warn">Waiting</span>;
@@ -251,6 +259,7 @@ export const AlertsPage: React.FC = () => {
                   {a.active && a.lastRunAt && <span>Next {fmtDate(a.nextRunAt, true)}</span>}
                 </div>
                 {a.lastResult?.message && <div className="ex-notice ex-small">{a.lastResult.message}</div>}
+                <EmailStatus alert={a} />
               </button>
               <div className="al-item-actions">
                 <button type="button" className="ex-btn ex-btn-ghost ex-btn-sm" onClick={() => run(a.id)} disabled={running !== null}>
