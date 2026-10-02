@@ -8,6 +8,7 @@ import { SharedInvestigationPage } from './pages/Investigation/SharedInvestigati
 import { InvestigationsListPage } from './pages/Investigations/InvestigationsList';
 import { PeoplePage } from './pages/People/People';
 import { AlertsPage } from './pages/Alerts/Alerts';
+import { AlertFeedPage } from './pages/Alerts/AlertFeed';
 import { SourcesPage } from './pages/Sources/Sources';
 import { SettingsPage } from './pages/Settings/Settings';
 import { HelpPage } from './pages/Help/Help';
@@ -107,6 +108,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/investigations/:id/:tab" element={<AppPage><InvestigationDetailPage /></AppPage>} />
       <Route path="/people" element={<AppPage><PeoplePage currentUser={user || undefined} /></AppPage>} />
       <Route path="/alerts" element={<AppPage><AlertsPage /></AppPage>} />
+      <Route path="/alerts/:id" element={<AppPage><AlertFeedPage /></AppPage>} />
       <Route path="/sources" element={<AppPage><SourcesPage /></AppPage>} />
       <Route path="/help" element={<AppPage><HelpPage /></AppPage>} />
       <Route path="/guide" element={<AppPage><GuidePage /></AppPage>} />

@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bell, BellOff, ExternalLink, Info, Loader2, Mail, Pause, Pencil, Play, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, BellOff, Info, Loader2, Mail, Pause, Pencil, Play, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EmptyState } from '../../components/explore/ExploreKit';
 import { COUNTRY_OPTIONS, LANGUAGE_OPTIONS, SOCIAL_PLATFORM_OPTIONS } from '../../lib/exploreClient';
 import {
   createAlert, deleteAlert, FREQUENCY_LABEL, getAlertsStatus, runAlertNow, searchesPerMonth, searchesPerRun, sendTestEmail,
-  setAlertActive, subscribeToAlerts, subscribeToMatches, updateAlert,
-  type Alert, type AlertFrequency, type AlertInput, type AlertMatch, type AlertsServerStatus
+  setAlertActive, subscribeToAlerts, updateAlert,
+  type Alert, type AlertFrequency, type AlertInput, type AlertsServerStatus
 } from '../../lib/alertsClient';
 import { auth } from '../../firebase/config';
 import { useToast } from '../../components/ui/Toast';
@@ -142,61 +143,13 @@ const statusPill = (a: Alert) => {
   return <span className="ex-pill ex-pill-ok">Active</span>;
 };
 
-const Matches: React.FC<{ alert: Alert }> = ({ alert }) => {
-  const [matches, setMatches] = useState<AlertMatch[] | null>(null);
-  const [keyword, setKeyword] = useState('all');
-  useEffect(() => subscribeToMatches(alert.id, setMatches, () => setMatches([])), [alert.id]);
-  const shown = (matches || []).filter(m => keyword === 'all' || m.keyword === keyword);
-
-  return (
-    <div className="ex-card al-matches">
-      <div className="ex-card-head">
-        <span className="ex-card-title">Matches · {alert.name}</span>
-        <span className="ex-muted ex-small">{matches ? `${matches.length} found` : 'Loading…'}</span>
-      </div>
-      {alert.keywords.length > 1 && (
-        <div className="ex-chips">
-          {['all', ...alert.keywords].map(k => (
-            <button key={k} type="button" className={`ex-chip ${keyword === k ? 'on' : ''}`} onClick={() => setKeyword(k)}>{k === 'all' ? 'All keywords' : k}</button>
-          ))}
-        </div>
-      )}
-      {matches && shown.length === 0 && (
-        <div className="ex-pad ex-muted">
-          {alert.lastRunAt ? 'No result naming these keywords has been found yet. New results appear here and in your email.' : 'The first check has not run yet.'}
-        </div>
-      )}
-      <div className="ex-list">
-        {shown.map(m => (
-          <div key={m.id} className="ex-row">
-            <div className="ex-row-body">
-              <a className="ex-row-title al-link" href={m.url} target="_blank" rel="noopener noreferrer">{m.title} <ExternalLink size={13} /></a>
-              <div className="ex-row-meta">
-                <span className="ex-kind">{m.source}</span>
-                {m.publishedText && <span>{m.publishedText}</span>}
-                <span>Keyword: {m.keyword}</span>
-                <span>Found {fmtDate(m.foundAt, true)}</span>
-              </div>
-              {m.snippet && <div className="ex-row-snippet">{m.snippet}</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="ex-pad ex-muted ex-small">
-        Results come from public search engines. News is usually indexed within minutes; social posts can take hours and some are never indexed,
-        so this is not live platform monitoring. Open each link to check it.
-      </div>
-    </div>
-  );
-};
-
 export const AlertsPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [status, setStatus] = useState<AlertsServerStatus | null>(null);
   const [editing, setEditing] = useState<Alert | 'new' | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [running, setRunning] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
 
@@ -204,11 +157,8 @@ export const AlertsPage: React.FC = () => {
   const refreshStatus = useCallback(() => { getAlertsStatus().then(setStatus); }, []);
   useEffect(() => { refreshStatus(); }, [refreshStatus]);
 
-  const current = useMemo(() => alerts?.find(a => a.id === selected) || null, [alerts, selected]);
-
   const run = useCallback(async (id: string) => {
     setRunning(id);
-    setSelected(id);
     try {
       const { result } = await runAlertNow(id);
       if (result.status === 'waiting') toast.error('Not run', result.message || 'The search limit was reached.');
@@ -226,7 +176,6 @@ export const AlertsPage: React.FC = () => {
     const ok = await confirm({ title: 'Delete alert?', message: `"${a.name}" and its saved matches will be deleted. No more emails will be sent for it.`, confirmLabel: 'Delete', variant: 'warning' });
     if (!ok) return;
     await deleteAlert(a.id).then(() => toast.success('Alert deleted', a.name), () => toast.error('Not deleted', 'Please try again.'));
-    if (selected === a.id) setSelected(null);
   };
 
   const togglePause = (a: Alert) => setAlertActive(a, !a.active)
@@ -289,15 +238,15 @@ export const AlertsPage: React.FC = () => {
       ) : (
         <div className="al-list">
           {alerts.map(a => (
-            <div key={a.id} className={`ex-card al-item ${selected === a.id ? 'on' : ''}`}>
-              <button type="button" className="al-item-main" onClick={() => setSelected(s => (s === a.id ? null : a.id))} aria-expanded={selected === a.id}>
-                <div className="al-item-title">{a.active ? <Bell size={16} /> : <BellOff size={16} />} {a.name} {statusPill(a)}</div>
+            <div key={a.id} className={`ex-card al-item ${(a.unseenCount || 0) > 0 ? 'on' : ''}`}>
+              <button type="button" className="al-item-main" onClick={() => navigate(`/alerts/${a.id}`)} title="Open all results of this alert">
+                <div className="al-item-title">{a.active ? <Bell size={16} /> : <BellOff size={16} />} {a.name} {statusPill(a)}{(a.unseenCount || 0) > 0 && <span className="al-new al-unseen">{a.unseenCount} NEW</span>}</div>
                 <div className="al-kws">{a.keywords.map(k => <span key={k} className="al-kw sm">{k}</span>)}</div>
                 <div className="ex-row-meta">
                   <span>{a.sources.map(sourceLabel).join(', ')}</span>
                   {a.country && <span>{COUNTRY_OPTIONS.find(c => c.code === a.country)?.label || a.country.toUpperCase()}</span>}
                   <span>{FREQUENCY_LABEL[a.frequency]}{a.emailEnabled ? ' · email on' : ' · email off'}</span>
-                  <span>{a.matchCount || 0} match{a.matchCount === 1 ? '' : 'es'}</span>
+                  <span>{a.matchCount || 0} result{a.matchCount === 1 ? '' : 's'} · <u>view all</u></span>
                   <span>{a.lastRunAt ? `Last checked ${fmtDate(a.lastRunAt, true)}` : 'Not checked yet'}</span>
                   {a.active && a.lastRunAt && <span>Next {fmtDate(a.nextRunAt, true)}</span>}
                 </div>
@@ -316,7 +265,6 @@ export const AlertsPage: React.FC = () => {
         </div>
       )}
 
-      {current && <Matches alert={current} />}
     </ExplorePage>
   );
 };

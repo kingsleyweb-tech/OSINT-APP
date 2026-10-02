@@ -86,20 +86,21 @@ const appUrl = () => (process.env.APP_URL || '').replace(/\/+$/, '');
 const fromHeader = () => `"${senderName()}" <${senderAddress()}>`;
 
 /** One email per alert run, to the alert's owner only. */
-export async function sendAlertEmail(to: string, alertName: string, matches: MailMatch[], firstRun: boolean): Promise<void> {
+export async function sendAlertEmail(to: string, alertName: string, matches: MailMatch[], firstRun: boolean, alertId?: string): Promise<void> {
   const shown = matches.slice(0, 20);
   const more = matches.length - shown.length;
   const intro = firstRun
     ? `Your new alert "${alertName}" found ${matches.length} result${matches.length === 1 ? '' : 's'} already published:`
     : `${matches.length} new result${matches.length === 1 ? '' : 's'} for your alert "${alertName}":`;
-  const manage = appUrl() ? `${appUrl()}/alerts` : '';
+  // Opens this alert's own page: every result, with the ones from this email marked NEW.
+  const manage = appUrl() ? `${appUrl()}/alerts${alertId ? `/${encodeURIComponent(alertId)}` : ''}` : '';
 
   const text = [
     intro, '',
     ...shown.map(m => `- ${m.title}\n  ${m.source}${m.publishedText ? ` · ${m.publishedText}` : ''} · keyword: ${m.keyword}\n  ${m.url}`),
     more > 0 ? `\n…and ${more} more in the app.` : '',
     '',
-    manage ? `Manage this alert: ${manage}` : '',
+    manage ? `View all results of this alert: ${manage}` : '',
     'You receive this email because you created this alert. Results come from public search engines; open each link to check it.'
   ].join('\n');
 
@@ -113,7 +114,7 @@ export async function sendAlertEmail(to: string, alertName: string, matches: Mai
       ${m.snippet ? `<div style="font-size:13px;margin-top:4px">${esc(m.snippet.slice(0, 220))}</div>` : ''}
     </div>`).join('')}
     ${more > 0 ? `<p style="font-size:13px;color:#78716c">…and ${more} more in the app.</p>` : ''}
-    ${manage ? `<p style="margin-top:16px"><a href="${esc(manage)}" style="background:#8c4b27;color:#fff;padding:9px 14px;border-radius:6px;text-decoration:none;font-size:14px">Manage this alert</a></p>` : ''}
+    ${manage ? `<p style="margin-top:16px"><a href="${esc(manage)}" style="background:#8c4b27;color:#fff;padding:9px 14px;border-radius:6px;text-decoration:none;font-size:14px">View all results</a></p>` : ''}
     <p style="font-size:11px;color:#a8a29e;margin-top:18px">You receive this email because you created this alert. Results come from public search engines; open each link to check it.</p>
   </div>
 </div>`;

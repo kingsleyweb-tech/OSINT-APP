@@ -45,3 +45,18 @@
 .al-help ol { margin: 10px 0 8px 20px; display: flex; flex-direction: column; gap: 4px; }
 .al-help p { margin: 6px 0 0; overflow-wrap: anywhere; }
 .al-help-spam { padding: 8px 12px; border-radius: 8px; background: var(--accent-warm-subtle); color: var(--text-primary); }
+
+/* One alert's page */
+.al-feed-head { display: flex; flex-direction: column; gap: 8px; }
+.al-feed-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.al-feed-stats > div { display: flex; align-items: baseline; gap: 8px; padding: 8px 14px; border-radius: 10px; background: var(--bg-hover); border: 1px solid var(--border-color); }
+.al-feed-stats b { font-size: 1.35rem; color: var(--text-primary); }
+.al-feed-stats span { font-size: 0.82rem; color: var(--text-muted); }
+.al-feed-stats .new { background: var(--accent-warm-subtle); border-color: var(--accent-warm); }
+.al-feed-stats .new b { color: var(--accent-warm); }
+.al-group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 18px; font-size: 0.8rem; font-weight: 650; color: var(--text-secondary); background: var(--bg-hover); border-bottom: 1px solid var(--border-color); }
+.al-group.fresh .al-group-head { background: var(--accent-warm-subtle); color: var(--text-primary); }
+.al-new { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; background: var(--accent-warm); color: #fff; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; }
+.al-new.sm { height: 18px; padding: 0 6px; font-size: 0.62rem; }
+.al-row-new { box-shadow: inset 3px 0 0 var(--accent-warm); }
+.al-unseen { margin-left: 2px; }

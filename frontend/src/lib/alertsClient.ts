@@ -38,6 +38,10 @@ export interface Alert {
   nextRunAt: string;
   matchCount?: number;
   lastResult?: AlertResult;
+  /** When the owner last opened the alert's page; results found later are shown as NEW. */
+  lastSeenAt?: string;
+  /** New results not looked at yet (the server adds to it, opening the page resets it). */
+  unseenCount?: number;
 }
 
 export interface AlertMatch {
@@ -101,10 +105,24 @@ export function subscribeToAlerts(onUpdate: (alerts: Alert[]) => void, onError?:
 
 export function subscribeToMatches(alertId: string, onUpdate: (m: AlertMatch[]) => void, onError?: (e: Error) => void): Unsubscribe {
   return onSnapshot(
-    query(collection(db, ALERTS, alertId, 'matches'), orderBy('foundAt', 'desc'), limit(200)),
+    query(collection(db, ALERTS, alertId, 'matches'), orderBy('foundAt', 'desc'), limit(500)),
     snap => onUpdate(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<AlertMatch, 'id'>) }))),
     e => onError?.(e)
   );
+}
+
+export function subscribeToAlert(id: string, onUpdate: (a: Alert | null) => void, onError?: (e: Error) => void): Unsubscribe {
+  return onSnapshot(
+    doc(db, ALERTS, id),
+    snap => onUpdate(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<Alert, 'id'>) } : null),
+    e => onError?.(e)
+  );
+}
+
+/** The owner opened the alert's page: everything found so far counts as seen. */
+export async function markAlertSeen(id: string): Promise<void> {
+  uid();
+  await updateDoc(doc(db, ALERTS, id), { lastSeenAt: new Date().toISOString(), unseenCount: 0 });
 }
 
 export async function createAlert(input: AlertInput): Promise<string> {

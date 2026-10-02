@@ -191,7 +191,8 @@ export async function runAlert(id: string, opts: { manual?: boolean } = {}): Pro
     at, checked, newMatches: fresh.length, searchesUsed, status,
     ...(status === 'error' ? { message: 'The search engines could not be reached. It will try again at the next run.' } : {})
   };
-  batch.update(ref, { lastRunAt: at, nextRunAt, lastResult: result, matchCount: FieldValue.increment(fresh.length) });
+  // unseenCount: new results the owner has not looked at yet (reset when they open the alert's page).
+  batch.update(ref, { lastRunAt: at, nextRunAt, lastResult: result, matchCount: FieldValue.increment(fresh.length), unseenCount: FieldValue.increment(fresh.length) });
   await batch.commit();
 
   if (fresh.length > 0) await notifyOwner(alert, fresh.map(f => toMail(f.item, f.keyword)), firstRun, id);
@@ -217,7 +218,7 @@ async function notifyOwner(alert: AlertDoc, matches: MailMatch[], firstRun: bool
   try {
     const user = await adminAuth().getUser(alert.ownerUid);
     if (!user.email) return;
-    await sendAlertEmail(user.email, alert.name, matches, firstRun);
+    await sendAlertEmail(user.email, alert.name, matches, firstRun, alertId);
   } catch {
     console.error('[Alerts] email could not be sent for an alert.');
   }
