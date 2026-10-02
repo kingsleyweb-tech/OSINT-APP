@@ -80,7 +80,9 @@ export const handleTestEmail = async (req: Request, res: Response): Promise<void
 
 export const handleAlertsStatus = async (_req: Request, res: Response): Promise<void> => {
   const configured = adminConfigured();
-  const base = { configured, emailConfigured: mailConfigured() };
+  // The sender address is shown on the page so users know which emails to look for (and rescue from Spam).
+  const sender = process.env.MAIL_FROM || process.env.SMTP_USER || '';
+  const base = { configured, emailConfigured: mailConfigured(), ...(sender ? { sender, senderName: process.env.SMTP_FROM_NAME || 'OSINT Alerts' } : {}) };
   if (!configured) {
     res.json(base);
     return;

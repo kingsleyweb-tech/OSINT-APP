@@ -150,6 +150,9 @@ export const sendTestEmail = () => post<{ sentTo: string }>('/alerts/test-email'
 export interface AlertsServerStatus {
   configured: boolean;
   emailConfigured: boolean;
+  /** Address the alert emails come from, and the sender name shown in the inbox. */
+  sender?: string;
+  senderName?: string;
   budgetPerDay?: number;
   usedToday?: number;
   searchesLeft?: number | null;

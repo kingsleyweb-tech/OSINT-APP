@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bell, BellOff, ExternalLink, Loader2, Mail, Pause, Pencil, Play, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Bell, BellOff, ExternalLink, Info, Loader2, Mail, Pause, Pencil, Play, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EmptyState } from '../../components/explore/ExploreKit';
 import { COUNTRY_OPTIONS, LANGUAGE_OPTIONS, SOCIAL_PLATFORM_OPTIONS } from '../../lib/exploreClient';
 import {
@@ -262,6 +262,23 @@ export const AlertsPage: React.FC = () => {
           {!status.emailConfigured && <> · <span className="ex-notice">Email is not configured — matches show here only.</span></>}
         </> : 'Checking the alert service…'}
       </div>
+
+      <details className="ex-card al-help" open={alerts !== null && alerts.length === 0}>
+        <summary><Info size={16} /> How alerts work, and where to find the emails</summary>
+        <ol>
+          <li><b>Create an alert</b> with keywords, sources and how often to check.</li>
+          <li><b>The first check</b> shows what is already published (last 7 days) here and emails it to you.</li>
+          <li><b>Later checks</b> run on schedule and email you <b>only new results</b>. Every match also stays listed on this page.</li>
+        </ol>
+        <p>
+          Emails go only to your account email{auth.currentUser?.email ? <> (<b>{auth.currentUser.email}</b>)</> : ''}
+          {status?.sender ? <>, from <b>{status.senderName || 'OSINT Alerts'}</b> &lt;{status.sender}&gt;</> : ''}.
+        </p>
+        <p className="al-help-spam">
+          <b>Can’t find an email?</b> Check your <b>Spam</b> (or Junk / Promotions) folder. Open the email and click <b>“Not spam”</b>
+          (Gmail: “Report not spam”), then add the sender to your contacts — future alerts will arrive in your inbox.
+        </p>
+      </details>
 
       {editing && <AlertForm initial={editing === 'new' ? undefined : editing} budgetPerDay={status?.budgetPerDay} onDone={id => { setEditing(null); if (id) run(id); }} />}
 

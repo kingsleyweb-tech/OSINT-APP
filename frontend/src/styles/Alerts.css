@@ -37,3 +37,11 @@
   .al-item-actions .ex-btn { flex: 1 1 auto; justify-content: center; }
   .al-form .ex-field, .al-form .ex-select { width: 100%; }
 }
+
+.al-help { padding: 12px 16px; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.55; }
+.al-help summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 650; color: var(--text-primary); list-style: none; }
+.al-help summary::-webkit-details-marker { display: none; }
+.al-help summary svg { color: var(--accent-warm); flex-shrink: 0; }
+.al-help ol { margin: 10px 0 8px 20px; display: flex; flex-direction: column; gap: 4px; }
+.al-help p { margin: 6px 0 0; overflow-wrap: anywhere; }
+.al-help-spam { padding: 8px 12px; border-radius: 8px; background: var(--accent-warm-subtle); color: var(--text-primary); }
