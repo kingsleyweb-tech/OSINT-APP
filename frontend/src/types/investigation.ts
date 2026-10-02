@@ -294,7 +294,8 @@ export type WebsitePageKind =
 export type OrgField =
   | 'official_name' | 'alt_name' | 'type' | 'industry' | 'sector' | 'description' | 'founded'
   | 'headquarters' | 'country' | 'address' | 'website' | 'phone' | 'email' | 'hours' | 'coordinates'
-  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'unit' | 'employees';
+  | 'person' | 'product' | 'service' | 'social' | 'parent' | 'subsidiary' | 'unit' | 'employees'
+  | 'mission' | 'legal_status' | 'affiliate' | 'program' | 'project';
 
 /** One fact from one source (backend orgEnrichment). */
 export interface OrgClaim {
@@ -355,15 +356,26 @@ export type AIConfidence = 'Verified' | 'Strong evidence' | 'Possible' | 'Mentio
 export type AIField =
   | 'occupation' | 'role' | 'employer' | 'organization' | 'membership' | 'education' | 'skill' | 'language'
   | 'location' | 'nationality' | 'date_of_birth' | 'contact' | 'website' | 'social_profile' | 'alias' | 'interest'
-  | 'founded' | 'headquarters' | 'industry' | 'leadership' | 'other';
-export type AIEvidenceKind = 'profile' | 'web' | 'news' | 'activity' | 'association' | 'org-fact' | 'org-claim' | 'location' | 'contact' | 'image' | 'website';
+  | 'founded' | 'headquarters' | 'industry' | 'leadership' | 'other'
+  | 'official_name' | 'entity_type' | 'sector' | 'description' | 'mission' | 'legal_status' | 'employees'
+  | 'parent' | 'subsidiary' | 'unit' | 'affiliate' | 'product' | 'service' | 'program' | 'project';
+export type AIEvidenceKind = 'profile' | 'web' | 'news' | 'activity' | 'association' | 'org-fact' | 'org-claim' | 'location' | 'contact' | 'image' | 'website' | 'listing' | 'research';
+/** How much a source counts, best first (official website, institutional record, own profile, listing, news, directory, other). */
+export type AISourceTier = 'official' | 'institutional' | 'own-profile' | 'listing' | 'news' | 'directory' | 'other';
 
-export interface AISource { evidenceId: string; title: string; source: string; url: string; quote: string }
+export interface AISource { evidenceId: string; title: string; source: string; url: string; quote: string; tier?: AISourceTier; date?: string }
 export interface AIFinding {
   id: string; field: AIField; value: string; confidence: AIConfidence; sources: AISource[]; siteCount: number; why: string;
   inCase: 'new' | 'same' | 'differs'; existing?: string;
+  /** Role (leadership), location type (Headquarters, Branch…), platform / official link (accounts). */
+  detail?: string;
+  /** A classification of the quoted words (entity type, industry, description) rather than a copy. */
+  derived?: boolean;
+  /** Newest date among the cited sources. */
+  asOf?: string;
 }
-export interface AITimelineEvent { id: string; date: string; event: string; confidence: AIConfidence; sources: AISource[]; siteCount: number }
+export type AIEventKind = 'announcement' | 'appointment' | 'partnership' | 'launch' | 'event' | 'project' | 'award' | 'statement' | 'change' | 'other';
+export interface AITimelineEvent { id: string; date: string; event: string; kind?: AIEventKind; confidence: AIConfidence; sources: AISource[]; siteCount: number }
 export interface AIRelationship {
   id: string; from: string; to: string; toType: 'person' | 'organization' | 'group' | 'event' | 'location' | 'website';
   relation: string; confidence: AIConfidence; sources: AISource[]; siteCount: number;
@@ -378,6 +390,16 @@ export interface AIAnalysis {
   id: string; runAt: string; provider: string; model: string; subject: string; entityKind: 'person' | 'organization'; evidenceCount: number;
   summary: { text: string; sources: AISource[] };
   findings: AIFinding[]; timeline: AITimelineEvent[]; relationships: AIRelationship[]; comparisons: AIComparison[]; missing: AIMissing[]; metrics: AIMetrics;
+  /** Searches suggested for missing fields (run only when the investigator asks). */
+  research?: AIResearchStep[];
+  /** Evidence reviewed per source tier. */
+  coverage?: Array<{ tier: AISourceTier; count: number; sites: number }>;
+}
+export interface AIResearchStep { id: string; fields: AIField[]; label: string; engine: 'google' | 'google_news' | 'bing_news' | 'google_maps'; query: string }
+/** Results of the targeted searches the investigator ran for missing information (read by the next AI analysis). */
+export interface AIResearch {
+  runs: Array<{ at: string; steps: Array<{ label: string; engine: string; query: string; status: 'ok' | 'empty' | 'failed'; results: number; kept: number; fromCache: boolean; error?: string }> }>;
+  results: Array<{ id: string; title: string; url: string; snippet: string; source: string; date?: string; engine: string; step: string; fields: AIField[]; foundAt: string }>;
 }
 /** Investigator's decision on an AI finding, timeline event or relationship (keyed by its id). */
 export type AIReviewState = 'accepted' | 'ignored';
@@ -500,6 +522,10 @@ export interface Investigation {
   aiAnalysis?: AIAnalysis;
   /** Accept / ignore decisions on AI items; only accepted items reach the share link and the PDF. */
   aiReview?: Record<string, AIReviewState>;
+  /** Targeted searches for missing information run from the AI Analysis tab. */
+  aiResearch?: AIResearch;
+  /** Organisation facts the investigator accepted from the AI analysis (each keeps its source and quote). */
+  aiClaims?: OrgClaim[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;

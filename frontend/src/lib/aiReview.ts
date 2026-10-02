@@ -4,19 +4,34 @@
  * reviewedAnalysis(), which keeps the summary, accepted findings / events / relationships, the source
  * comparison (sources that agree or disagree — no fact is asserted) and the missing-information list.
  */
-import type { AIAnalysis, AIConfidence, AIField, AIReviewState, Investigation } from '../types/investigation';
+import type { AIAnalysis, AIConfidence, AIEventKind, AIField, AIReviewState, AISourceTier, Investigation } from '../types/investigation';
 
 export const AI_FIELD_LABEL: Record<AIField, string> = {
   occupation: 'Occupation', role: 'Role / job title', employer: 'Employer', organization: 'Organisation', membership: 'Membership / group',
   education: 'Education', skill: 'Skills', language: 'Languages', location: 'Location', nationality: 'Nationality', date_of_birth: 'Date of birth',
   contact: 'Public contact', website: 'Website', social_profile: 'Social profile', alias: 'Alias / other name', interest: 'Public interests',
-  founded: 'Founded', headquarters: 'Headquarters', industry: 'Industry / type', leadership: 'Leadership', other: 'Other'
+  founded: 'Founded', headquarters: 'Headquarters', industry: 'Industry', leadership: 'Leadership', other: 'Other',
+  official_name: 'Official name', entity_type: 'Entity type', sector: 'Sector', description: 'Description', mission: 'Mission / purpose',
+  legal_status: 'Legal status', employees: 'Size / employees', parent: 'Parent organisation', subsidiary: 'Subsidiary',
+  unit: 'Division / department', affiliate: 'Affiliate / partner', product: 'Product', service: 'Service', program: 'Programme', project: 'Project'
+};
+
+/** Source tiers, best first (how much a source counts for facts about the subject). */
+export const AI_TIER_LABEL: Record<AISourceTier, string> = {
+  official: 'Official website', institutional: 'Government / institutional record', 'own-profile': 'Own social profile',
+  listing: 'Business listing (Maps)', news: 'News', directory: 'Directory', other: 'Other web page'
+};
+export const AI_TIER_ORDER: AISourceTier[] = ['official', 'institutional', 'own-profile', 'listing', 'news', 'directory', 'other'];
+
+export const AI_EVENT_LABEL: Record<AIEventKind, string> = {
+  announcement: 'Announcement', appointment: 'Appointment', partnership: 'Partnership', launch: 'Launch', event: 'Event',
+  project: 'Project', award: 'Award', statement: 'Statement', change: 'Change', other: 'Activity'
 };
 
 /** How each confidence label is earned (shown in the tab and the report). */
 export const AI_CONFIDENCE_RULE: Record<AIConfidence, string> = {
-  Verified: '3 or more independent sites, or 2 including one you marked Validated',
-  'Strong evidence': '2 independent sites',
+  Verified: '3 or more independent sites, or 2 including one you marked Validated or an official / institutional source',
+  'Strong evidence': '2 independent sites, or the official website / an institutional record naming the subject',
   Possible: '1 site that names the subject (or is the subject’s own page)',
   'Mention only': '1 site that does not name the subject',
   Uncertain: 'sites disagree on this value'

@@ -3,7 +3,13 @@
 /** Set by rule from the evidence (see analysisEngine.confidenceOf), never chosen by the model. */
 export type AIConfidence = 'Verified' | 'Strong evidence' | 'Possible' | 'Mention only' | 'Uncertain';
 
-export type EvidenceKind = 'profile' | 'web' | 'news' | 'activity' | 'association' | 'org-fact' | 'org-claim' | 'location' | 'contact' | 'image' | 'website';
+export type EvidenceKind = 'profile' | 'web' | 'news' | 'activity' | 'association' | 'org-fact' | 'org-claim' | 'location' | 'contact' | 'image' | 'website' | 'listing' | 'research';
+
+/**
+ * How much a source counts, best first: the organisation's own (verified) website, government / institutional
+ * records (Wikidata, .gov/.edu/.mil…), the subject's own profiles, business listings, news, directories, other.
+ */
+export type SourceTier = 'official' | 'institutional' | 'own-profile' | 'listing' | 'news' | 'directory' | 'other';
 
 /** One piece of collected evidence as sent to the model (E1, E2…). */
 export interface Evidence {
@@ -20,12 +26,16 @@ export interface Evidence {
   level: 'relevant' | 'validated';
   /** The subject's own profile or website (its statements are about the subject even without naming it). */
   own?: boolean;
+  tier: SourceTier;
 }
 
 export type AIField =
   | 'occupation' | 'role' | 'employer' | 'organization' | 'membership' | 'education' | 'skill' | 'language'
   | 'location' | 'nationality' | 'date_of_birth' | 'contact' | 'website' | 'social_profile' | 'alias' | 'interest'
-  | 'founded' | 'headquarters' | 'industry' | 'leadership' | 'other';
+  | 'founded' | 'headquarters' | 'industry' | 'leadership' | 'other'
+  // Organisations
+  | 'official_name' | 'entity_type' | 'sector' | 'description' | 'mission' | 'legal_status' | 'employees'
+  | 'parent' | 'subsidiary' | 'unit' | 'affiliate' | 'product' | 'service' | 'program' | 'project';
 
 export interface AISource {
   evidenceId: string;
@@ -34,12 +44,25 @@ export interface AISource {
   url: string;
   /** The source's exact words (checked to appear in the collected evidence). */
   quote: string;
+  tier: SourceTier;
+  /** The source's own date (publication or listing date), when it has one. */
+  date?: string;
 }
 
 export interface AIFinding {
   id: string;
   field: AIField;
   value: string;
+  /**
+   * Leadership: the role as the source writes it ("Former Managing Director" when the source says former).
+   * Location: its type (Headquarters, Branch, Campus…; "Location mentioned" unless the quote says which).
+   * Social profile / website: the platform, and whether the official website links to it.
+   */
+  detail?: string;
+  /** A classification of the quoted words (entity type, industry, sector, a consolidated description) rather than a copy. */
+  derived?: boolean;
+  /** Newest date among the cited sources (leadership and other facts that change over time). */
+  asOf?: string;
   confidence: AIConfidence;
   sources: AISource[];
   /** Independent sites supporting it. */
@@ -51,10 +74,13 @@ export interface AIFinding {
   existing?: string;
 }
 
+export type AIEventKind = 'announcement' | 'appointment' | 'partnership' | 'launch' | 'event' | 'project' | 'award' | 'statement' | 'change' | 'other';
+
 export interface AITimelineEvent {
   id: string;
   date: string;
   event: string;
+  kind?: AIEventKind;
   confidence: AIConfidence;
   sources: AISource[];
   siteCount: number;
@@ -88,6 +114,15 @@ export interface AIMissing {
   findingIds: string[];
 }
 
+/** A targeted search the investigator can run for fields the evidence does not cover (never run automatically). */
+export interface AIResearchStep {
+  id: string;
+  fields: AIField[];
+  label: string;
+  engine: 'google' | 'google_news' | 'bing_news' | 'google_maps';
+  query: string;
+}
+
 export interface AIMetrics {
   evidenceReviewed: number;
   /** A list, not a map: Firestore merges maps on save, which would keep counts from an older run. */
@@ -116,5 +151,9 @@ export interface AIAnalysis {
   relationships: AIRelationship[];
   comparisons: AIComparison[];
   missing: AIMissing[];
+  /** Searches suggested for missing fields (run only when the investigator asks). */
+  research?: AIResearchStep[];
+  /** Evidence reviewed per source tier. */
+  coverage?: Array<{ tier: SourceTier; count: number; sites: number }>;
   metrics: AIMetrics;
 }

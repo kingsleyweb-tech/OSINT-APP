@@ -6,7 +6,7 @@ import {
   type ActivityKind, type FactGroup, type OrgSection
 } from '../../../lib/organizationProfile';
 import { STATUS_LABEL, TYPE_LABEL, allLocationRefs } from '../../../lib/locationEvidence';
-import type { OrgField, WebsiteIntel, WebsitePageKind } from '../../../types/investigation';
+import type { AIField, OrgField, WebsiteIntel, WebsitePageKind } from '../../../types/investigation';
 import { useWorkspace } from '../workspace/WorkspaceContext';
 import { useOrgPipeline } from '../workspace/useOrgPipeline';
 import { Chips, Empty, SectionHead, SourceLogo } from '../workspace/ui';
@@ -26,7 +26,16 @@ const VERIFICATION_TEXT: Record<WebsiteIntel['verification']['status'], { label:
   unverified: { label: 'Could not be verified as the official website', cls: 'warn' }
 };
 
-const NOT_FOUND = <span className="ws-sub">Not found in the sources</span>;
+const NOT_FOUND = <span className="ws-sub">Not found in available sources</span>;
+
+/** AI analysis fields that fill each Organisation field (for "AI found a possible value" hints). */
+const AI_FIELDS_FOR: Partial<Record<OrgField, AIField[]>> = {
+  official_name: ['official_name'], alt_name: ['alias'], type: ['entity_type'], industry: ['industry'], sector: ['sector'],
+  description: ['description'], mission: ['mission'], legal_status: ['legal_status'], founded: ['founded'], headquarters: ['headquarters'],
+  address: ['location'], product: ['product'], service: ['service'], program: ['program'], project: ['project'], person: ['leadership'],
+  website: ['website'], social: ['social_profile'], phone: ['contact'], email: ['contact'], parent: ['parent'], subsidiary: ['subsidiary'],
+  unit: ['unit'], affiliate: ['affiliate'], employees: ['employees']
+};
 
 /** One value with how many independent sources agree, and each source with its link and words. */
 const FactValue: React.FC<{ g: FactGroup; link?: boolean }> = ({ g, link }) => {
@@ -79,15 +88,29 @@ export const OrganizationTab: React.FC = () => {
 
   const facts = profile.facts;
   const conflict = (f: OrgField) => profile.conflicts.includes(f);
-  const row = (f: OrgField, opts: { max?: number; link?: boolean; label?: string } = {}) => {
+  // Findings of the AI analysis still waiting for the investigator's review (accepted ones are already facts here).
+  const aiPending = (f: OrgField) => (inv.aiAnalysis?.findings || []).filter(x => (AI_FIELDS_FOR[f] || []).includes(x.field) && !inv.aiReview?.[x.id]);
+  const aiHint = (f: OrgField) => {
+    const list = readOnly ? [] : aiPending(f);
+    if (!list.length) return null;
+    return (
+      <div className="ws-sub ws-org-aihint">
+        AI analysis found a possible value: {list.slice(0, 2).map(x => `“${x.value}”`).join(', ')}{list.length > 2 ? ` +${list.length - 2}` : ''} ({list[0].confidence}, not yet reviewed) ·{' '}
+        <button type="button" className="ws-link" onClick={() => goTab('ai')}>Review →</button>
+      </div>
+    );
+  };
+  const row = (f: OrgField, opts: { max?: number; link?: boolean; label?: string; optional?: boolean } = {}) => {
     const groups = facts[f] || [];
+    // Optional rows (mission, programmes…) appear only when a source or a pending AI finding has a value.
+    if (opts.optional && !groups.length && !aiHint(f)) return null;
     const max = opts.max || 8;
     return (
       <tr key={f}>
         <td className="ws-org-k"><b>{opts.label || FIELD_LABEL[f]}</b></td>
         <td className="ws-org-v">
           {conflict(f) && <div className="ws-org-conflict"><AlertTriangle size={13} /> {['headquarters', 'country', 'address'].includes(f) ? 'Location discrepancy detected' : 'Sources disagree'} — each value is shown with its sources.</div>}
-          {groups.length ? groups.slice(0, max).map((g, i) => <FactValue key={i} g={g} link={opts.link} />) : NOT_FOUND}
+          {groups.length ? groups.slice(0, max).map((g, i) => <FactValue key={i} g={g} link={opts.link} />) : <>{NOT_FOUND}{aiHint(f)}</>}
           {groups.length > max && <span className="ws-sub">+{groups.length - max} more</span>}
         </td>
       </tr>
@@ -148,15 +171,18 @@ export const OrganizationTab: React.FC = () => {
                 </td>
               </tr>
               {row('official_name', { max: 2 })}
+              {row('description', { max: 3 })}
+              {row('mission', { max: 2, optional: true })}
               {row('alt_name', { max: 6 })}
               {row('type', { max: 5 })}
               {row('industry', { max: 5 })}
               {row('sector', { max: 4 })}
-              {row('description', { max: 3 })}
+              {row('legal_status', { max: 2, optional: true })}
               {row('founded')}
               {row('employees', { max: 2 })}
               {row('parent', { max: 3 })}
               {row('subsidiary', { max: 10 })}
+              {row('affiliate', { max: 10, optional: true })}
             </>)}
             {enr?.wikidata && 'ambiguous' in enr.wikidata && (
               <p className="ws-sub" style={{ marginTop: 12 }}>
@@ -166,6 +192,11 @@ export const OrganizationTab: React.FC = () => {
             <details className="ws-org-src" style={{ marginTop: 16 }}>
               <summary><b>How it was recognised as an organisation</b></summary>
               <p className="ws-sub">{org.detectionReason}</p>
+              <p className="ws-sub">
+                {cls.confidence === 'Not established'
+                  ? 'No source describes what kind of organisation it is, so its type is not set.'
+                  : `Classified as ${cls.category}${cls.parent ? ` (${cls.parent})` : ''} (${cls.confidence.toLowerCase()}) from ${cls.basis.join('; ') || 'the sources’ descriptions'}. The type follows the words these sources use, not the name alone.`}
+              </p>
               {org.signals.map(s => (
                 <div key={s.signal} className="ws-loc-place" style={{ fontWeight: 400, padding: '3px 0' }}>
                   {s.matched ? <CheckCircle2 size={15} color="var(--ws-good)" /> : <XCircle size={15} color="var(--ws-muted)" />} {s.signal}
@@ -243,7 +274,7 @@ export const OrganizationTab: React.FC = () => {
       case 'products':
         return (
           <>
-            {table(<>{row('unit', { max: 30, label: unitLabel(cls.category) })}{row('product', { max: 15 })}{row('service', { max: 10 })}</>)}
+            {table(<>{row('unit', { max: 30, label: unitLabel(cls.category) })}{row('product', { max: 15 })}{row('service', { max: 10 })}{row('program', { max: 15, optional: true })}{row('project', { max: 15, optional: true })}</>)}
             <div className="ws-loc-section">
               <SectionHead title="From the organisation’s website" />
               {pageBlock(['services', 'products', 'programs', 'departments', 'admissions'], 'Not found — the website has no Services, Products, Programmes, Departments or Admissions page.')}
@@ -256,7 +287,7 @@ export const OrganizationTab: React.FC = () => {
           <>
             {(() => {
               const all = facts.person || [];
-              const official = all.filter(g => g.claims.some(c => OFFICIAL_KINDS.includes(c.sourceKind)));
+              const official = all.filter(g => g.claims.some(c => OFFICIAL_KINDS.includes(c.sourceKind) || ['website', 'wikidata', 'kg'].includes(c.family)));
               const named = all.filter(g => !official.includes(g));
               return (
                 <>
@@ -265,6 +296,7 @@ export const OrganizationTab: React.FC = () => {
                   {official.length ? table(official.map((g, i) => (
                     <tr key={i}><td className="ws-org-k"><b>{g.value}</b></td><td className="ws-org-v"><FactValue g={{ ...g, value: g.roles.join(' · ') || 'Role not stated', roles: [] }} /></td></tr>
                   ))) : <p className="ws-sub">Not found — no source that speaks for the organisation names its leaders.</p>}
+                  {!all.length && aiHint('person')}
                   {named.length > 0 && (
                     <div className="ws-loc-section" style={{ marginTop: 22 }}>
                       <SectionHead title="People named with the organisation in news and search results" count={named.length} />
@@ -415,13 +447,21 @@ export const OrganizationTab: React.FC = () => {
 
       case 'activities': {
         const kinds: ActivityKind[] = ['Events', 'Projects', 'Partnerships', 'Announcements', 'Publications', 'Awards'];
+        // Dated events the investigator accepted from the AI analysis (each quotes its source).
+        const accepted = (inv.activities || []).filter(a => a.id.startsWith('ai-'));
         return (
           <>
+            {accepted.length > 0 && (
+              <div className="ws-loc-section" style={{ marginTop: 0, marginBottom: 20 }}>
+                <SectionHead title="Accepted from the AI analysis" count={accepted.length} noRule />
+                {linkList(accepted.map(a => ({ title: a.title, url: a.sourceUrl, source: a.sourceName, date: a.date, snippet: a.briefReport })))}
+              </div>
+            )}
             <p className="ws-sub ws-loc-intro">
               Grouped from the titles of the news articles, web pages and website pages that name the organisation. Each item links to its source;
               the grouping follows the words used and is not a verified classification.
             </p>
-            {activities.length === 0 && <Empty title="No activities found">No events, projects, partnerships, announcements, publications or awards were found in the news and pages checked.</Empty>}
+            {activities.length === 0 && !accepted.length && <Empty title="No activities found">No events, projects, partnerships, announcements, publications or awards were found in the news and pages checked.</Empty>}
             {kinds.map(k => {
               const items = activities.filter(a => a.kind === k);
               if (!items.length) return null;

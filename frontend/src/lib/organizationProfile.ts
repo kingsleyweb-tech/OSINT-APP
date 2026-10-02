@@ -44,7 +44,8 @@ export const FIELD_LABEL: Record<OrgField, string> = {
   sector: 'Sector / field', description: 'Description', founded: 'Founded / established', headquarters: 'Headquarters',
   country: 'Country', address: 'Address', website: 'Official website', phone: 'Phone', email: 'Email', hours: 'Opening hours',
   coordinates: 'Coordinates', person: 'People', product: 'Products', service: 'Services', social: 'Online accounts',
-  parent: 'Parent organisation', subsidiary: 'Subsidiaries', unit: 'Units / divisions', employees: 'Employees'
+  parent: 'Parent organisation', subsidiary: 'Subsidiaries', unit: 'Units / divisions', employees: 'Employees',
+  mission: 'Mission / purpose', legal_status: 'Legal status', affiliate: 'Affiliates & partners', program: 'Programmes', project: 'Projects'
 };
 
 /** Fields where sources should give a single answer; different answers are shown as a conflict. */
@@ -140,6 +141,14 @@ export function orgClaims(inv: Investigation): Claim[] {
     (site.units || []).forEach(u => push({ field: 'unit', value: u.name, source: 'Official website', sourceKind: 'website', sourceUrl: u.url, quote: `Listed under “${u.group}” on ${hostOf(u.foundOn)}` }, 'website'));
     site.socialLinks.forEach(s => self('social', s.url.replace(/(linkedin\.com\/(?:company|school|showcase|in)\/[^/?#]+).*/i, '$1').replace(/[?#].*$/, ''), s.foundOn, s.platform));
   }
+  // Facts the investigator accepted from the AI analysis. Each keeps the page it was read from and the
+  // page's words; a page already counted (e.g. the official website) is not counted twice.
+  const officialHost = site?.reachable && site.verification.status !== 'unverified' ? hostOf(site.finalUrl || site.requestedUrl) : '';
+  (inv.aiClaims || []).forEach(c => {
+    const h = c.sourceUrl ? hostOf(c.sourceUrl) : '';
+    const family = h && h === officialHost ? 'website' : out.find(x => x.sourceUrl && hostOf(x.sourceUrl) === h)?.family || `ai:${h || c.source}`;
+    push(c, family);
+  });
   // An address that ends in a country is also that source's statement of the country ("…, Accra, Ghana").
   out.filter(c => c.field === 'address').forEach(c => {
     const last = c.value.split(',').pop()?.trim() || '';
@@ -178,14 +187,14 @@ function same(field: OrgField, a: string, b: string, orgName = ''): boolean {
   if (ka === kb) return true;
   // The same sentence cut at different lengths by different snippets.
   if (field === 'description' && ka.length >= 40 && kb.length >= 40 && ka.slice(0, 40) === kb.slice(0, 40)) return true;
-  if (['type', 'industry', 'sector', 'product', 'service', 'official_name', 'alt_name', 'parent', 'subsidiary', 'unit', 'address', 'person'].includes(field)) {
+  if (['type', 'industry', 'sector', 'product', 'service', 'official_name', 'alt_name', 'parent', 'subsidiary', 'unit', 'address', 'person', 'affiliate', 'program', 'project', 'legal_status'].includes(field)) {
     const [s, l] = ka.length <= kb.length ? [ka, kb] : [kb, ka];
     return s.length >= 5 && l.includes(s);
   }
   return false;
 }
 
-const PRIORITY: Record<string, number> = { website: 0, wikidata: 1, knowledge_panel: 2, maps: 3, social: 4, search: 5, bing: 6 };
+const PRIORITY: Record<string, number> = { website: 0, wikidata: 1, knowledge_panel: 2, maps: 3, social: 4, search: 5, ai: 5, bing: 6 };
 
 export function groupFacts(claims: Claim[], field: OrgField, orgName = ''): FactGroup[] {
   const groups: Array<{ claims: Claim[] }> = [];
@@ -199,7 +208,7 @@ export function groupFacts(claims: Claim[], field: OrgField, orgName = ''): Fact
     const pathLen = (u: string) => { try { return new URL(u).pathname.replace(/\/+$/, '').length; } catch { return u.length; } };
     const best = [...g.claims].sort((a, b) =>
       field === 'website' ? pathLen(a.value) - pathLen(b.value)
-        : ['headquarters', 'address', 'description', 'unit'].includes(field) ? b.value.length - a.value.length
+        : ['headquarters', 'address', 'description', 'mission', 'unit'].includes(field) ? b.value.length - a.value.length
           : (PRIORITY[a.sourceKind] ?? 9) - (PRIORITY[b.sourceKind] ?? 9) || b.value.length - a.value.length)[0];
     return {
       field,
@@ -537,4 +546,28 @@ export function unitLabel(category: EntityCategory): string {
     case 'Hospital / health institution': return 'Departments & facilities';
     default: return 'Units & divisions';
   }
+}
+
+// ─── What the tab shows (sent to the AI analysis so it compares with the case, not only the raw search) ───
+
+/**
+ * The Organisation tab's current value for each AI field (the best cross-checked value), or null when the tab
+ * shows "Not found". The AI analysis uses it to tell new information from what the case already holds.
+ */
+export function orgKnown(inv: Investigation): Record<string, string | null> {
+  const profile = orgProfile(inv);
+  const top = (f: OrgField) => profile.facts[f]?.[0]?.value || null;
+  // List fields: every value the tab shows (" | "-separated), so another product or leader counts as new.
+  const all = (...fs: OrgField[]) => fs.flatMap(f => (profile.facts[f] || []).map(g => g.value)).join(' | ').slice(0, 600) || null;
+  const cls = entityClass(inv, profile);
+  return {
+    official_name: top('official_name'), alias: all('alt_name'),
+    entity_type: cls.confidence !== 'Not established' ? cls.category : null,
+    industry: all('industry'), sector: all('sector'), description: top('description'), mission: top('mission'),
+    legal_status: top('legal_status'), founded: top('founded'), headquarters: top('headquarters'), location: all('address'),
+    product: all('product'), service: all('service'), program: all('program'), project: all('project'),
+    leadership: all('person'), website: top('website'), social_profile: all('social'),
+    contact: all('phone', 'email'), parent: top('parent'), subsidiary: all('subsidiary'), unit: all('unit'),
+    affiliate: all('affiliate'), employees: top('employees')
+  };
 }

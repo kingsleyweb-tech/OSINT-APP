@@ -233,7 +233,7 @@ export function buildCaseReport(inv: Investigation, preparedBy: string): CaseRep
     if (ai.findings.length) {
       blocks.push({ kind: 'sub', text: 'Accepted findings' }, {
         kind: 'table', head: ['Field', 'Finding', 'Confidence', 'Evidence', 'Source'], widths: [26, 36, 24, 52, 36],
-        rows: ai.findings.map(f => [AI_FIELD_LABEL[f.field], f.value, `${f.confidence} (${plural(f.siteCount, 'site')})`, quote(f.sources), src(f.sources)])
+        rows: ai.findings.map(f => [AI_FIELD_LABEL[f.field], f.detail ? `${f.value} (${f.detail})` : f.value, `${f.confidence} (${plural(f.siteCount, 'site')})`, quote(f.sources), src(f.sources)])
       });
     } else blocks.push({ kind: 'note', text: 'No AI finding was accepted.' });
     if (ai.timeline.length) {

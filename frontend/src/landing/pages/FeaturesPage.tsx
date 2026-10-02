@@ -320,12 +320,12 @@ export const FeaturesPage: React.FC = () => {
       num: '21',
       id: 'ai-analysis',
       title: 'AI Analysis',
-      tags: ['Evidence-backed', 'Exact Quotes', 'Accept / Ignore', 'No Searches'],
+      tags: ['Evidence-backed', 'Exact Quotes', 'Accept / Ignore', 'Source Quality'],
       whatItIs: 'An AI reading of the evidence already in a case: summary, findings, timeline, relationships, missing information and source conflicts.',
       whyItExists: 'Large cases hold more pages than an investigator can read quickly; the AI points to what they say, with the exact words.',
-      howItWorks: 'Press Run AI analysis in the AI Analysis tab. The server sends the case’s evidence (not your account details or notes) to Google Gemini once, then keeps only statements whose quotes appear word for word in the evidence. Confidence is set by rule from the number of independent sites. You accept or ignore each finding; accepted ones are added to the case and the report. The same evidence is not analysed twice within 24 hours.',
-      whatUsersSee: 'The AI Analysis tab (status, summary, missing information, findings with sources and “Why this finding?”, timeline, relationships, source comparison), a summary on Overview and a reviewed section in the PDF.',
-      limitations: 'It only knows what the case already holds and does not search. A limited number of analyses per day; the AI service can be busy.',
+      howItWorks: 'Press Run AI analysis in the AI Analysis tab. The server sends the case’s evidence (not your account details or notes) to Google Gemini once, then keeps only statements whose quotes appear word for word in the evidence. Confidence is set by rule from the number and quality of independent sites. You accept or ignore each finding; accepted ones are added to the right tab and the report. For missing fields you can run a few targeted searches; only results naming the subject are kept and re-analysed. The same evidence is not analysed twice within 24 hours.',
+      whatUsersSee: 'The AI Analysis tab (summary, statistics, missing information with targeted search, key findings by category with sources and “Why this finding?”, location findings, timeline, relationships, source conflicts, source coverage), hints in empty Organisation fields, a summary on Overview and a reviewed section in the PDF.',
+      limitations: 'It only knows what the case holds plus any missing-information searches you run (search snippets, not full pages). A limited number of analyses and searches per day; the AI service can be busy.',
       whatToVerify: 'Open the quoted sources before accepting a finding.'
     }
   ];
