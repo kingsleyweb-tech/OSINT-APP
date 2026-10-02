@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { DashboardPage } from './pages/Dashboard/Dashboard';
 import { NewInvestigationPage } from './pages/NewInvestigation/NewInvestigation';
@@ -24,6 +24,7 @@ import { ContentAnalysisPage } from './pages/Analysis/ContentAnalysis';
 import { SearchHistoryPage } from './pages/History/SearchHistory';
 import { AuthPage } from './pages/Auth/AuthPages';
 import { ProtectedRoute } from './routes/ProtectedRoute';
+import { takeReturnTo } from './routes/returnTo';
 import { ToastProvider } from './components/ui/Toast';
 import { ConfirmProvider } from './components/ui/ConfirmModal';
 import { ThemeProvider } from './context/ThemeContext';
@@ -66,6 +67,23 @@ const AuthRoute: React.FC = () => {
   return <AuthPage />;
 };
 
+/**
+ * After signing in, go to the app page the visitor was trying to open (e.g. "View all results" in an
+ * alert email), whichever way they signed in — including Google's full-page redirect, which loses the
+ * router state. Renders nothing.
+ */
+const ReturnAfterSignIn: React.FC = () => {
+  const { user } = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!user) return;
+    const target = takeReturnTo();
+    if (target && target !== `${location.pathname}${location.search}`) navigate(target, { replace: true });
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+};
+
 const TAB_ROUTES = ['overview', 'organization', 'profiles', 'activity', 'associations', 'sources', 'webnews', 'stats', 'news', 'images', 'location', 'contact'];
 
 const AppRoutes: React.FC = () => {
@@ -84,6 +102,7 @@ const AppRoutes: React.FC = () => {
 
   return (
     <SignOutPromptProvider>
+    <ReturnAfterSignIn />
     <Routes>
       {/* Public landing pages */}
       <Route element={<LandingLayout currentUser={user} />}>

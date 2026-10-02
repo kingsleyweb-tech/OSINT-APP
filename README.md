@@ -115,6 +115,8 @@ How Explore results are handled:
   - **Scheduling:** an external scheduler (cron-job.org) calls `POST /api/alerts/cron` every 30 minutes with the `x-cron-secret` header; the backend answers 202 at once and runs the due alerts in the background (Render's free plan sleeps, so an in-process timer would not be reliable).
   - **Budget:** alerts stop for the day at `ALERTS_MAX_SEARCHES_PER_DAY` and pause when fewer than `ALERTS_QUOTA_RESERVE` SerpApi searches are left this month. An alert whose smallest check is above the daily limit cannot be saved.
   - **Email:** Brevo's HTTPS API when `BREVO_API_KEY` is set (Render's free plan blocks SMTP ports), otherwise SMTP with Nodemailer. Code: `backend/src/services/alerts/`, `backend/src/controllers/alertsController.ts`, `frontend/src/pages/Alerts/`.
+  - **Email status:** every alert stores what happened to its last email (`lastEmail`: sent, not set up — naming the missing setting —, or failed with the provider's reason, e.g. "unrecognised IP address"). The Alerts page and the alert's own page show it, so a failure is never silent. "Send test email" returns the same reasons.
+  - **Email links:** "View all results" opens `/alerts/:id` on the site the alert was used on (`appUrl`, saved by the app), falling back to `APP_URL`; a public address is always preferred over `localhost`.
 - **PDF report.** Export in a case builds a PDF in the browser (`frontend/src/lib/caseReport.ts`, `reportPdf.ts`, jsPDF) from the saved case only — no searches. Missing details read "Not found"; results marked Raw and search/tracking/image/duplicate links are left out.
 - **View-only sharing.** Share creates `sharedCases/{token}` (random 32-character token) with a copy of the case, refreshed on every save; `/shared/:token` opens it read-only without sign-in. Stop sharing deletes the copy.
 
@@ -955,6 +957,10 @@ Measured during the cleanup: two live name searches at `quick` depth used **exac
 | "Search failed: No search could be completed: … SERPAPI_KEY is not configured" | Add `SERPAPI_KEY` to `backend/.env` and restart the backend. |
 | "Search quota exhausted" | The SerpApi monthly quota is used up. Wait for renewal or upgrade the plan. Saved investigations still open. |
 | Username search returns only GitHub/Mastodon/… results | SerpApi calls failing (quota or key). Check the backend console for `[SerpApiProvider] … error` lines. |
+| "Send test email" fails with 502, or alert emails never arrive | Read the message shown (or DevTools → Network → `test-email` → Response). **"unrecognised IP address"**: Brevo blocks the server's IP — Brevo → Settings → Security → Authorised IPs → deactivate blocking (Render's IP changes). **"Key not found"**: re-paste `BREVO_API_KEY` on Render. **"add MAIL_FROM"**: set `MAIL_FROM` to a Brevo-verified sender. Then redeploy. |
+| Alert emails go to Spam | Mark one "Not spam" and add the sender to contacts. For good delivery, send from your own domain authenticated in Brevo (SPF/DKIM/DMARC) instead of a @gmail.com address. |
+| "View all results" in an alert email opens localhost | Set `APP_URL` on the server to the live site and open the alert's page once in the live app (it saves the site address on the alert). |
+| An alert shows "needs at least N searches per check, more than the daily alert limit" | Edit the alert (fewer sources or keywords) or raise `ALERTS_MAX_SEARCHES_PER_DAY`. |
 | "Search timed out" | A search took more than 2 minutes, usually a slow username search. Try again. |
 | A profile shows "currently unavailable" | The link check got 404/410 or a "page not available" page. The profile was found earlier but may have been deleted or renamed. |
 | LinkedIn / Facebook profiles show no link status | Those sites block automated checks; they are reported as "unverifiable". This is expected. |
@@ -1026,6 +1032,7 @@ API endpoints:
 | `MAIL_FROM` | for alert emails | Sender address — must be a verified sender in Brevo |
 | `SMTP_FROM_NAME` | no | Sender name shown in the inbox (default `OSINT Alerts`) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | no | SMTP instead of Brevo (only used when `BREVO_API_KEY` is not set) |
+| `BREVO_SMTP_KEY`, `BREVO_SMTP_HOST`, `BREVO_SMTP_PORT`, `BREVO_SMTP_LOGIN` | no | Reference only: Brevo's SMTP relay details. **Not read by the app** (it sends through `BREVO_API_KEY`); not needed on Render |
 | `ALERTS_CRON_SECRET` | for alerts | Secret the scheduler sends in the `x-cron-secret` header |
 | `APP_URL` | for alerts | Site address used in email links (e.g. `https://osint-app-soko.vercel.app`) |
 | `ALERTS_MAX_SEARCHES_PER_DAY` | no | Daily SerpApi budget for all alerts (default 8) |

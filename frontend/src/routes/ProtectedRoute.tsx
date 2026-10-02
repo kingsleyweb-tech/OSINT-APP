@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { rememberReturnTo } from './returnTo';
 
 interface ProtectedRouteProps {
   user: unknown;
@@ -10,7 +11,10 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, children }) => {
   const location = useLocation();
   if (!user) {
-    return <Navigate to="/" replace state={{ authRequired: true, from: `${location.pathname}${location.search}` }} />;
+    const from = `${location.pathname}${location.search}`;
+    // Also remembered outside the router, so it survives Google's full-page sign-in redirect.
+    rememberReturnTo(from);
+    return <Navigate to="/" replace state={{ authRequired: true, from }} />;
   }
   return children;
 };

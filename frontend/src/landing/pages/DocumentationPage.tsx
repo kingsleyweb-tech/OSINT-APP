@@ -220,7 +220,9 @@ const DOCS: DocSection[] = [
       'Country news is empty — that country’s edition has no coverage; choose “Any country”.',
       '“Too many searches in a short time” — wait a few minutes; searches are limited per account.',
       '“Your session has expired” — sign in again.',
-      'Google sign-in blocked — allow pop-ups for the site; otherwise the page goes to Google and returns automatically.'
+      'Google sign-in blocked — allow pop-ups for the site; otherwise the page goes to Google and returns automatically.',
+      'No alert email — look in Spam (or Junk / Promotions) and mark it “Not spam”. Each alert also shows whether its last email was sent, and if not, why.',
+      'An alert says it needs more searches than the daily limit — edit it and choose fewer sources or keywords.'
     ]
   }
 ];
