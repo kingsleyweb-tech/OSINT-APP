@@ -14,8 +14,10 @@ let transport: Transporter | null = null;
  *  - otherwise SMTP (Gmail by default) with Nodemailer.
  * Short timeouts so a blocked connection fails in seconds instead of hanging.
  */
-const useBrevo = () => Boolean(process.env.BREVO_API_KEY);
-const senderAddress = () => process.env.MAIL_FROM || process.env.SMTP_USER || '';
+/** An environment value without stray spaces or surrounding quotes (a common copy-paste slip on hosting dashboards). */
+const env = (k: string) => String(process.env[k] || '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+const useBrevo = () => Boolean(env('BREVO_API_KEY'));
+const senderAddress = () => env('MAIL_FROM') || env('SMTP_USER');
 const senderName = () => (process.env.SMTP_FROM_NAME || 'OSINT Alerts').replace(/"/g, '');
 
 /** Which email settings are missing on the server (names only), so a failure can say exactly what to add. */
@@ -57,7 +59,7 @@ async function deliver(m: Outgoing): Promise<void> {
     try {
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
-        headers: { 'api-key': process.env.BREVO_API_KEY as string, 'content-type': 'application/json', accept: 'application/json' },
+        headers: { 'api-key': env('BREVO_API_KEY'), 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({ sender: { name: senderName(), email: senderAddress() }, to: [{ email: m.to }], subject: m.subject, textContent: m.text, htmlContent: m.html }),
         signal: ctrl.signal
       });
