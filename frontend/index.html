@@ -15,9 +15,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Boot loader: shown while the app's code downloads (React replaces it when it starts). */
+      .boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        background: #f7f6f3; color: #78716c; font-family: Inter, system-ui, sans-serif; font-size: 14px; }
+      [data-theme="dark"] .boot { background: #000; color: #a8a29e; }
+      .boot-radar { position: relative; width: 96px; height: 96px; border-radius: 50%; overflow: hidden;
+        background: radial-gradient(circle, rgba(140,75,39,.16), rgba(140,75,39,.05) 72%); border: 1px solid rgba(140,75,39,.25); }
+      .boot-radar::before { content: ''; position: absolute; inset: 0; border-radius: 50%;
+        background: conic-gradient(from 0deg, transparent 0 250deg, rgba(140,75,39,.15) 300deg, rgba(140,75,39,.6) 356deg, #8c4b27 360deg);
+        animation: boot-spin 2.2s linear infinite; }
+      [data-theme="dark"] .boot-radar::before { background: conic-gradient(from 0deg, transparent 0 250deg, rgba(240,164,110,.15) 300deg, rgba(240,164,110,.6) 356deg, #f0a46e 360deg); }
+      .boot-radar::after { content: ''; position: absolute; inset: 34%; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(140,75,39,.2); }
+      [data-theme="dark"] .boot-radar::after { background: #080808; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .boot-radar::before { animation-duration: 6s; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" role="status" aria-live="polite"><div class="boot-radar"></div><span>Loading OSINT Investigation Platform…</span></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

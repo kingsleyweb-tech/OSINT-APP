@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/Dashboard/Dashboard';
 import { NewInvestigationPage } from './pages/NewInvestigation/NewInvestigation';
 import { InvestigationDetailPage } from './pages/Investigation/InvestigationDetail';
 import { SharedInvestigationPage } from './pages/Investigation/SharedInvestigationPage';
+import { RadarLoader } from './components/ui/RadarLoader';
 import { InvestigationsListPage } from './pages/Investigations/InvestigationsList';
 import { PeoplePage } from './pages/People/People';
 import { AlertsPage } from './pages/Alerts/Alerts';
@@ -71,8 +72,15 @@ const AppRoutes: React.FC = () => {
   const { user, loading } = useSession();
 
   // Wait for Firebase to restore the saved session so a refresh never bounces a signed-in user.
-  // Nothing is shown meanwhile, only the page background.
-  if (loading) return <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }} />;
+  // A loader is shown meanwhile, so the page never looks blank or stuck.
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, backgroundColor: 'var(--bg-dark)', color: 'var(--text-muted)', fontSize: 14 }}>
+        <RadarLoader size={96} />
+        <span>Loading OSINT Investigation Platform…</span>
+      </div>
+    );
+  }
 
   return (
     <SignOutPromptProvider>
