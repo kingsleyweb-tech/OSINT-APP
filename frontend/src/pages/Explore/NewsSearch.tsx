@@ -1,4 +1,6 @@
 import React from 'react';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, newsRange, spellingCheck } from '../../lib/searchCosts';
 import { Search, Newspaper, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { useSearchRun } from '../../components/explore/useSearchRun';
@@ -92,7 +94,8 @@ export const NewsSearchPage: React.FC = () => {
         <SearchModeToggle mode={searchMode} onChange={setSearchMode} />
         <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Search news</button>
         {error && <div className="ex-notice" style={{ width: '100%' }}>{error}</div>}
-        <span className="ex-muted ex-small" style={{ width: '100%' }}>Uses {newsCost(country || undefined) === 2 ? '2 SerpApi searches (Google News + Bing News)' : '1 SerpApi search (Google News — Bing News has no market for this country)'}; +1 per engine if the exact phrase finds nothing. Put a name in quotes for exact matches.</span>
+        <CostHint range={addCosts(newsRange(query, country || undefined), spellingCheck(query || 'x', searchMode === 'intelligent'))}
+          note={newsCost(country || undefined) === 2 ? 'Google News + Bing News; +1 per engine if the exact phrase finds nothing. Put a name in quotes for exact matches.' : 'Google News only (Bing News has no market for this country); +1 if the exact phrase finds nothing.'} />
       </form>
 
       {running || qi.checking ? <SearchLoader query={query} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

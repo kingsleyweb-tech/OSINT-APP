@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
 import { Activity, BookOpen, Database, ExternalLink, Filter, Lock, Search, Server, ShieldCheck, Unlock } from 'lucide-react';
 import { PlatformIcon } from '../../components/ui/PlatformIcon';
 import {
@@ -39,6 +40,7 @@ export const SourcesPage: React.FC = () => {
           <p className="page-subtitle">
             Every source the platform searches, what it is used for and what it returns — plus the API endpoints behind each search.
           </p>
+          <CostHint free what="This page" />
         </div>
       </div>
 

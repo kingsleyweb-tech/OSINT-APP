@@ -1,0 +1,12 @@
+.cost-hint {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  width: 100%;
+}
+.cost-hint svg { flex-shrink: 0; margin-top: 2px; color: var(--accent-warm); }
+.cost-hint b { color: var(--text-secondary); font-weight: 650; }
+.profiler-cost { margin-top: 10px; }

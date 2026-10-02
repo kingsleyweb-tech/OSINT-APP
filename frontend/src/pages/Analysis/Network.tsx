@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
 import { Link } from 'react-router-dom';
 import { Share2, GitCompare, ExternalLink } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EmptyState, CasePicker } from '../../components/explore/ExploreKit';
@@ -68,6 +69,7 @@ export const NetworkPage: React.FC = () => {
 
   return (
     <ExplorePage title="Network" subtitle="See how the organisations, usernames and websites saved in your cases connect, and compare two cases. Built only from data already in your cases — no searches are used.">
+      <CostHint free what="This page" note="It is built only from data already saved in your cases." />
       <section className="ex-card ex-card-pad ex-form">
         <Field label="Case" htmlFor="nw-a" grow>
           <CasePicker id="nw-a" cases={cases} value={a?.id || ''} onChange={id => { setAId(id); setSelected(null); }} />

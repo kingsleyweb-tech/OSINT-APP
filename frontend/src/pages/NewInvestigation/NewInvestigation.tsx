@@ -13,6 +13,8 @@ import {
 import appLogo from '../../assets/images/icon.png';
 import { PossibleIdentitiesView, type DiscoveredIdentity } from '../../components/search/PossibleIdentitiesView';
 import { SearchLoader } from '../../components/ui/SearchLoader';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, nameSearchRange, spellingCheck, usernameSearchRange } from '../../lib/searchCosts';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
 import { useProfilerSearch } from '../../components/search/useProfilerSearch';
@@ -267,6 +269,15 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
               />
             )}
           </form>
+          <div className="profiler-cost">
+            <CostHint
+              range={searchType === 'Username'
+                ? usernameSearchRange(searchDefaults.depth)
+                : addCosts(nameSearchRange(searchDefaults.depth), spellingCheck(queryInput || 'x', searchMode === 'intelligent'))}
+              what={`A ${searchType.toLowerCase()} search (${searchDefaults.depth})`}
+              note={searchType === 'Name' ? 'If the name is an organisation, opening its case gathers its facts with 6–7 more.' : undefined}
+            />
+          </div>
 
 
         </div>

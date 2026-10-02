@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, geoRange, spellingCheck } from '../../lib/searchCosts';
 import { Search, MapPin, Star, Globe2, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { useSearchRun, type SearchTask } from '../../components/explore/useSearchRun';
@@ -163,7 +165,8 @@ export const GeoSearchPage: React.FC = () => {
           <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Search location</button>
         </div>
         {error && <div className="ex-notice">{error}</div>}
-        <span className="ex-muted ex-small">Searches Google Maps, news, 6 social platforms, Google web and events together{country ? '' : ', plus places with the same name in other countries'}: {geoCost(country || undefined)} SerpApi searches with these settings. Loading a place's reviews uses 1 more.</span>
+        <CostHint range={addCosts(geoRange(country || undefined), spellingCheck(keyword || 'x', searchMode === 'intelligent'))}
+          note={`Google Maps, news, 6 social platforms, Google web and events${country ? '' : ', plus places with the same name in other countries'}. Loading a place's reviews uses 1 more.`} />
       </form>
 
       {running || qi.checking ? <SearchLoader query={[keyword, place].filter(Boolean).join(' · ')} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

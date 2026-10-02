@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
 import { useNavigate } from 'react-router-dom';
 import { AtSign, BookmarkX, Calendar, Globe, MapPin, Search, User, Users } from 'lucide-react';
 import { RadarLoader } from '../../components/ui/RadarLoader';
@@ -74,6 +75,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({ currentUser }) => {
           <p className="page-subtitle">
             {loading ? 'Loading tracked people…' : `${people.length} tracked ${people.length === 1 ? 'person' : 'people'}`}
           </p>
+          <CostHint free what="This page" note="Re-running a tracked person’s searches happens in their case and costs the same as the original search." />
         </div>
         {people.length > 0 && (
           <div className="people-search">

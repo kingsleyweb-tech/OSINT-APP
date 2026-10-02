@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { explore, quotaStatus } from '../explore/exploreService';
-import { SOCIAL_PLATFORMS } from '../explore/engineCatalog';
+import { exactPhrase, SOCIAL_PLATFORMS } from '../explore/engineCatalog';
 import type { ExploreItem } from '../../types/explore';
 import { adminAuth, adminDb } from './admin';
 import { mailConfigured, sendAlertEmail, type MailMatch } from './mailer';
@@ -49,11 +49,20 @@ export function validAlertInput(a: Partial<AlertDoc>): string | null {
   return null;
 }
 
-/** SerpApi searches one run can use at most (Google + Bing News per keyword, one search per platform per keyword). */
-export function searchesPerRun(a: Pick<AlertDoc, 'keywords' | 'sources'>): number {
+/**
+ * SerpApi searches one run uses, as a range. Per keyword: news = Google News (+ Bing News without a country
+ * or in a Bing News market), doubled at most when a multi-word phrase falls back to any word order; social =
+ * one per platform, doubled at most because a dated search with nothing relevant is retried over any time.
+ */
+export function searchesPerRun(a: Pick<AlertDoc, 'keywords' | 'sources' | 'country'>): { min: number; max: number } {
   const social = a.sources.filter(s => s !== 'news').length;
-  return a.keywords.length * ((a.sources.includes('news') ? 2 : 0) + social);
+  const newsEngines = a.sources.includes('news') ? (!a.country || BING_NEWS_MARKETS.has(a.country) ? 2 : 1) : 0;
+  return a.keywords.reduce((r, k) => {
+    const loosens = exactPhrase(k) !== k.trim();
+    return { min: r.min + newsEngines + social, max: r.max + newsEngines * (loosens ? 2 : 1) + social * 2 };
+  }, { min: 0, max: 0 });
 }
+const BING_NEWS_MARKETS = new Set(['us', 'gb', 'ca', 'au', 'in', 'de', 'fr']);
 
 function urlKey(url: string): string {
   try {
@@ -112,7 +121,8 @@ export async function runAlert(id: string, opts: { manual?: boolean } = {}): Pro
   const firstRun = !alert.lastRunAt;
   const nextRunAt = new Date(now.getTime() + (FREQ_MS[alert.frequency] || FREQ_MS.daily)).toISOString();
 
-  const cost = searchesPerRun(alert);
+  // Checked against the lowest likely cost; what is actually billed is what counts towards the budget.
+  const cost = searchesPerRun(alert).min;
   const blocked = await canSpend(cost);
   if (blocked) {
     const result = { at, checked: 0, newMatches: 0, searchesUsed: 0, status: 'waiting' as const, message: blocked };

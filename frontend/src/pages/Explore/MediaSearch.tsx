@@ -1,4 +1,6 @@
 import React from 'react';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, imagesRange, spellingCheck, videosRange } from '../../lib/searchCosts';
 import { Search, Image as ImageIcon, Film, ScanFace, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { useSearchRun } from '../../components/explore/useSearchRun';
@@ -19,8 +21,8 @@ const TABS: Tab[] = ['images', 'videos', 'faces'];
 const validTab = (t: unknown): Tab => (TABS.includes(t as Tab) ? (t as Tab) : 'images');
 
 const TAB_INFO: Record<Exclude<Tab, 'faces'>, { cost: string; placeholder: string }> = {
-  images: { cost: 'Uses 2 SerpApi searches (Google Images + Bing Images).', placeholder: 'e.g. "Hubert Amponsah"' },
-  videos: { cost: 'Uses 2 SerpApi searches (YouTube + Google Videos).', placeholder: 'e.g. Adjoa Tee interview' }
+  images: { cost: 'Google Images + Bing Images.', placeholder: 'e.g. "Hubert Amponsah"' },
+  videos: { cost: 'YouTube + Google Videos.', placeholder: 'e.g. Adjoa Tee interview' }
 };
 
 export const MediaSearchPage: React.FC = () => {
@@ -111,7 +113,7 @@ export const MediaSearchPage: React.FC = () => {
             <SearchModeToggle mode={searchMode} onChange={setSearchMode} />
             <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Search</button>
             {error && <div className="ex-notice" style={{ width: '100%' }}>{error}</div>}
-            <span className="ex-muted ex-small" style={{ width: '100%' }}>{TAB_INFO[tab].cost}</span>
+            <CostHint range={addCosts(tab === 'images' ? imagesRange() : videosRange(), spellingCheck(query || 'x', searchMode === 'intelligent'))} note={TAB_INFO[tab].cost} />
           </form>
 
           {running || qi.checking ? <SearchLoader query={query} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

@@ -11,6 +11,8 @@ import { auth } from '../../firebase/config';
 import { useToast } from '../../components/ui/Toast';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { fmtDate } from '../../lib/workspace';
+import { CostHint } from '../../components/ui/CostHint';
+import { fmtRange } from '../../lib/searchCosts';
 import '../../styles/Alerts.css';
 
 const SOURCE_OPTIONS = [{ id: 'news', label: 'News (Google + Bing)' }, ...SOCIAL_PLATFORM_OPTIONS.map(p => ({ id: p.id, label: p.label }))];
@@ -35,8 +37,8 @@ const AlertForm: React.FC<{ initial?: Alert; onDone: (createdId?: string) => voi
   const toggleSource = (id: string) => set('sources', v.sources.includes(id) ? v.sources.filter(s => s !== id) : [...v.sources, id]);
 
   const pending = kw.trim().length >= 2 && v.keywords.length < 5 ? [...v.keywords, kw.trim()] : v.keywords;
-  const perRun = searchesPerRun({ keywords: pending, sources: v.sources });
-  const perMonth = searchesPerMonth({ keywords: pending, sources: v.sources, frequency: v.frequency });
+  const perRun = searchesPerRun({ keywords: pending, sources: v.sources, country: v.country });
+  const perMonth = searchesPerMonth({ keywords: pending, sources: v.sources, frequency: v.frequency, country: v.country });
   const valid = pending.length >= 1 && v.sources.length >= 1;
 
   const save = async (e: React.FormEvent) => {
@@ -114,8 +116,8 @@ const AlertForm: React.FC<{ initial?: Alert; onDone: (createdId?: string) => voi
       </div>
 
       <div className="al-estimate">
-        Up to <b>{perRun}</b> search{perRun === 1 ? '' : 'es'} per check · about <b>{perMonth}</b> a month at this frequency
-        {perMonth > 120 && <span className="al-warn"> — high for the free SerpApi plan (250/month); choose fewer keywords, sources or checks.</span>}
+        <CostHint range={perRun} what="Each check" note={<>About <b>{fmtRange(perMonth)}</b> tokens a month at this frequency.</>} />
+        {perMonth.min > 120 && <span className="al-warn">This is high for the free SerpApi plan (250/month); choose fewer keywords, sources or checks.</span>}
         <div className="ex-muted ex-small">Emails go only to your account email{auth.currentUser?.email ? <> (<b>{auth.currentUser.email}</b>)</> : ''}. Repeat searches within 12 hours are free.</div>
       </div>
 

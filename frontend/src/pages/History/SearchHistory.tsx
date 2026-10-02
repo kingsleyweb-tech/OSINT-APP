@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
 import { Link, useNavigate } from 'react-router-dom';
 import { History, ExternalLink, Play, Trash2, ChevronDown, ChevronRight, FolderOpen, Eye } from 'lucide-react';
 import { ExplorePage, EmptyState } from '../../components/explore/ExploreKit';
@@ -60,6 +61,7 @@ export const SearchHistoryPage: React.FC = () => {
   return (
     <ExplorePage title="Search history" subtitle="Every search you run is saved to your account, grouped by kind. Open one to see the results it found, run it again, or open the case made from it."
       actions={history.length > 0 ? <button type="button" className="ex-btn ex-btn-ghost" onClick={() => { if (window.confirm('Delete your whole search history? This cannot be undone.')) remove('all'); }}><Trash2 size={15} /> Clear history</button> : undefined}>
+      <CostHint free what="Viewing saved results" note="“Run again” uses the same tokens as the original search (shown on its search page)." />
       <div className="ex-chips ex-card" style={{ borderRadius: 'var(--radius-lg)' }}>
         <button type="button" className={`ex-chip ${category === 'all' ? 'on' : ''}`} onClick={() => setCategory('all')}>All {history.length}</button>
         {ORDER.filter(c => counts.get(c)).map(c => (

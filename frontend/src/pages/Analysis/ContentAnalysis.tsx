@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
 import { Link } from 'react-router-dom';
 import { BarChart3, Download } from 'lucide-react';
 import { ExplorePage, Field, EmptyState } from '../../components/explore/ExploreKit';
@@ -58,6 +59,7 @@ export const ContentAnalysisPage: React.FC = () => {
   return (
     <ExplorePage title="Content analysis" subtitle="Break down the results saved in your cases by platform, type, date and the words they use. Calculated only from saved data — no searches are used."
       actions={<button type="button" className="ex-btn ex-btn-ghost" onClick={exportCsv} disabled={items.length === 0}><Download size={15} /> Export CSV</button>}>
+      <CostHint free what="This page" note="It is calculated only from data already saved in your cases." />
       <section className="ex-card ex-card-pad ex-form">
         <Field label="Analyse" htmlFor="ca-scope" grow>
           <select id="ca-scope" className="ex-input ex-select" value={scope} onChange={e => setScope(e.target.value)}>

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { PlatformIcon } from '../../components/ui/PlatformIcon';
 import { SearchLoader } from '../../components/ui/SearchLoader';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, nameSearchRange, spellingCheck, usernameSearchRange } from '../../lib/searchCosts';
 import { RadarLoader } from '../../components/ui/RadarLoader';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
@@ -310,6 +312,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
                 </button>
               </div>
             </form>
+            <div className="profiler-cost">
+              <CostHint
+                range={searchType === 'Username'
+                  ? usernameSearchRange(searchDefaults.depth)
+                  : addCosts(nameSearchRange(searchDefaults.depth), spellingCheck(queryInput || 'x', searchMode === 'intelligent'))}
+                what={`A ${searchType.toLowerCase()} search (${searchDefaults.depth})`}
+                note={searchType === 'Name' ? 'If the name is an organisation, opening its case gathers its facts with 6–7 more.' : undefined}
+              />
+            </div>
 
             <nav className="dash-other-searches" aria-label="Other searches">
               <span>Other searches:</span>

@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, forumsRange, socialRange, spellingCheck } from '../../lib/searchCosts';
 import { Search, MessagesSquare, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { topTerms, useCases } from '../../components/explore/exploreHooks';
@@ -158,12 +160,11 @@ export const SocialSearchPage: React.FC = () => {
           </div>
         )}
         {error && <div className="ex-notice">{error}</div>}
-        <span className="ex-muted ex-small">
-          {mode === 'social'
-            ? `Uses ${platforms.size} SerpApi search${platforms.size === 1 ? '' : 'es'} (1 per selected platform); a platform that finds nothing relevant is retried once more broadly (+1 for it).`
-            : 'Uses 1 SerpApi search (+1 if the forum filter finds nothing).'}
-          {' '}Several words are searched as an exact phrase; use OR or quotes to control this. Repeating a search within 12 hours is free.
-        </span>
+        <CostHint
+          range={addCosts(mode === 'social' ? socialRange(query, platforms.size, Boolean(when)) : forumsRange(), spellingCheck(query || 'x', searchMode === 'intelligent'))}
+          note={mode === 'social'
+            ? '1 per selected platform; a platform that finds nothing relevant is retried once. Several words are searched as an exact phrase — use OR or quotes to control this.'
+            : '+1 only if the forum filter finds nothing.'} />
       </form>
 
       {running || qi.checking ? <SearchLoader query={query} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

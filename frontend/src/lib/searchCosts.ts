@@ -31,6 +31,67 @@ export function trendsCost(country: string | undefined, termCount: number): numb
   return trends + newsCost(country) + DEFAULT_SOCIAL_PLATFORM_COUNT + 1 + 1;
 }
 
+// ─── Ranges shown on each search page ───────────────────────────────────────
+// min = every engine answers on its first query; max = every possible fallback query also runs
+// (e.g. an exact phrase that finds nothing is retried in any word order). A search repeated within
+// 12 hours costs 0, because it is answered from the cache.
+
+export interface CostRange { min: number; max: number }
+
+const add = (...r: CostRange[]): CostRange => r.reduce((a, b) => ({ min: a.min + b.min, max: a.max + b.max }), { min: 0, max: 0 });
+const fixed = (n: number): CostRange => ({ min: n, max: n });
+
+/** Same rule as the backend's exactPhrase(): plain multi-word text is quoted, so it can fall back to any word order. */
+export function canLoosen(query: string): boolean {
+  const q = query.trim();
+  return /\s/.test(q) && !/["()]|\b(OR|AND)\b|(^|\s)[-+]\S|\b\w+:\S/.test(q);
+}
+
+/** The Intelligent-mode spelling check: 1 search at most (not for usernames or quoted queries; free when cached). */
+export function spellingCheck(query: string, intelligent: boolean): CostRange {
+  return intelligent && query.trim() && !/["]/.test(query) ? { min: 0, max: 1 } : fixed(0);
+}
+
+export function newsRange(query: string, country?: string): CostRange {
+  const n = newsCost(country);
+  return { min: n, max: canLoosen(query) ? n * 2 : n };
+}
+
+/** One search per platform; a platform with nothing relevant is retried once (any time when dated, any word order otherwise). */
+export function socialRange(query: string, platforms: number, dated: boolean): CostRange {
+  return { min: platforms, max: dated || canLoosen(query) ? platforms * 2 : platforms };
+}
+
+export const forumsRange = (): CostRange => ({ min: 1, max: 2 });
+export const imagesRange = (): CostRange => fixed(2);
+export const videosRange = (): CostRange => fixed(2);
+/** Google web search; Bing runs instead only when Google finds nothing. */
+const webRange = (): CostRange => ({ min: 1, max: 2 });
+
+/** Geo search: Maps 1 + news + social (default platforms, undated) + web + events 1 + similar places 1 (Any country). */
+export function geoRange(country?: string): CostRange {
+  return add(fixed(1), newsRange('a b', country), socialRange('a b', DEFAULT_SOCIAL_PLATFORM_COUNT, false), webRange(), fixed(1), fixed(country ? 0 : 1));
+}
+
+/** Trends: Google Trends (4 for one term, 2 when comparing) + news + social (dated) + web + trending now. */
+export function trendsRange(mainTerm: string, country: string | undefined, termCount: number, dated = true): CostRange {
+  return add(fixed(termCount > 1 ? 2 : 4), newsRange(mainTerm, country), socialRange(mainTerm, DEFAULT_SOCIAL_PLATFORM_COUNT, dated), webRange(), fixed(1));
+}
+
+/** Name search by depth (+1 per location/organisation; Bing replaces Google's broad search only if Google fails). */
+export function nameSearchRange(depth: string, contextHints = 0): CostRange {
+  const base = depth === 'quick' ? { min: 4, max: 5 } : depth === 'standard' ? { min: 9, max: 11 } : { min: 9, max: 13 };
+  return add(base, fixed(contextHints));
+}
+
+/** Username search by depth (the looser-variations search runs only when the username can be loosened). */
+export function usernameSearchRange(depth: string): CostRange {
+  return depth === 'quick' ? fixed(5) : depth === 'standard' ? { min: 11, max: 12 } : { min: 14, max: 15 };
+}
+
+export const fmtRange = (r: CostRange): string => (r.min === r.max ? `${r.min}` : `${r.min}–${r.max}`);
+export { add as addCosts };
+
 export interface CostRow {
   search: string;
   tokens: string;

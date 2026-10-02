@@ -1,4 +1,6 @@
 import React from 'react';
+import { CostHint } from '../../components/ui/CostHint';
+import { addCosts, spellingCheck, trendsRange } from '../../lib/searchCosts';
 import { Search, TrendingUp, Flame, RotateCcw } from 'lucide-react';
 import { ExplorePage, Field, Segmented, EngineStatus, ResultList, EmptyState } from '../../components/explore/ExploreKit';
 import { useSearchRun, type SearchTask } from '../../components/explore/useSearchRun';
@@ -178,7 +180,11 @@ export const TrendsSearchPage: React.FC = () => {
         <SearchModeToggle mode={searchMode} onChange={setSearchMode} />
         <button type="submit" className="ex-btn ex-btn-primary" disabled={running || qi.checking}><Search size={16} /> Show trend</button>
         {error && <div className="ex-notice" style={{ width: '100%' }}>{error}</div>}
-        <span className="ex-muted ex-small" style={{ width: '100%' }}>Searches Google Trends (interest over time, related queries, interest by region, related topics), news, 6 social platforms, Google web search and what is trending now: {trendsCost(country || undefined, Math.max(1, terms.split(',').map(t => t.trim()).filter(Boolean).length))} SerpApi searches with these settings (comparing several terms skips related queries and topics).</span>
+        {(() => {
+          const list = terms.split(',').map(t => t.trim()).filter(Boolean);
+          return <CostHint range={addCosts(trendsRange(list[0] || 'x', country || undefined, Math.max(1, list.length), Boolean(WHEN_FOR[timeframe])), list.length > 1 ? { min: 0, max: 0 } : spellingCheck(list[0] || 'x', searchMode === 'intelligent'))}
+            note="Google Trends (interest over time, related queries, by region, related topics), news, 6 social platforms, Google web and trending now. Comparing several terms skips related queries and topics." />;
+        })()}
       </form>
 
       {running || qi.checking ? <SearchLoader query={terms} steps={[...qi.step, ...steps]} onCancel={() => { qi.cancel(); cancel(); }} /> : (

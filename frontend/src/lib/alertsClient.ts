@@ -4,6 +4,7 @@ import {
 import { auth, db } from '../firebase/config';
 import { apiFetch } from './apiAuth';
 import { getApiBase } from './searchClient';
+import { canLoosen, newsCost, type CostRange } from './searchCosts';
 
 /**
  * Keyword alerts of the signed-in user. Each alert document carries ownerUid = the creator; the
@@ -62,12 +63,24 @@ const NEVER = '9999-12-31T00:00:00.000Z';
 export const FREQUENCY_LABEL: Record<AlertFrequency, string> = { daily: 'Once a day', '12h': 'Every 12 hours', '6h': 'Every 6 hours' };
 const RUNS_PER_MONTH: Record<AlertFrequency, number> = { daily: 30, '12h': 60, '6h': 120 };
 
-/** Most SerpApi searches one run can use (Google + Bing News per keyword, one per social platform per keyword). */
-export function searchesPerRun(a: Pick<Alert, 'keywords' | 'sources'>): number {
+/**
+ * SerpApi searches one check uses, as a range (same rules as the backend's searchesPerRun): per keyword,
+ * news = Google News (+ Bing News without a country or in a Bing News market), up to double when a
+ * multi-word phrase falls back to any word order; social = 1 per platform, up to double (a dated search
+ * with nothing relevant is retried over any time).
+ */
+export function searchesPerRun(a: Pick<Alert, 'keywords' | 'sources' | 'country'>): CostRange {
   const social = a.sources.filter(s => s !== 'news').length;
-  return a.keywords.length * ((a.sources.includes('news') ? 2 : 0) + social);
+  const news = a.sources.includes('news') ? newsCost(a.country || undefined) : 0;
+  return a.keywords.reduce((r, k) => ({
+    min: r.min + news + social,
+    max: r.max + news * (canLoosen(k) ? 2 : 1) + social * 2
+  }), { min: 0, max: 0 });
 }
-export const searchesPerMonth = (a: Pick<Alert, 'keywords' | 'sources' | 'frequency'>) => searchesPerRun(a) * RUNS_PER_MONTH[a.frequency];
+export const searchesPerMonth = (a: Pick<Alert, 'keywords' | 'sources' | 'frequency' | 'country'>): CostRange => {
+  const r = searchesPerRun(a);
+  return { min: r.min * RUNS_PER_MONTH[a.frequency], max: r.max * RUNS_PER_MONTH[a.frequency] };
+};
 
 function uid(): string {
   const u = auth.currentUser?.uid;
