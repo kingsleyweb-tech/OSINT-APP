@@ -113,6 +113,7 @@ const SECTIONS: GuideSection[] = [
       { term: 'Images', text: 'Public images of or about the subject (searched automatically the first time you open it).' },
       { term: 'Location', text: 'Places that public sources connect to the subject, each with the source’s exact words and a type: profile location, stated residence, hometown, workplace, organisation location, event, post, listing or a place only mentioned. Nothing is guessed from names.' },
       { term: 'Contact', text: 'Public email addresses and phone numbers shown on the subject’s own profiles, on pages tied to them, or (organisations) on their official website and knowledge panel — each with its source and exact words.' },
+      { term: 'AI Analysis', text: 'Press Run AI analysis to have the AI read the evidence already in the case (no searches). It lists a summary, findings, a timeline, relationships, missing information and source conflicts — each with its sources and exact words. Confidence labels: Verified (3+ sites, or 2 with one you validated), Strong evidence (2 sites), Possible (1 site naming the subject), Mention only (1 site not naming them), Uncertain (sources disagree). Accept adds a finding to the case; Ignore hides it. Only accepted findings go into the report and the share link.' },
       { term: 'Metrics', text: 'How many results each search returned and kept, and the full search log.' },
       { term: 'Audit', text: 'A time-stamped record of every search and every change you made to the case. Can be exported as CSV.' }
     ]

@@ -348,6 +348,40 @@ export interface WebsiteIntel {
   fetchedAt: string;
 }
 
+// ─── AI analysis (backend services/ai; every item is checked against the case's own evidence) ───
+
+/** Set by rule from the number of independent sites, never chosen by the model. */
+export type AIConfidence = 'Verified' | 'Strong evidence' | 'Possible' | 'Mention only' | 'Uncertain';
+export type AIField =
+  | 'occupation' | 'role' | 'employer' | 'organization' | 'membership' | 'education' | 'skill' | 'language'
+  | 'location' | 'nationality' | 'date_of_birth' | 'contact' | 'website' | 'social_profile' | 'alias' | 'interest'
+  | 'founded' | 'headquarters' | 'industry' | 'leadership' | 'other';
+export type AIEvidenceKind = 'profile' | 'web' | 'news' | 'activity' | 'association' | 'org-fact' | 'org-claim' | 'location' | 'contact' | 'image' | 'website';
+
+export interface AISource { evidenceId: string; title: string; source: string; url: string; quote: string }
+export interface AIFinding {
+  id: string; field: AIField; value: string; confidence: AIConfidence; sources: AISource[]; siteCount: number; why: string;
+  inCase: 'new' | 'same' | 'differs'; existing?: string;
+}
+export interface AITimelineEvent { id: string; date: string; event: string; confidence: AIConfidence; sources: AISource[]; siteCount: number }
+export interface AIRelationship {
+  id: string; from: string; to: string; toType: 'person' | 'organization' | 'group' | 'event' | 'location' | 'website';
+  relation: string; confidence: AIConfidence; sources: AISource[]; siteCount: number;
+}
+export interface AIComparison { id: string; field: AIField; status: 'consistent' | 'conflict'; values: Array<{ value: string; sources: AISource[] }> }
+export interface AIMissing { field: AIField; label: string; status: 'in_case' | 'found' | 'not_found'; caseValue?: string; foundIn: number; findingIds: string[] }
+export interface AIMetrics {
+  evidenceReviewed: number; byKind: Array<{ kind: AIEvidenceKind; count: number }>; findings: number; newInformation: number;
+  conflicts: number; consistent: number; timeline: number; relationships: number; discarded: number;
+}
+export interface AIAnalysis {
+  id: string; runAt: string; provider: string; model: string; subject: string; entityKind: 'person' | 'organization'; evidenceCount: number;
+  summary: { text: string; sources: AISource[] };
+  findings: AIFinding[]; timeline: AITimelineEvent[]; relationships: AIRelationship[]; comparisons: AIComparison[]; missing: AIMissing[]; metrics: AIMetrics;
+}
+/** Investigator's decision on an AI finding, timeline event or relationship (keyed by its id). */
+export type AIReviewState = 'accepted' | 'ignored';
+
 export interface Investigation {
   id: string;
   name: string;
@@ -462,6 +496,10 @@ export interface Investigation {
       results?: import('../lib/locationEvidence').CheckedResult[];
     }>>;
   };
+  /** Latest AI analysis of the case's evidence (Run AI Analysis in the AI Analysis tab). */
+  aiAnalysis?: AIAnalysis;
+  /** Accept / ignore decisions on AI items; only accepted items reach the share link and the PDF. */
+  aiReview?: Record<string, AIReviewState>;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

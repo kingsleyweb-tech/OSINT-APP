@@ -6,10 +6,11 @@ import {
 } from '../../../lib/workspace';
 import { allLocationRefs, summarise } from '../../../lib/locationEvidence';
 import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
+import { aiPending } from '../../../lib/aiReview';
 
 export type TabKey =
   | 'overview' | 'organization' | 'profiles' | 'activity' | 'associations' | 'sources'
-  | 'web' | 'news' | 'images' | 'location' | 'contact' | 'metrics' | 'audit';
+  | 'web' | 'news' | 'images' | 'location' | 'contact' | 'metrics' | 'audit' | 'ai';
 
 export interface Derived {
   sources: IndexedSource[];
@@ -56,7 +57,9 @@ export function derive(inv: Investigation): Derived {
       // Emails / phone numbers tied to this identity.
       contact: summariseContacts(allContacts(inv)).length,
       metrics: undefined,
-      audit: auditCount
+      audit: auditCount,
+      // AI findings, events and relationships still waiting for accept / ignore.
+      ai: aiPending(inv) || undefined
     }
   };
 }

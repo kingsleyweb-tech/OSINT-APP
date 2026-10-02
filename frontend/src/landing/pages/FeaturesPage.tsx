@@ -315,6 +315,18 @@ export const FeaturesPage: React.FC = () => {
       whatUsersSee: 'Export (Download PDF / Open preview) and Share in a case’s header; the shared page shows a “View only” banner.',
       limitations: 'Links are cleaned, not re-opened, when the report is made; a page can change after it was collected. Anyone who has a share link can view the case.',
       whatToVerify: 'Share links only with people who are allowed to see the case, and stop sharing when it is no longer needed.'
+    },
+    {
+      num: '21',
+      id: 'ai-analysis',
+      title: 'AI Analysis',
+      tags: ['Evidence-backed', 'Exact Quotes', 'Accept / Ignore', 'No Searches'],
+      whatItIs: 'An AI reading of the evidence already in a case: summary, findings, timeline, relationships, missing information and source conflicts.',
+      whyItExists: 'Large cases hold more pages than an investigator can read quickly; the AI points to what they say, with the exact words.',
+      howItWorks: 'Press Run AI analysis in the AI Analysis tab. The server sends the case’s evidence (not your account details or notes) to Google Gemini once, then keeps only statements whose quotes appear word for word in the evidence. Confidence is set by rule from the number of independent sites. You accept or ignore each finding; accepted ones are added to the case and the report. The same evidence is not analysed twice within 24 hours.',
+      whatUsersSee: 'The AI Analysis tab (status, summary, missing information, findings with sources and “Why this finding?”, timeline, relationships, source comparison), a summary on Overview and a reviewed section in the PDF.',
+      limitations: 'It only knows what the case already holds and does not search. A limited number of analyses per day; the AI service can be busy.',
+      whatToVerify: 'Open the quoted sources before accepting a finding.'
     }
   ];
 

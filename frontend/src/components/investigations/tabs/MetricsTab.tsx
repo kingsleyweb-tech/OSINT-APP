@@ -74,6 +74,20 @@ export const MetricsTab: React.FC = () => {
               </div>
             ))}
           </div>
+          {inv.aiAnalysis && (() => {
+            const m = inv.aiAnalysis.metrics;
+            const decided = Object.values(inv.aiReview || {});
+            return (
+              <div className="ws-section">
+                <SectionHead title="AI analysis" right={<button type="button" className="ws-link" onClick={() => goTab('ai')}>Details →</button>} />
+                <div className="ws-conv">
+                  <div><b>{m.evidenceReviewed}</b><span>evidence items reviewed</span></div>
+                  <div><b>{m.findings + m.timeline + m.relationships}</b><span>supported AI items ({m.discarded} unsupported discarded)</span></div>
+                  <div><b>{decided.filter(x => x === 'accepted').length} / {decided.filter(x => x === 'ignored').length}</b><span>accepted / ignored</span></div>
+                </div>
+              </div>
+            );
+          })()}
           <div className="ws-section">
             <SectionHead title="Evidence conversion" />
             <div className="ws-conv">

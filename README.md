@@ -147,6 +147,33 @@ Every search page and the Profiler have a **Search mode** switch (default in Set
 - **Case Images and News tabs.** On first open, the Images tab searches Google Images and Bing Images for the subject's exact name, and the News tab searches Google News and Bing News. Only items whose title or summary names the subject are kept automatically; other news articles are listed for review. Results are stored in the case (`imageResults`, `imagesCheckedAt`, `newsCheckedAt`), so later visits use no searches.
 - **Opening a person** from the search results opens the case at once; saving it to Firestore continues in the background.
 
+### AI Intelligence Layer (Gemini)
+
+The **AI Analysis** tab in a case reads the evidence the case already holds and turns it into reviewed findings. It never runs searches, never replaces the existing extraction and never writes to the case on its own: the investigator presses **Run AI analysis**, then **Accepts** or **Ignores** each item.
+
+- **Where it runs.** Only on the backend (`backend/src/services/ai/`, `backend/src/controllers/aiController.ts`). The browser posts the case to `POST /api/ai/analyze` (signed-in users only); the Gemini key stays in the server environment and is never logged, returned or sent to the browser. `GET /api/ai/status` returns `{configured, provider, model, usedToday, dailyLimit}`. With no `GEMINI_API_KEY` the app works as before and the tab says AI analysis is not set up.
+- **Flow.** `evidencePrep.ts` builds a numbered evidence list (E1, E2…) from the case: subject profiles (not *Similar* ones), web and news results, activity, associations, organisation facts and claims, website pages, location and contact references and image titles. Results marked **Raw** are skipped, entries are merged by URL, CDN/image/API/private links are dropped, and the list is capped (120 items, 45k characters). The investigator's name, email, uid and notes are never sent. `analysisEngine.ts` makes **one** Gemini request (JSON schema, temperature 0.1) and then checks every answer against the evidence.
+- **Validation gate — nothing unsupported becomes a fact.** A statement is kept only if:
+  - each citation points to an existing evidence item and its quote appears word for word in that item;
+  - the finding's value appears in its quotes (a date's year for timeline events; both names in one quote for relationships);
+  - the names and numbers in summary sentences appear in their quotes.
+  Source titles and URLs are always taken from the evidence, never from the model. Dropped statements are counted (*unsupported statements discarded*). With no evidence, the summary reads "Not enough evidence for a summary." and no request is made.
+- **Confidence is set by rule, not by the model** (independent sites = different registrable domains):
+  | Label | Rule |
+  |---|---|
+  | Verified | 3+ sites, or 2+ including one you marked Validated |
+  | Strong evidence | 2 sites |
+  | Possible | 1 site that names the subject, or the subject's own page |
+  | Mention only | 1 site that does not name the subject |
+  | Uncertain | sources disagree on this value |
+- **Source comparison.** For single-value fields (location, nationality, date of birth, founded, headquarters) different values from different sites are shown side by side as a conflict and marked Uncertain; the system does not pick one. A value that is only a country (e.g. "Ghana") does not conflict with a place inside it.
+- **Missing information.** Each key field is listed as *In case*, *Found in N sources* (AI found it, not yet in the case) or *Not found*.
+- **Review.** Every finding shows its sources (title, link, exact quote) and **Why this finding?**. Accepting writes into the existing fields — occupation/industry and location/headquarters into the profile (asking before replacing a value), employer/organisation/education/membership/leadership and relationships into Associations, interests into the profile, timeline events into Activity — and adds an audit entry. Ignored items can be restored.
+- **Storage.** The result is saved on the case as `aiAnalysis`, the decisions as `aiReview` (`{itemId: 'accepted' | 'ignored'}`). The view-only share link and the PDF report ("AI analysis (reviewed findings)") contain only accepted items, the summary, the source comparison and the missing-information check.
+- **Cost and limits.** Identical evidence reuses the saved result for 24 h (no new request); one run per user and case at a time; `AI_MAX_ANALYSES_PER_DAY` per user (only successful runs count); the usual per-user rate limit. Requests time out, retry on busy/rate-limit answers (honouring Gemini's retry delay) and fall back through `GEMINI_FALLBACK_MODELS`. Errors are shown as plain messages (not set up, busy, timed out, unavailable) and leave the case unchanged. A run keeps going if the investigator switches tabs.
+- **Changing the model or provider.** Set `GEMINI_MODEL` / `GEMINI_FALLBACK_MODELS`. Another provider implements `AIProvider` (`provider.ts`: `generateJson(system, prompt, schema)`) and is selected with `AI_PROVIDER`.
+- **Limitation.** The AI does not search; it can only report what the collected evidence says. Missing information has to be found with a new or extended search.
+
 ## 4. Technology Stack
 
 | Layer | Technology (from `package.json` files) |
@@ -1037,6 +1064,11 @@ API endpoints:
 | `APP_URL` | for alerts | Site address used in email links (e.g. `https://osint-app-soko.vercel.app`) |
 | `ALERTS_MAX_SEARCHES_PER_DAY` | no | Daily SerpApi budget for all alerts (default 8) |
 | `ALERTS_QUOTA_RESERVE` | no | Alerts pause when fewer SerpApi searches than this are left this month (default 25) |
+| `GEMINI_API_KEY` | for AI analysis | Google Gemini API key (server only). Empty = AI analysis off |
+| `AI_PROVIDER` | no | AI provider (default `gemini`) |
+| `GEMINI_MODEL` | no | Main Gemini model (e.g. `gemini-3.5-flash`) |
+| `GEMINI_FALLBACK_MODELS` | no | Comma-separated models tried when the main one is busy or unavailable |
+| `AI_MAX_ANALYSES_PER_DAY` | no | AI analyses per user per day (default 20) |
 
 **Frontend (`frontend/.env`)**
 

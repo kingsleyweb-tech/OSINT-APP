@@ -33,11 +33,14 @@ import { SearchLoader } from '../../components/ui/SearchLoader';
 import { RadarLoader } from '../../components/ui/RadarLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
+import { AiTab } from '../../components/investigations/tabs/AiTab';
+import { aiCompletedEvent, getAiRun, markAiRunApplied, subscribeAiRun, type AiRun } from '../../lib/aiClient';
 import '../../styles/Workspace.css';
 
 const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 'Record' }> = [
   { key: 'overview', label: 'Overview', group: 'Summary' },
   { key: 'organization', label: 'Organisation', group: 'Summary' },
+  { key: 'ai', label: 'AI Analysis', group: 'Summary' },
   { key: 'profiles', label: 'Profiles', group: 'Evidence' },
   { key: 'activity', label: 'Activity', group: 'Evidence' },
   { key: 'associations', label: 'Associations', group: 'Evidence' },
@@ -140,6 +143,25 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
       updatedAt: new Date().toISOString()
     });
   }, [persist, readOnly]);
+
+  // AI analysis runs outside this page (lib/aiClient), so tab changes do not stop it; its result is saved here.
+  useEffect(() => {
+    if (!id || readOnly) return;
+    const apply = (r?: AiRun) => {
+      if (!r || r.applied || r.status === 'running') return;
+      markAiRunApplied(id);
+      if (r.status === 'done' && r.analysis) {
+        const a = r.analysis;
+        commit(inv => ({ ...inv, aiAnalysis: a }), [aiCompletedEvent(a, r.cached)]);
+        toast.success('AI analysis complete', `${a.metrics.findings} finding${a.metrics.findings === 1 ? '' : 's'}, ${a.metrics.timeline} dated events and ${a.metrics.relationships} relationships to review.`);
+      } else if (r.status === 'error') {
+        commit(inv => inv, [newAuditEvent({ action: 'AI analysis failed', object: invRef.current?.name || id, detail: `${r.code || 'error'}: ${r.error || ''} (case unchanged)`, group: 'Investigation', kind: 'system' })]);
+        toast.error('AI analysis not completed', r.error || 'The case is unchanged.');
+      }
+    };
+    apply(getAiRun(id));
+    return subscribeAiRun(id, apply);
+  }, [id, readOnly, commit, toast]);
 
   const goTab = useCallback((key: TabKey, focusKey?: string) => {
     setFocus(focusKey || null);
@@ -520,6 +542,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
           {currentTab === 'contact' && <ContactTab />}
           {currentTab === 'metrics' && <MetricsTab />}
           {currentTab === 'audit' && <AuditTab />}
+          {currentTab === 'ai' && <AiTab />}
         </div>
 
         {!readOnly && <div className="ws-mobile-bar">

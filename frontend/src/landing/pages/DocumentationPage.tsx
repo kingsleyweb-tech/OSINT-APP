@@ -174,6 +174,13 @@ const DOCS: DocSection[] = [
     ]
   },
   {
+    id: 'ai-analysis', label: 'AI analysis', category: 'Cases', title: 'AI Analysis of a Case',
+    paragraphs: [
+      'The AI Analysis tab reads the evidence the case already holds — profiles, web and news, activity, associations, organisation facts, locations and contacts — and lists what it says: a short summary, findings (occupation, employer, education, locations, contacts, aliases and more), a timeline, relationships, information that is still missing and places where sources disagree. It runs only when you press Run AI analysis and never searches.',
+      'Every finding shows its sources with their exact words and “Why this finding?”. Anything the evidence does not support word for word is discarded, and confidence (Verified, Strong evidence, Possible, Mention only, Uncertain) is set by how many independent sites agree, not by the AI. Accept adds a finding to the case (profile, associations or activity); Ignore hides it. Only accepted findings appear in the PDF report and the view-only link.'
+    ]
+  },
+  {
     id: 'rerun-export', label: 'Re-run, report & share', category: 'Cases', title: 'Re-running, Reporting and Sharing Cases',
     paragraphs: [
       'Re-run a case’s searches to see what has changed since it was created; changes are recorded in the Audit tab and you are notified when it finishes.',

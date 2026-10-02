@@ -10,11 +10,12 @@ import type { EvidenceLevel } from '../../../types/investigation';
 import { caseGender } from '../../../lib/genderEvidence';
 import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
 import { OrgOverview } from './OrgOverview';
+import { aiPending, reviewedAnalysis } from '../../../lib/aiReview';
 
 const LEVEL_RANK: Record<EvidenceLevel, number> = { validated: 2, relevant: 1, raw: 0 };
 
 export const OverviewTab: React.FC = () => {
-  const { inv, d, goTab } = useWorkspace();
+  const { inv, d, goTab, readOnly } = useWorkspace();
   const similarKeys = similarProfileKeys(inv);
   const profiles = (inv.socialProfiles || []).filter(p => !isSimilarProfile(p));
   const activities = (inv.activities || []).filter(a => !isSimilarActivity(a, similarKeys));
@@ -120,6 +121,20 @@ export const OverviewTab: React.FC = () => {
           return <OrgOverview contact={contact} platforms={mainPlatforms} />;
         })()}
 
+
+        {(() => {
+          // AI summary, only once an analysis exists (view-only visitors see the reviewed version).
+          const ai = readOnly ? reviewedAnalysis(inv) : inv.aiAnalysis;
+          if (!ai) return null;
+          const pending = aiPending(inv);
+          return (
+            <div className="ws-section" style={{ marginTop: 24 }}>
+              <SectionHead title="AI intelligence summary" right={<button type="button" className="ws-link" onClick={() => goTab('ai')}>{!readOnly && pending ? `${pending} to review →` : 'AI Analysis →'}</button>} />
+              <p className="ws-summary">{ai.summary.text}</p>
+              <p className="ws-sub">AI-extracted from {ai.evidenceCount} evidence item{ai.evidenceCount === 1 ? '' : 's'} in this case on {fmtDate(ai.runAt, true)}; each statement quotes its source. Check the sources before relying on it.</p>
+            </div>
+          );
+        })()}
 
         <div className="ws-inputs">
           <span className="ws-label">Search inputs</span>

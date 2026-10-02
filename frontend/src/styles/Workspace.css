@@ -1212,3 +1212,27 @@ button.ws-sid:hover { border-color: var(--ws-accent-line); color: var(--ws-accen
 @media (max-width: 768px) {
   .ws-profile-detail { width: calc(100vw - 34px); }
 }
+
+/* ─── AI Analysis tab (same tokens as the rest of the workspace) ─── */
+
+.ws-ai-intro { max-width: 760px; line-height: 1.6; margin: 6px 0 4px; }
+.ws-ai-note { margin-top: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--ws-border); background: var(--ws-surface); font-size: 14px; color: var(--ws-text); }
+.ws-ai-note.warn { border-color: var(--ws-warn); }
+.ws-ai-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0 32px; }
+.ws-ai-summary { font-size: 15.5px; line-height: 1.65; color: var(--ws-text); margin: 0 0 8px; }
+.ws-ai-group { margin-bottom: 18px; }
+.ws-ai-item { border: 1px solid var(--ws-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; background: var(--ws-bg); }
+.ws-ai-item.ignored { opacity: 0.6; }
+.ws-ai-item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.ws-ai-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; }
+.ws-ai-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+.ws-ai-sources { margin-top: 8px; }
+.ws-ai-source + .ws-ai-source { margin-top: 6px; }
+.ws-ai-source .ws-quote { margin: 4px 0 2px; }
+.ws-ai-why { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 0; border: none; background: none; color: var(--ws-accent); font-size: 13px; cursor: pointer; }
+.ws-ai-why-text { margin: 6px 0 0; line-height: 1.55; }
+.ws-ai-conflict { padding-top: 8px; margin-top: 8px; border-top: 1px dashed var(--ws-border); }
+@media (max-width: 768px) {
+  .ws-ai-grid { grid-template-columns: minmax(0, 1fr); }
+  .ws-ai-item-head { flex-direction: column; }
+}

@@ -15,6 +15,8 @@ import { bestWebsite, entityClass, FIELD_LABEL, orgProfile } from './organizatio
 import { caseGender } from './genderEvidence';
 import { factsLine, matchStatus } from './profileDisplay';
 import type { OrgField } from '../types/investigation';
+import type { AISource } from '../types/investigation';
+import { AI_FIELD_LABEL, reviewedAnalysis } from './aiReview';
 
 export const NOT_FOUND = 'Not found';
 
@@ -214,6 +216,52 @@ export function buildCaseReport(inv: Investigation, preparedBy: string): CaseRep
       { kind: 'bullets', items: findings }
     ]
   });
+
+  // ── 1b. AI analysis: only what the investigator accepted (unreviewed AI output never leaves the case) ──
+  const ai = reviewedAnalysis(inv);
+  if (ai) {
+    const src = (sources: AISource[]) => {
+      const first = sources.find(s => reportUrl(s.url)) || sources[0];
+      return first ? link(first.url, siteName(first.source, first.url)) : NOT_FOUND;
+    };
+    const quote = (sources: AISource[]) => clip(sources[0]?.quote ? `“${sources[0].quote}”` : '', 160);
+    const blocks: Block[] = [
+      { kind: 'note', text: `AI analysis (${ai.model}) of the ${plural(ai.evidenceCount, 'evidence item')} saved in this case on ${fmtDate(ai.runAt)}. No new searches were run. Every item below quotes its source and was accepted by the investigator; confidence is set by fixed rules from the number of independent sites, not by the AI.` },
+      { kind: 'sub', text: 'AI intelligence summary' },
+      { kind: 'para', text: ai.summary.text }
+    ];
+    if (ai.findings.length) {
+      blocks.push({ kind: 'sub', text: 'Accepted findings' }, {
+        kind: 'table', head: ['Field', 'Finding', 'Confidence', 'Evidence', 'Source'], widths: [26, 36, 24, 52, 36],
+        rows: ai.findings.map(f => [AI_FIELD_LABEL[f.field], f.value, `${f.confidence} (${plural(f.siteCount, 'site')})`, quote(f.sources), src(f.sources)])
+      });
+    } else blocks.push({ kind: 'note', text: 'No AI finding was accepted.' });
+    if (ai.timeline.length) {
+      blocks.push({ kind: 'sub', text: 'Timeline (accepted)' }, {
+        kind: 'table', head: ['Date', 'Event', 'Confidence', 'Source'], widths: [26, 80, 28, 40],
+        rows: ai.timeline.map(t => [t.date, t.event, t.confidence, src(t.sources)])
+      });
+    }
+    if (ai.relationships.length) {
+      blocks.push({ kind: 'sub', text: 'Relationships (accepted)' }, {
+        kind: 'table', head: ['From', 'Relationship', 'To', 'Confidence', 'Source'], widths: [36, 34, 36, 28, 40],
+        rows: ai.relationships.map(r => [r.from, r.relation, r.to, r.confidence, src(r.sources)])
+      });
+    }
+    const conflicts = ai.comparisons.filter(c => c.status === 'conflict');
+    if (conflicts.length) {
+      blocks.push({ kind: 'sub', text: 'Conflicting information' }, { kind: 'note', text: 'Sources disagree on these values. Neither is chosen as correct.' }, {
+        kind: 'table', head: ['Field', 'Value', 'Source'], widths: [36, 70, 68],
+        rows: conflicts.flatMap(c => c.values.map(v => [AI_FIELD_LABEL[c.field], v.value, src(v.sources)] as Cell[]))
+      });
+    }
+    blocks.push({ kind: 'sub', text: 'Missing information check' }, {
+      kind: 'kv', rows: ai.missing.map(m => [m.label, m.status === 'in_case' ? `In the case: ${clip(m.caseValue, 80)}` : m.status === 'found' ? `Found in ${plural(m.foundIn, 'source')} (accepted above)` : NOT_FOUND] as [string, Cell])
+    });
+    const mm = ai.metrics;
+    blocks.push({ kind: 'note', text: `Analysis metrics: ${plural(mm.evidenceReviewed, 'evidence item')} reviewed; ${mm.findings + mm.timeline + mm.relationships} supported AI items, of which ${ai.findings.length + ai.timeline.length + ai.relationships.length} accepted; ${mm.discarded} AI statements discarded because the evidence did not support them.` });
+    sections.push({ title: 'AI analysis (reviewed findings)', blocks });
+  }
 
   // ── 2. Identity / entity ──
   if (isOrg) {

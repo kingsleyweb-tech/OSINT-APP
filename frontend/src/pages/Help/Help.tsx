@@ -236,7 +236,8 @@ const SECTIONS: HelpSection[] = [
       { title: 'Continue with Google', desc: 'Sign in with your Google account (or with email and password). Google and Firebase hold your credentials; this app never stores passwords. Guest access has been removed.' },
       { title: 'Protected sessions', desc: 'Every app page needs you to be signed in. You stay signed in on this device until you sign out. If your session expires or your account is disabled, you are signed out and asked to sign in again.' },
       { title: 'Protected searches', desc: 'The server checks your sign-in on every search, so nobody can use the search engine without an account. Searches are limited per account to prevent abuse.' },
-      { title: 'Your data is yours', desc: 'Cases, tracked people, history and notifications are stored in your own account; database rules stop anyone else reading them. Settings → Data & privacy lets you export or delete everything.' }
+      { title: 'Your data is yours', desc: 'Cases, tracked people, history and notifications are stored in your own account; database rules stop anyone else reading them. Settings → Data & privacy lets you export or delete everything.' },
+      { title: 'AI analysis privacy', desc: 'AI analysis runs on the server: it sends the case’s collected evidence to Google Gemini, never your name, email, account id or notes, and the AI key never reaches your browser.' }
     ]
   },
   {
@@ -265,6 +266,8 @@ const SECTIONS: HelpSection[] = [
       { q: 'It says “Too many searches in a short time”.', a: 'Each account can run a limited number of searches per 10 minutes. Wait a few minutes and try again.' },
       { q: 'It says my session has expired.', a: 'Sign in again. This happens after a password change, if your account was deleted or disabled, or if the server no longer accepts your sign-in.' },
       { q: 'Google sign-in was cancelled or blocked.', a: 'Allow pop-ups for this site and try again. If pop-ups stay blocked, the page goes to Google and comes back automatically.' },
+      { q: 'What does AI analysis do, and is it reliable?', a: 'It reads only the evidence already in the case and lists what the sources say, with their exact words. It does not search. Anything not supported word for word by the evidence is discarded, and the confidence label comes from how many independent sites agree. Nothing is added to the case until you press Accept, and only accepted findings go into the PDF and the share link. Open the sources before relying on a finding.' },
+      { q: 'AI analysis says it is busy or not set up.', a: 'Busy: the AI service is rate-limited or overloaded — try again in a minute; the case is unchanged. Not set up: the server has no AI key. Each account has a daily number of analyses; running it again on unchanged evidence reuses the saved result.' },
       { q: 'Is facial recognition available?', a: 'Not yet. The Media page has a Facial recognition tab reserved for it; no face matching is done.' }
     ]
   }

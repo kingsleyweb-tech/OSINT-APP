@@ -5,6 +5,7 @@ import { checkLinks } from '../services/nameSearch/linkHealth';
 import { handleExplore, handleExploreCatalog, handleExplorePlan, handleQuota } from '../controllers/exploreController';
 import { handleQueryIntel } from '../controllers/queryIntelController';
 import { handleAlertsStatus, handleRunAlert, handleTestEmail } from '../controllers/alertsController';
+import { handleAiAnalyze, handleAiStatus } from '../controllers/aiController';
 import { rateLimited } from '../controllers/exploreController';
 import { readOrganizationWebsite } from '../services/organization/websiteIntel';
 import { enrichOrganization, suggestEntities } from '../services/organization/orgEnrichment';
@@ -14,6 +15,10 @@ const router = Router();
 router.post('/search', handleOSINTSearch);
 router.post('/search/stream', handleOSINTSearchStream);
 router.post('/investigations/rescan', handleRescanInvestigation);
+
+// AI analysis of the evidence a case already holds (Gemini, server-side; no new searches).
+router.get('/ai/status', handleAiStatus);
+router.post('/ai/analyze', handleAiAnalyze);
 
 // Server-side reachability check for discovered profile URLs (registry hosts only).
 // Suggestions while typing a name (Wikidata search; free, cached). Not rate limited per keystroke, but short.

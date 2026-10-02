@@ -20,6 +20,7 @@ import {
 import { db, auth } from './config';
 import type { Investigation } from '../types/investigation';
 import type { UserProfile, SearchHistoryEntry } from '../types/user';
+import { shareSafe } from '../lib/aiReview';
 
 /**
  * Firestore layout (every document belongs to exactly one user):
@@ -91,7 +92,7 @@ export async function saveInvestigationToDb(investigation: Investigation): Promi
   if (toSave.isTracked) await trackPersonInDb(toSave);
   // A shared case keeps its view-only copy up to date, so the link always shows the latest data.
   if (toSave.shareToken) {
-    await setDoc(doc(db, SHARED, toSave.shareToken), clean({ investigation: toSave, updatedAt: toSave.updatedAt }), { merge: true })
+    await setDoc(doc(db, SHARED, toSave.shareToken), clean({ investigation: shareSafe(toSave), updatedAt: toSave.updatedAt }), { merge: true })
       .catch(e => console.error('Shared copy not updated:', e));
   }
 }
@@ -273,7 +274,7 @@ export async function shareInvestigationInDb(inv: Investigation, ownerName: stri
   const shared: Investigation = { ...inv, createdBy: uid, shareToken: token, updatedAt: now };
   // The case must exist (owned by this user) for the rules to accept the share.
   await saveInvestigationToDb(inv);
-  await setDoc(doc(db, SHARED, token), clean({ investigationId: inv.id, ownerUid: uid, ownerName, sharedAt: now, updatedAt: now, investigation: shared }));
+  await setDoc(doc(db, SHARED, token), clean({ investigationId: inv.id, ownerUid: uid, ownerName, sharedAt: now, updatedAt: now, investigation: shareSafe(shared) }));
   await setDoc(doc(db, INVESTIGATIONS, inv.id), { shareToken: token, updatedAt: now }, { merge: true });
   return shared;
 }
