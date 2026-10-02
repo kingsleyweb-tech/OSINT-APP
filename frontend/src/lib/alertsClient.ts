@@ -42,6 +42,8 @@ export interface Alert {
   lastSeenAt?: string;
   /** New results not looked at yet (the server adds to it, opening the page resets it). */
   unseenCount?: number;
+  /** Address of the site the alert was used on; email links point there. */
+  appUrl?: string;
 }
 
 export interface AlertMatch {
@@ -93,6 +95,8 @@ function uid(): string {
 }
 
 const clean = <T extends object>(o: T): T => JSON.parse(JSON.stringify(o));
+/** This site's address (e.g. https://osint-app-soko.vercel.app), stored on the alert so its email links open the right site. */
+const siteUrl = () => window.location.origin;
 
 export function subscribeToAlerts(onUpdate: (alerts: Alert[]) => void, onError?: (e: Error) => void): Unsubscribe {
   return onSnapshot(
@@ -122,18 +126,18 @@ export function subscribeToAlert(id: string, onUpdate: (a: Alert | null) => void
 /** The owner opened the alert's page: everything found so far counts as seen. */
 export async function markAlertSeen(id: string): Promise<void> {
   uid();
-  await updateDoc(doc(db, ALERTS, id), { lastSeenAt: new Date().toISOString(), unseenCount: 0 });
+  await updateDoc(doc(db, ALERTS, id), { lastSeenAt: new Date().toISOString(), unseenCount: 0, appUrl: siteUrl() });
 }
 
 export async function createAlert(input: AlertInput): Promise<string> {
   const now = new Date().toISOString();
-  const ref = await addDoc(collection(db, ALERTS), clean({ ...input, ownerUid: uid(), active: true, createdAt: now, nextRunAt: now, matchCount: 0 }));
+  const ref = await addDoc(collection(db, ALERTS), clean({ ...input, ownerUid: uid(), active: true, createdAt: now, nextRunAt: now, matchCount: 0, appUrl: siteUrl() }));
   return ref.id;
 }
 
 export async function updateAlert(id: string, input: AlertInput): Promise<void> {
   uid();
-  await updateDoc(doc(db, ALERTS, id), clean({ ...input }));
+  await updateDoc(doc(db, ALERTS, id), clean({ ...input, appUrl: siteUrl() }));
 }
 
 export async function setAlertActive(a: Alert, active: boolean): Promise<void> {

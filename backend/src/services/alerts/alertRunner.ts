@@ -31,6 +31,8 @@ export interface AlertDoc {
   lastRunAt?: string;
   nextRunAt: string;
   matchCount?: number;
+  /** Site address the owner uses (stored by the app); email links point there. */
+  appUrl?: string;
   lastResult?: { at: string; checked: number; newMatches: number; searchesUsed: number; status: 'ok' | 'waiting' | 'error'; message?: string };
 }
 
@@ -218,7 +220,7 @@ async function notifyOwner(alert: AlertDoc, matches: MailMatch[], firstRun: bool
   try {
     const user = await adminAuth().getUser(alert.ownerUid);
     if (!user.email) return;
-    await sendAlertEmail(user.email, alert.name, matches, firstRun, alertId);
+    await sendAlertEmail(user.email, alert.name, matches, firstRun, alertId, alert.appUrl);
   } catch {
     console.error('[Alerts] email could not be sent for an alert.');
   }

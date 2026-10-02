@@ -30,6 +30,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     { path: '/new-investigation', label: 'New Search' },
     { path: '/investigations', label: 'Investigations' },
     { path: '/people', label: 'People & Targets' },
+    { path: '/alerts', label: 'Alerts' },
     { path: '/sources', label: 'Sources & APIs' },
     { path: '/guide', label: 'Guide' },
     { path: '/help', label: 'Help & Manual' },

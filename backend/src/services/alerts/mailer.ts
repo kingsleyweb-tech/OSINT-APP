@@ -82,18 +82,37 @@ export interface MailMatch {
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-const appUrl = () => (process.env.APP_URL || '').replace(/\/+$/, '');
+/** A site address reduced to its origin ("https://host"), or '' when it is not a valid http(s) address. */
+function origin(u?: string): string {
+  try {
+    const x = new URL(String(u || '').trim());
+    return x.protocol === 'https:' || x.protocol === 'http:' ? x.origin : '';
+  } catch {
+    return '';
+  }
+}
+const isLocal = (o: string) => /^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\])/i.test(o);
+
+/**
+ * Where email links point: the site the alert was used on (stored by the app) or APP_URL — a public
+ * address is preferred over localhost, so a local APP_URL on the server cannot break links.
+ */
+export function linkBase(siteUrl?: string): string {
+  const options = [origin(siteUrl), origin(process.env.APP_URL)].filter(Boolean);
+  return options.find(o => !isLocal(o)) || options[0] || '';
+}
 const fromHeader = () => `"${senderName()}" <${senderAddress()}>`;
 
 /** One email per alert run, to the alert's owner only. */
-export async function sendAlertEmail(to: string, alertName: string, matches: MailMatch[], firstRun: boolean, alertId?: string): Promise<void> {
+export async function sendAlertEmail(to: string, alertName: string, matches: MailMatch[], firstRun: boolean, alertId?: string, siteUrl?: string): Promise<void> {
   const shown = matches.slice(0, 20);
   const more = matches.length - shown.length;
   const intro = firstRun
     ? `Your new alert "${alertName}" found ${matches.length} result${matches.length === 1 ? '' : 's'} already published:`
     : `${matches.length} new result${matches.length === 1 ? '' : 's'} for your alert "${alertName}":`;
   // Opens this alert's own page: every result, with the ones from this email marked NEW.
-  const manage = appUrl() ? `${appUrl()}/alerts${alertId ? `/${encodeURIComponent(alertId)}` : ''}` : '';
+  const base = linkBase(siteUrl);
+  const manage = base ? `${base}/alerts${alertId ? `/${encodeURIComponent(alertId)}` : ''}` : '';
 
   const text = [
     intro, '',
