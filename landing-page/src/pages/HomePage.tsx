@@ -4,7 +4,7 @@ import {
   Layers, Activity, Share2, FileText, Globe, CheckCircle2,
   AlertTriangle, HelpCircle, ExternalLink, Database, Cpu
 } from 'lucide-react';
-const appLogo = '/icon.png';
+const appLogo = '/osint-logo.svg';
 import { HeroSearchWidget } from '../components/HeroSearchWidget';
 import { TypewriterTitle } from '../components/TypewriterTitle';
 import { SourceEcosystem } from '../components/SourceEcosystem';

@@ -10,7 +10,7 @@ import {
   MoreVertical,
   Loader2
 } from 'lucide-react';
-import appLogo from '../../assets/images/icon.png';
+import appLogo from '../../assets/images/osint-logo.svg';
 import { PossibleIdentitiesView, type DiscoveredIdentity } from '../../components/search/PossibleIdentitiesView';
 import { SearchLoader } from '../../components/ui/SearchLoader';
 import { CostHint } from '../../components/ui/CostHint';
@@ -140,9 +140,9 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
       setDiscoveredIdentities(identities);
       const profileCount = identities.reduce((n, i) => n + (i.investigation?.socialProfiles?.length || 0), 0);
       success('Search complete', `${identities.length} possible ${identities.length === 1 ? 'person' : 'people'} and ${profileCount} profile${profileCount === 1 ? '' : 's'} for "${query}".`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof SearchError && err.title === 'Search cancelled') return;
-      toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
+      toastError(err instanceof SearchError ? err.title : 'Search failed', (err instanceof Error && err.message) || 'The search could not be completed.');
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen } from 'lucide-react';
+import { PageHero, NextPrev } from '../components/site/PageParts';
+import { ArrowRight } from '../components/site/Icons';
 
 type Category = 'Overview' | 'Search' | 'Results' | 'Cases' | 'Platform' | 'Ethics & Help';
 
@@ -237,92 +237,104 @@ const DOCS: DocSection[] = [
 
 const CATEGORIES: Category[] = ['Overview', 'Search', 'Results', 'Cases', 'Platform', 'Ethics & Help'];
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** "Name search" → Name <em>search.</em> */
+const accentTitle = (label: string) => {
+  const words = label.split(' ');
+  const last = words.pop();
+  return <>{words.join(' ')}{words.length ? ' ' : ''}<em>{last}.</em></>;
+};
+
 export const DocumentationPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>(DOCS[0].id);
   const index = Math.max(0, DOCS.findIndex(d => d.id === activeSection));
   const doc = DOCS[index];
   const prev = DOCS[index - 1];
   const next = DOCS[index + 1];
+  const [lede, ...rest] = doc.paragraphs;
 
-  const open = (id: string) => {
+  const open = (id: string) => (e?: React.MouseEvent) => {
+    e?.preventDefault();
     setActiveSection(id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('doc')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <div className="lp-route-container">
-      <section className="lp-section-wide">
-        <div className="lp-container-wide">
+    <>
+      <PageHero
+        crumb="Documentation"
+        tag="Product documentation"
+        title={<>Documentation<br /><em>&amp; guide.</em></>}
+        lead="How every search works, what the results mean, how cases and history are kept, and how the platform protects your account and data."
+        stats={[{ value: String(DOCS.length), label: 'Sections' }, { value: String(CATEGORIES.length), label: 'Topics' }]}
+      />
 
-          <div style={{ marginBottom: '40px' }}>
-            <div className="lp-badge" style={{ marginBottom: '14px' }}>
-              <BookOpen size={14} />
-              <span>Product Documentation</span>
-            </div>
-            <h1 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '12px' }}>
-              System Documentation & Guide
-            </h1>
-            <p className="lp-subtitle" style={{ maxWidth: '840px' }}>
-              How every search works, what the results mean, how cases and history are kept, and how the platform protects your account and data.
-            </p>
-          </div>
-
-          <div className="lp-doc-grid">
-            <nav className="lp-doc-toc-sidebar" aria-label="Documentation contents">
-              {CATEGORIES.map(cat => (
+      <section className="sec">
+        <div className="wrap ov2">
+          <aside className="idcard">
+            <nav className="b" aria-label="Documentation contents">
+              <b>Contents</b>
+              <div className="role">{DOCS.length} sections · {CATEGORIES.length} topics</div>
+              {CATEGORIES.map((cat, ci) => (
                 <React.Fragment key={cat}>
-                  <div className="pd-nav-group">{cat}</div>
+                  <div className="grp" style={ci ? { marginTop: 12 } : undefined}>{cat}</div>
                   {DOCS.filter(d => d.category === cat).map(item => (
-                    <button
+                    <a
                       key={item.id}
-                      type="button"
-                      onClick={() => open(item.id)}
-                      className={`pd-nav-link${activeSection === item.id ? ' on' : ''}`}
+                      href="#doc"
+                      onClick={open(item.id)}
+                      className={`dl${activeSection === item.id ? ' on' : ''}`}
                       aria-current={activeSection === item.id ? 'page' : undefined}
                     >
                       {item.label}
-                    </button>
+                    </a>
                   ))}
                 </React.Fragment>
               ))}
             </nav>
+          </aside>
 
-            <article className="pd-article">
-              <span className="pd-eyebrow">{doc.category} · {String(index + 1).padStart(2, '0')} of {DOCS.length}</span>
-              <h2>{doc.title}</h2>
-              {doc.paragraphs.map(p => <p key={p}>{p}</p>)}
-              {doc.list && (doc.ordered ? (
-                <ol className="pd-steps">
-                  {doc.list.map((li, i) => (
-                    <li key={li}><span className="pd-sn" aria-hidden="true">{i + 1}</span><span>{li}</span></li>
-                  ))}
-                </ol>
-              ) : (
-                <ul className="pd-bullets">
-                  {doc.list.map(li => <li key={li}>{li}</li>)}
-                </ul>
-              ))}
-              {doc.code && (
-                <div className="pd-code">
-                  <span>Example queries</span>
-                  {doc.code.map(c => <code key={c}>{c}</code>)}
-                </div>
-              )}
-
-              <div className="pd-pager">
-                {prev ? (
-                  <button type="button" onClick={() => open(prev.id)}><small>Previous</small>← {prev.label}</button>
-                ) : <span />}
-                {next ? (
-                  <button type="button" onClick={() => open(next.id)} style={{ textAlign: 'right' }}><small>Next</small>{next.label} →</button>
-                ) : (
-                  <Link to="/help-center" style={{ textAlign: 'right' }}><small>Next</small>Help Center →</Link>
-                )}
+          <article id="doc">
+            <span className="tag"><i />{doc.category} · {pad(index + 1)} of {DOCS.length}</span>
+            <h2 className="d2" style={{ margin: '16px 0 30px' }}>{accentTitle(doc.label)}</h2>
+            {lede && <p className="lede">{lede}</p>}
+            {rest.map(p => <p className="txt" key={p} style={{ marginTop: 18 }}>{p}</p>)}
+            {doc.list && (doc.ordered ? (
+              <ol className="duties" style={{ marginTop: 32 }}>
+                {doc.list.map((li, i) => <li key={li}><strong>{i + 1}.</strong> {li}</li>)}
+              </ol>
+            ) : (
+              <ul className="duties" style={{ marginTop: 32 }}>
+                {doc.list.map(li => <li key={li}>{li}</li>)}
+              </ul>
+            ))}
+            {doc.code && (
+              <div className="code" style={{ marginTop: 24 }}>
+                <span>Example queries</span>
+                {doc.code.map(c => <div key={c}>{c}</div>)}
               </div>
-            </article>
-          </div>
+            )}
+            <div className="nextp" style={{ padding: '40px 0 0' }}>
+              {prev ? (
+                <a href="#doc" onClick={open(prev.id)}><span><small>← Previous</small><b>{prev.label}</b></span></a>
+              ) : <span />}
+              {next && (
+                <a href="#doc" onClick={open(next.id)} className="go">
+                  <span><small>Next →</small><b>{next.label}</b></span>
+                  <span className="round"><ArrowRight size={20} width={2} /></span>
+                </a>
+              )}
+            </div>
+          </article>
         </div>
       </section>
-    </div>
+
+      <NextPrev
+        flush
+        prev={{ to: '/how-it-works', small: '← Previous page', label: 'How it works' }}
+        next={{ to: '/about', small: 'Next page →', label: 'About' }}
+      />
+    </>
   );
 };

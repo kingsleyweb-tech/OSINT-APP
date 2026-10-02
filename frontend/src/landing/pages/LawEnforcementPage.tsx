@@ -1,103 +1,105 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Scale } from 'lucide-react';
+import { NextPrev, PageHero, SectionChips } from '../components/site/PageParts';
 
-const Section: React.FC<{ n: number; title: string; last?: boolean; children: React.ReactNode }> = ({ n, title, last, children }) => (
-  <div style={{ borderTop: '1px solid var(--border-color)', padding: '28px 0', ...(last ? { borderBottom: '1px solid var(--border-color)' } : {}) }}>
-    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-warm-light)', fontFamily: 'monospace', marginBottom: '6px' }}>SECTION {String(n).padStart(2, '0')}</div>
-    <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>{n}. {title}</h2>
-    {children}
-  </div>
-);
+const CHIPS = [
+  { id: 'l1', label: 'What the platform is' },
+  { id: 'l2', label: 'Information kept about users' },
+  { id: 'l3', label: 'Legal process requirements' },
+];
 
-export const LawEnforcementPage: React.FC = () => {
-  return (
-    <div className="lp-route-container">
-      <section className="lp-section-wide">
-        <div className="lp-container-wide">
+const NOT_HELD = [
+  'Private messages or chat logs',
+  'Passwords or login details of any platform',
+  'Private (non-public) social media accounts',
+  'Phone company or subscriber records',
+  'Phone or device location data',
+  'Hidden, paid or non-public databases',
+  'Facial recognition data',
+];
 
-          <div style={{ marginBottom: '44px' }}>
-            <div className="lp-badge" style={{ marginBottom: '14px' }}>
-              <Scale size={14} />
-              <span>Legal process & agency guidelines</span>
-            </div>
-            <h1 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '12px' }}>
-              Law Enforcement Guide
-            </h1>
-            <p className="lp-subtitle" style={{ maxWidth: '840px' }}>
-              For government and law enforcement officers: what the platform is, what information it keeps, and what legal process we require.
-            </p>
+const LEGAL_PROCESS: [string, string][] = [
+  ['Subpoena (or local equivalent)', 'Basic account details, such as email address and account creation date.'],
+  ['Court order', 'A user’s search history and activity records.'],
+  ['Search warrant', 'The contents of a user’s saved cases.'],
+];
+
+export const LawEnforcementPage: React.FC = () => (
+  <>
+    <PageHero
+      crumb="Law Enforcement"
+      tag="Legal process & agency guidelines"
+      title={<>Law enforcement<br /><em>guide.</em></>}
+      lead="For government and law enforcement officers: what the platform is, what information it keeps, and what legal process we require."
+      stats={[{ value: String(CHIPS.length), label: 'Sections' }, { value: String(LEGAL_PROCESS.length), label: 'Kinds of legal process' }]}
+    />
+
+    <SectionChips items={CHIPS} />
+
+    <section className="sec" id="l1" style={{ paddingTop: 80 }}>
+      <div className="wrap">
+        <div className="shd">
+          <div className="l">
+            <span className="tag"><i />01 — The platform</span>
+            <h2 className="d2">What the platform <em>is.</em></h2>
           </div>
-
-          <div style={{ lineHeight: 1.75, color: 'var(--text-muted)', width: '100%' }}>
-
-            <Section n={1} title="What the platform is">
-              <p style={{ fontSize: '1rem', lineHeight: 1.75, marginBottom: '20px' }}>
-                The OSINT Investigation Platform is software that searches <strong>public</strong> sources on behalf of its users: search engines
-                through <strong>SerpApi</strong> (Google, Bing, DuckDuckGo, Yahoo, YouTube, news, images, maps and trends), public platform services
-                (such as GitHub, Reddit, Mastodon and Bluesky), Wikidata, and the public pages of organisations’ own websites. The platform does not
-                run its own database of personal records, criminal records or telecom data.
-              </p>
-
-              <div style={{ borderLeft: '3px solid #ef4444', paddingLeft: '20px', marginTop: '16px' }}>
-                <strong style={{ color: 'var(--text-primary)', fontSize: '1.05rem', display: 'block', marginBottom: '8px' }}>
-                  What the platform does not have
-                </strong>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '12px' }}>
-                  The platform does not collect, store or give access to:
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                  <div>• Private messages or chat logs</div>
-                  <div>• Passwords or login details of any platform</div>
-                  <div>• Private (non-public) social media accounts</div>
-                  <div>• Phone company or subscriber records</div>
-                  <div>• Phone or device location data</div>
-                  <div>• Hidden, paid or non-public databases</div>
-                  <div>• Facial recognition data</div>
-                </div>
-              </div>
-            </Section>
-
-            <Section n={2} title="Information the platform keeps about its users">
-              <p style={{ fontSize: '1rem', lineHeight: 1.75, marginBottom: '14px' }}>
-                The only non-public information held for the platform is about its own users, stored in Google Firebase:
-              </p>
-              <ul style={{ paddingLeft: '20px', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.8 }}>
-                <li><strong>Account details:</strong> email address, display name, user ID, sign-in method and account creation date (Firebase Authentication).</li>
-                <li><strong>Saved cases:</strong> the investigations a user created — the public results they contain, the user’s evidence levels and each case’s audit log.</li>
-                <li><strong>Account activity:</strong> the user’s search history, tracked people and organisations, notifications and settings.</li>
-              </ul>
-              <p style={{ fontSize: '1rem', lineHeight: 1.75, marginTop: '14px' }}>
-                A user’s search history is stored in their own account, which they can delete. Search results are kept on the server for up to 12
-                hours only, to avoid running the same search twice. The server’s technical output, and the standard logs of our hosting and service
-                providers, may also contain request details for a limited time.
-              </p>
-            </Section>
-
-            <Section n={3} title="Legal process requirements" last>
-              <p style={{ fontSize: '1rem', lineHeight: 1.75, marginBottom: '16px' }}>
-                We require valid legal process before releasing any non-public user information:
-              </p>
-              <ul style={{ paddingLeft: '20px', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.8, marginBottom: '16px' }}>
-                <li><strong>Subpoena (or local equivalent):</strong> for basic account details, such as email address and account creation date.</li>
-                <li><strong>Court order:</strong> for a user’s search history and activity records.</li>
-                <li><strong>Search warrant:</strong> for the contents of a user’s saved cases.</li>
-              </ul>
-              <p style={{ fontSize: '1rem', lineHeight: 1.75, marginBottom: '28px' }}>
-                The public information shown in the platform can be found by anyone through the original sources; each result keeps a link to where it came from.
-              </p>
-
-              <div style={{ paddingTop: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                <span style={{ fontSize: '0.95rem' }}>For official requests or service of legal process:</span>
-                <Link to="/help-center" className="btn-outline" style={{ fontSize: '0.875rem' }}>
-                  Contact us through the Help Center
-                </Link>
-              </div>
-            </Section>
-
+          <p style={{ maxWidth: 520 }}>The OSINT Investigation Platform is software that searches public sources on behalf of its users: search engines through SerpApi (Google, Bing, DuckDuckGo, Yahoo, YouTube, news, images, maps and trends), public platform services (such as GitHub, Reddit, Mastodon and Bluesky), Wikidata, and the public pages of organisations’ own websites. The platform does not run its own database of personal records, criminal records or telecom data.</p>
+        </div>
+        <div className="record">
+          <span className="tag on-dark"><i />Not held</span>
+          <h3 className="d2">What the platform <em>does not have.</em></h3>
+          <div className="stamp">Public sources only</div>
+          <p style={{ fontSize: 16, lineHeight: 1.7, color: 'rgba(255, 255, 255, .78)', marginTop: 16 }}>The platform does not collect, store or give access to:</p>
+          <div className="kvs" style={{ marginTop: 28 }}>
+            {NOT_HELD.map((k) => <div className="kv one" key={k}><b>{k}</b></div>)}
           </div>
         </div>
-      </section>
-    </div>
-  );
-};
+      </div>
+    </section>
+
+    <section className="sec surface" id="l2">
+      <div className="wrap intro" style={{ alignItems: 'start' }}>
+        <div>
+          <span className="tag"><i />02 — User records</span>
+          <h2 className="d2">Information kept <em>about its users.</em></h2>
+          <p className="txt">The only non-public information held for the platform is about its own users, stored in Google Firebase.</p>
+          <p className="txt">A user’s search history is stored in their own account, which they can delete. Search results are kept on the server for up to 12 hours only, to avoid running the same search twice. The server’s technical output, and the standard logs of our hosting and service providers, may also contain request details for a limited time.</p>
+        </div>
+        <ul className="duties" style={{ marginTop: 0 }}>
+          <li><strong>Account details:</strong> email address, display name, user ID, sign-in method and account creation date (Firebase Authentication).</li>
+          <li><strong>Saved cases:</strong> the investigations a user created — the public results they contain, the user’s evidence levels and each case’s audit log.</li>
+          <li><strong>Account activity:</strong> the user’s search history, tracked people and organisations, notifications and settings.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section className="sec" id="l3">
+      <div className="wrap">
+        <div className="shd">
+          <div className="l">
+            <span className="tag"><i />03 — Legal process</span>
+            <h2 className="d2">Legal process <em>requirements.</em></h2>
+          </div>
+          <p>We require valid legal process before releasing any non-public user information.</p>
+        </div>
+        <div className="tbl">
+          <div className="tr h"><span>No.</span><span>Legal process</span><span>Required for</span></div>
+          {LEGAL_PROCESS.map(([k, v], i) => (
+            <div className="tr" key={k}><span className="n">{String(i + 1).padStart(2, '0')}</span><b>{k}</b><span className="i">{v}</span></div>
+          ))}
+        </div>
+        <p className="txt" style={{ marginTop: 28, maxWidth: 820 }}>The public information shown in the platform can be found by anyone through the original sources; each result keeps a link to where it came from.</p>
+        <div className="notice" style={{ marginTop: 28 }}>
+          <span>For official requests or service of legal process:</span>
+          <Link className="btn btn-br" to="/help-center" style={{ height: 44, padding: '0 20px', fontSize: 14, marginLeft: 'auto' }}>Contact us through the Help Center</Link>
+        </div>
+      </div>
+    </section>
+
+    <NextPrev
+      flush
+      prev={{ to: '/responsible-use', small: '← Previous', label: 'Responsible Use' }}
+      next={{ to: '/', small: 'Back to →', label: 'Home' }}
+    />
+  </>
+);

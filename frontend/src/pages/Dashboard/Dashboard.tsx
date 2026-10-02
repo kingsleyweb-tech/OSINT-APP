@@ -26,7 +26,7 @@ import { useSession } from '../../context/SessionContext';
 import { DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
 import { useQuota } from '../../components/explore/exploreHooks';
 import type { QuotaStatus } from '../../lib/exploreClient';
-import appLogo from '../../assets/images/icon.png';
+import appLogo from '../../assets/images/osint-logo.svg';
 import '../../styles/Dashboard.css';
 
 /** SerpApi searches used and left this month, read live from the SerpApi account (free, uses no search). */
@@ -98,27 +98,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
     profiler.cancel();
     clearPageState('dashboard');
   };
-  const [invLoading, setInvLoading] = useState(true);
+  // The user id whose case list has arrived; loading until it matches the current user.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   const userId = currentUser?.uid || '';
   const userName = currentUser?.displayName?.split(' ')[0] || 'Investigator';
 
 
+  const invLoading = !!userId && loadedFor !== userId;
+
   useEffect(() => {
-    if (!userId) {
-      setInvLoading(false);
-      return;
-    }
-    setInvLoading(true);
+    if (!userId) return;
     const unsubscribe = subscribeToUserInvestigations(
       userId,
       (list) => {
         setRealInvestigations(list);
-        setInvLoading(false);
+        setLoadedFor(userId);
       },
       (err) => {
         console.error("Dashboard realtime error:", err);
-        setInvLoading(false);
+        setLoadedFor(userId);
       }
     );
     return () => unsubscribe();
@@ -141,7 +140,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
 
   const typeCounts: Record<string, number> = { Name: 0, Username: 0 };
   realInvestigations.forEach(inv => {
-    const t = (inv as any).searchType || 'Name';
+    const t = inv.searchType || 'Name';
     const capitalized = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
     if (typeCounts[capitalized] !== undefined) {
       typeCounts[capitalized]++;
@@ -205,9 +204,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
       // A confident correction was searched: the case is named after what was actually searched.
       setActiveQuery(outcome.searchQuery);
       setDiscoveredIdentities(identities);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof SearchError && err.title === 'Search cancelled') return;
-      toastError(err instanceof SearchError ? err.title : 'Search failed', err?.message || 'The search could not be completed.');
+      toastError(err instanceof SearchError ? err.title : 'Search failed', (err instanceof Error && err.message) || 'The search could not be completed.');
     } finally {
       setIsLoading(false);
     }

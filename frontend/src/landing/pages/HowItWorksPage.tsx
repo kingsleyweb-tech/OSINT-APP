@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Cpu } from 'lucide-react';
+import { PageHero, NextPrev } from '../components/site/PageParts';
+import { Ar } from '../components/site/Icons';
+import { useSession } from '../../context/SessionContext';
 
 interface Step { num: string; title: string; sub: string; desc: string; example?: string[] }
 
@@ -33,53 +35,71 @@ const STEPS: Step[] = [
   }
 ];
 
+const MATCH_LABELS: [string, string][] = [
+  ['#22c55e', 'Exact match'], ['#3b82f6', 'Username variation'], ['#7c3aed', 'Possibly related'], ['#ef4444', 'Other person'],
+];
+
+const StepCard: React.FC<{ step: Step; now?: boolean }> = ({ step, now }) => (
+  <article className={`tc ${now ? 'now' : ''}`}>
+    <div className="top"><span className="date">Step {step.num}</span><span className="num">{step.num}</span></div>
+    <h3>{step.title}</h3>
+    <p className="loc">{step.sub}</p>
+    <p className="txt">{step.desc}</p>
+    {step.example && (
+      <ul className="duties">
+        {step.example.map((line) => <li key={line}>{line}</li>)}
+      </ul>
+    )}
+    {step.num === '03' && (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+        {MATCH_LABELS.map(([c, t]) => <span className="pill k" key={t}><i style={{ background: c }} />{t}</span>)}
+      </div>
+    )}
+  </article>
+);
+
 export const HowItWorksPage: React.FC = () => {
+  const { user } = useSession();
   return (
-    <div className="lp-route-container">
-      <section className="lp-section-wide">
-        <div className="lp-container-wide">
+  <>
+    <PageHero
+      crumb="How it works"
+      tag="From search to report"
+      title={<>How the platform<br /><em>works.</em></>}
+      lead="What happens between typing a name, username or organisation and having a checked, source-backed case — step by step."
+      stats={[{ value: String(STEPS.length), label: 'Steps' }, { value: '12h', label: 'Saved copy of a search' }]}
+    />
 
-          <div style={{ marginBottom: '50px' }}>
-            <div className="lp-badge" style={{ marginBottom: '14px' }}>
-              <Cpu size={14} />
-              <span>From search to report</span>
-            </div>
-            <h1 className="lp-title" style={{ fontSize: '2.5rem', marginBottom: '16px' }}>
-              How the Platform Works
-            </h1>
-            <p className="lp-subtitle" style={{ maxWidth: '840px' }}>
-              What happens between typing a name, username or organisation and having a checked, source-backed case — step by step.
-            </p>
+    <section className="sec">
+      <div className="wrap">
+        <div className="shd">
+          <div className="l">
+            <span className="tag"><i />Walkthrough</span>
+            <h2 className="d2">From a search to <em>a checked case.</em></h2>
           </div>
-
-          <div className="lp-editorial-list" style={{ marginBottom: '60px' }}>
-            {STEPS.map(s => (
-              <div key={s.num} className="lp-editorial-row">
-                <div className="lp-editorial-num">{s.num}</div>
-                <div className="lp-editorial-title-box">
-                  <h3>{s.title}</h3>
-                  <p>{s.sub}</p>
-                </div>
-                <div className="lp-editorial-body">
-                  <p className="lp-editorial-desc">{s.desc}</p>
-                  {s.example && (
-                    <div className="lp-code-block" style={{ padding: '16px', fontSize: '0.875rem', overflowWrap: 'anywhere' }}>
-                      {s.example.map((line, i) => <div key={i}>{line}</div>)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ textAlign: 'center', paddingTop: '20px' }}>
-            <Link to="/auth" className="btn-primary-warm" style={{ padding: '14px 32px', fontSize: '1.05rem' }}>
-              Launch Workspace <ArrowRight size={18} />
-            </Link>
-          </div>
-
+          <p>Each step shows what the platform does and, where it helps, the searches that actually run.</p>
         </div>
-      </section>
-    </div>
-  );
+
+        <div className="tl">
+          {/* Odd steps on the left, even steps on the right (one column on small screens). */}
+          <div className="col l">
+            {STEPS.filter((_, i) => i % 2 === 0).map((s, i) => <StepCard key={s.num} step={s} now={i === 0} />)}
+          </div>
+          <div className="col r">
+            {STEPS.filter((_, i) => i % 2 === 1).map((s) => <StepCard key={s.num} step={s} />)}
+          </div>
+        </div>
+
+        <div className="btn-row" style={{ justifyContent: 'center', marginTop: 64 }}>
+          <Link to={user ? '/dashboard' : '/auth'} className="btn btn-br">Launch workspace <Ar /></Link>
+        </div>
+      </div>
+    </section>
+
+    <NextPrev
+      prev={{ to: '/features', small: '← Previous', label: 'Features' }}
+      next={{ to: '/documentation', small: 'Next →', label: 'Documentation' }}
+    />
+  </>
+);
 };

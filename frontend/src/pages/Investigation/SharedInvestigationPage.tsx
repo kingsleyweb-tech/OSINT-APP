@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { InvestigationDetailPage } from './InvestigationDetail';
 import { ScrollManager } from '../../components/layout/ScrollManager';
-import appLogo from '../../assets/images/icon.png';
+import appLogo from '../../assets/images/osint-logo.svg';
 
 /**
  * Public page for a view-only share link (/shared/:token). No sign-in and no app sidebar:

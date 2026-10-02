@@ -642,8 +642,8 @@
 .hero-promo-logo-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
+  object-fit: contain;
+  border-radius: 0;
 }
 
 .hero-promo-headline {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Shield, Eye, Lock, Server, Cpu, CheckCircle2, ArrowRight, AlertTriangle, Layers } from 'lucide-react';
-const appLogo = '/icon.png';
+const appLogo = '/osint-logo.svg';
 
 export const AboutPage: React.FC<{ navigate?: any }> = ({ navigate }) => {
   return (

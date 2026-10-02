@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { NAV_SECTIONS, isNavActive } from './navItems';
-import appLogo from '../../assets/images/icon.png';
+import appLogo from '../../assets/images/osint-logo.svg';
 import '../../styles/Sidebar.css';
 
 interface SidebarProps {
