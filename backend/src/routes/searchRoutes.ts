@@ -4,6 +4,7 @@ import { handleUsernameDiscoveryStream, handleUsernameDiscovery } from '../contr
 import { checkLinks } from '../services/nameSearch/linkHealth';
 import { handleExplore, handleExploreCatalog, handleExplorePlan, handleQuota } from '../controllers/exploreController';
 import { handleQueryIntel } from '../controllers/queryIntelController';
+import { handleAlertsStatus, handleRunAlert, handleTestEmail } from '../controllers/alertsController';
 import { rateLimited } from '../controllers/exploreController';
 import { readOrganizationWebsite } from '../services/organization/websiteIntel';
 import { enrichOrganization, suggestEntities } from '../services/organization/orgEnrichment';
@@ -89,6 +90,11 @@ router.post('/explore/plan', handleExplorePlan);
 router.post('/query-intel', handleQueryIntel);
 router.get('/explore/catalog', handleExploreCatalog);
 router.get('/quota', handleQuota);
+
+// Keyword alerts (signed-in users; each alert belongs to its creator)
+router.get('/alerts/status', handleAlertsStatus);
+router.post('/alerts/test-email', handleTestEmail);
+router.post('/alerts/:id/run', handleRunAlert);
 
 // Username Live Discovery Routes
 router.get('/username-discovery/stream', handleUsernameDiscoveryStream);

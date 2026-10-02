@@ -1,0 +1,39 @@
+/* Alerts page (builds on Explore.css) */
+.al-status { display: flex; flex-wrap: wrap; gap: 4px; }
+.al-form { display: flex; flex-direction: column; gap: 14px; }
+.al-form-head { display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); }
+.al-block { display: flex; flex-direction: column; gap: 8px; }
+.al-sources { display: flex; flex-wrap: wrap; gap: 6px; }
+.al-kw-box {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 42px; padding: 5px 8px;
+  border: 1px solid var(--border-color); border-radius: var(--radius-md, 10px); background: var(--bg-dark);
+}
+.al-kw-input { flex: 1 1 160px; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 0.9rem; height: 30px; }
+.al-kw {
+  display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border-radius: 999px;
+  background: var(--accent-warm-subtle); color: var(--text-primary); font-size: 0.82rem; font-weight: 600; max-width: 100%; overflow-wrap: anywhere;
+}
+.al-kw button { background: transparent; color: var(--text-secondary); display: inline-flex; padding: 1px; }
+.al-kw.sm { height: 22px; font-size: 0.76rem; }
+.al-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text-primary); height: 42px; cursor: pointer; }
+.al-toggle input { accent-color: var(--accent-warm); width: 16px; height: 16px; }
+.al-estimate { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+.al-warn { color: #b45309; }
+.al-form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.al-list { display: flex; flex-direction: column; gap: 10px; }
+.al-item { display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.al-item.on { border-color: var(--accent-warm); box-shadow: inset 3px 0 0 var(--accent-warm); }
+.al-item-main { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; background: transparent; color: inherit; padding: 0; }
+.al-item-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 650; color: var(--text-primary); font-size: 0.98rem; }
+.al-kws { display: flex; flex-wrap: wrap; gap: 5px; }
+.al-item-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.al-danger { color: #b42318; }
+.al-link { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.al-link:hover { color: var(--accent-warm); }
+
+@media (max-width: 640px) {
+  .al-item-actions { width: 100%; }
+  .al-item-actions .ex-btn { flex: 1 1 auto; justify-content: center; }
+  .al-form .ex-field, .al-form .ex-select { width: 100%; }
+}

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import searchRoutes from './routes/searchRoutes';
 import { requireAuth } from './middleware/requireAuth';
+import { handleAlertsCron } from './controllers/alertsController';
 
 dotenv.config();
 
@@ -45,6 +46,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Alert scheduler (cron-job.org): protected by the x-cron-secret header instead of a user sign-in.
+app.post('/api/alerts/cron', handleAlertsCron);
 
 // OSINT Search Routes: signed-in users only (Firebase ID token verified on every request)
 app.use('/api', requireAuth, searchRoutes);
