@@ -6,8 +6,20 @@ import nodemailer, { type Transporter } from 'nodemailer';
  */
 let transport: Transporter | null = null;
 
+/**
+ * Two ways to send:
+ *  - BREVO_API_KEY set: Brevo's HTTPS email API (port 443). Use this on hosts that block outgoing SMTP
+ *    ports 25/465/587, such as Render's free plan. The sender (MAIL_FROM or SMTP_USER) must be a sender
+ *    verified in Brevo.
+ *  - otherwise SMTP (Gmail by default) with Nodemailer.
+ * Short timeouts so a blocked connection fails in seconds instead of hanging.
+ */
+const useBrevo = () => Boolean(process.env.BREVO_API_KEY);
+const senderAddress = () => process.env.MAIL_FROM || process.env.SMTP_USER || '';
+const senderName = () => (process.env.SMTP_FROM_NAME || 'OSINT Alerts').replace(/"/g, '');
+
 export function mailConfigured(): boolean {
-  return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+  return useBrevo() ? Boolean(senderAddress()) : Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
 function mailer(): Transporter {
@@ -18,10 +30,46 @@ function mailer(): Transporter {
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port,
       secure: port === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000
     });
   }
   return transport;
+}
+
+interface Outgoing { to: string; subject: string; text: string; html: string }
+
+/** Sends one email by the configured method. Errors carry a short code only (never credentials). */
+async function deliver(m: Outgoing): Promise<void> {
+  if (!mailConfigured()) throw new Error('Email is not configured on the server.');
+  if (useBrevo()) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15_000);
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'api-key': process.env.BREVO_API_KEY as string, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ sender: { name: senderName(), email: senderAddress() }, to: [{ email: m.to }], subject: m.subject, textContent: m.text, htmlContent: m.html }),
+        signal: ctrl.signal
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error(`[Mail] Brevo refused the email (HTTP ${res.status}${body?.code ? `, ${body.code}` : ''}).`);
+        throw new Error('The email service refused the message.');
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    return;
+  }
+  try {
+    await mailer().sendMail({ from: fromHeader(), ...m });
+  } catch (e: any) {
+    console.error(`[Mail] SMTP send failed (${e?.code || 'error'}${e?.command ? ` during ${e.command}` : ''}). If the host blocks SMTP ports, set BREVO_API_KEY to send over HTTPS.`);
+    throw new Error('The email could not be sent.');
+  }
 }
 
 export interface MailMatch {
@@ -35,7 +83,7 @@ export interface MailMatch {
 
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const appUrl = () => (process.env.APP_URL || '').replace(/\/+$/, '');
-const fromHeader = () => `"${(process.env.SMTP_FROM_NAME || 'OSINT Alerts').replace(/"/g, '')}" <${process.env.SMTP_USER}>`;
+const fromHeader = () => `"${senderName()}" <${senderAddress()}>`;
 
 /** One email per alert run, to the alert's owner only. */
 export async function sendAlertEmail(to: string, alertName: string, matches: MailMatch[], firstRun: boolean): Promise<void> {
@@ -70,12 +118,11 @@ export async function sendAlertEmail(to: string, alertName: string, matches: Mai
   </div>
 </div>`;
 
-  await mailer().sendMail({ from: fromHeader(), to, subject: `${firstRun ? 'Alert started' : 'New matches'}: ${alertName}`, text, html });
+  await deliver({ to, subject: `${firstRun ? 'Alert started' : 'New matches'}: ${alertName}`, text, html });
 }
 
 export async function sendTestEmail(to: string): Promise<void> {
-  await mailer().sendMail({
-    from: fromHeader(),
+  await deliver({
     to,
     subject: 'OSINT Alerts: test email',
     text: 'Email alerts are working. Alert emails are sent only to the account that created the alert.',

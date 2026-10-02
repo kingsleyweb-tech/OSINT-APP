@@ -19,7 +19,7 @@ const SOURCE_OPTIONS = [{ id: 'news', label: 'News (Google + Bing)' }, ...SOCIAL
 const sourceLabel = (id: string) => SOURCE_OPTIONS.find(s => s.id === id)?.label.replace(' (Google + Bing)', '') || id;
 const EMPTY: AlertInput = { name: '', keywords: [], sources: ['news', 'x'], country: '', language: '', frequency: 'daily', emailEnabled: true };
 
-const AlertForm: React.FC<{ initial?: Alert; onDone: (createdId?: string) => void }> = ({ initial, onDone }) => {
+const AlertForm: React.FC<{ initial?: Alert; budgetPerDay?: number; onDone: (createdId?: string) => void }> = ({ initial, budgetPerDay, onDone }) => {
   const toast = useToast();
   const [v, setV] = useState<AlertInput>(() => initial
     ? { name: initial.name, keywords: initial.keywords, sources: initial.sources, country: initial.country || '', language: initial.language || '', frequency: initial.frequency, emailEnabled: initial.emailEnabled }
@@ -39,7 +39,9 @@ const AlertForm: React.FC<{ initial?: Alert; onDone: (createdId?: string) => voi
   const pending = kw.trim().length >= 2 && v.keywords.length < 5 ? [...v.keywords, kw.trim()] : v.keywords;
   const perRun = searchesPerRun({ keywords: pending, sources: v.sources, country: v.country });
   const perMonth = searchesPerMonth({ keywords: pending, sources: v.sources, frequency: v.frequency, country: v.country });
-  const valid = pending.length >= 1 && v.sources.length >= 1;
+  // An alert whose smallest check is above the daily alert limit could never run.
+  const tooBig = typeof budgetPerDay === 'number' && perRun.min > budgetPerDay;
+  const valid = pending.length >= 1 && v.sources.length >= 1 && !tooBig;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +119,8 @@ const AlertForm: React.FC<{ initial?: Alert; onDone: (createdId?: string) => voi
 
       <div className="al-estimate">
         <CostHint range={perRun} what="Each check" note={<>About <b>{fmtRange(perMonth)}</b> tokens a month at this frequency.</>} />
-        {perMonth.min > 120 && <span className="al-warn">This is high for the free SerpApi plan (250/month); choose fewer keywords, sources or checks.</span>}
+        {tooBig && <div className="al-warn"><b>Too many sources for the daily alert limit.</b> Each check needs at least {perRun.min} searches, but alerts may use {budgetPerDay} a day. Untick some sources or remove keywords (e.g. News + 2–3 platforms).</div>}
+        {!tooBig && perMonth.min > 120 && <span className="al-warn">This is high for the free SerpApi plan (250/month); choose fewer keywords, sources or checks.</span>}
         <div className="ex-muted ex-small">Emails go only to your account email{auth.currentUser?.email ? <> (<b>{auth.currentUser.email}</b>)</> : ''}. Repeat searches within 12 hours are free.</div>
       </div>
 
@@ -260,7 +263,7 @@ export const AlertsPage: React.FC = () => {
         </> : 'Checking the alert service…'}
       </div>
 
-      {editing && <AlertForm initial={editing === 'new' ? undefined : editing} onDone={id => { setEditing(null); if (id) run(id); }} />}
+      {editing && <AlertForm initial={editing === 'new' ? undefined : editing} budgetPerDay={status?.budgetPerDay} onDone={id => { setEditing(null); if (id) run(id); }} />}
 
       {alerts === null ? <div className="ex-pad ex-muted">Loading alerts…</div> : alerts.length === 0 && !editing ? (
         <EmptyState icon={<Bell size={24} />} title="No alerts yet">

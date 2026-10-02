@@ -103,8 +103,9 @@ export async function alertsStatus(): Promise<{ budgetPerDay: number; usedToday:
 
 /** Whether a run of this size fits the daily alert budget and keeps the monthly reserve. */
 async function canSpend(n: number): Promise<string | null> {
+  if (n > maxPerDay()) return `This alert needs at least ${n} searches per check, more than the daily alert limit of ${maxPerDay()}. Edit it and choose fewer sources or keywords.`;
   const [{ used }, q] = await Promise.all([budgetUsedToday(), quotaStatus()]);
-  if (used + n > maxPerDay()) return `Daily alert search limit reached (${used} of ${maxPerDay()} used). It will run again tomorrow.`;
+  if (used + n > maxPerDay()) return `Daily alert search limit reached (${used} of ${maxPerDay()} used today; this check needs at least ${n}). It will run again tomorrow.`;
   if (typeof q.searchesLeft === 'number' && q.searchesLeft - n < reserve()) return `Search credits are low (${q.searchesLeft} left this month); alerts wait so the rest of the app keeps working.`;
   return null;
 }
