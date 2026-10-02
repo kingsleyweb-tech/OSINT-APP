@@ -316,6 +316,10 @@ export const APP_ENDPOINTS: AppEndpoint[] = [
   { method: 'POST', path: '/api/link-health', auth: 'Signed in', usedBy: 'Profile link checks', description: 'Checks whether discovered profile links still open (known platform hosts only).', body: '{ urls: string[] }' },
   { method: 'GET', path: '/api/explore/catalog', auth: 'Signed in', usedBy: 'Explore pages', description: 'Available search capabilities, selectable social platforms and Trends time ranges.' },
   { method: 'GET', path: '/api/quota', auth: 'Signed in', usedBy: 'Quota indicator', description: 'SerpApi searches left this month (from the SerpApi Account API; free).' },
+  { method: 'GET', path: '/api/alerts/status', auth: 'Signed in', usedBy: 'Alerts page', description: 'Whether alerts and email are set up, the daily alert search budget used, and the sender address of alert emails (no searches used).' },
+  { method: 'POST', path: '/api/alerts/:id/run', auth: 'Signed in', usedBy: 'Alerts → Check now', description: 'Runs one of your own alerts now: news and the chosen social platforms for each keyword; new results are stored and emailed to you only.' },
+  { method: 'POST', path: '/api/alerts/test-email', auth: 'Signed in', usedBy: 'Alerts → Send test email', description: 'Sends a test email to your own account email (no searches used).' },
+  { method: 'POST', path: '/api/alerts/cron', auth: 'Public', usedBy: 'Scheduler (cron-job.org)', description: 'Runs the alerts that are due. Needs the secret x-cron-secret header instead of a sign-in; answers at once and works in the background.' },
   { method: 'GET', path: '/api/username-discovery', auth: 'Signed in', usedBy: 'API only', description: 'Free direct username checks (GitHub, Reddit, Mastodon, Bluesky…) without SerpApi. ?username=…' },
   { method: 'GET', path: '/api/username-discovery/stream', auth: 'Signed in', usedBy: 'API only', description: 'The same checks streamed one platform at a time. ?username=…' }
 ];

@@ -60,7 +60,7 @@ export const AboutPage: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.875rem' }}>
                 <div>
                   <span style={{ color: 'var(--text-dim)' }}>What you can search:</span>
-                  <span style={{ color: 'var(--text-primary)', marginLeft: '8px' }}>People, usernames, organisations, places, news, media and trends</span>
+                  <span style={{ color: 'var(--text-primary)', marginLeft: '8px' }}>People, usernames, organisations, places, news, media and trends — plus keyword alerts by email</span>
                 </div>
                 <div>
                   <span style={{ color: 'var(--text-dim)' }}>Where results come from:</span>
@@ -88,7 +88,8 @@ export const AboutPage: React.FC = () => {
               <li><strong style={{ color: 'var(--text-primary)' }}>Name and username searches</strong> that group results into possible people, and label each account as an exact match, a username variation, possibly related or another person — with the reason.</li>
               <li><strong style={{ color: 'var(--text-primary)' }}>Organisation profiles</strong> for companies, schools, universities, government agencies, associations and NGOs: type, official name, website, locations, leadership, units, contact details, social accounts and recent news — each fact checked against several sources.</li>
               <li><strong style={{ color: 'var(--text-primary)' }}>Search pages</strong> for social media posts, news, images and videos, places (with a map) and search trends.</li>
-              <li><strong style={{ color: 'var(--text-primary)' }}>Cases</strong> with separate tabs for profiles, activity, links to others, sources, web pages, news, images, locations and contact details, plus metrics and an audit trail. Cases can be re-run, tracked and exported.</li>
+              <li><strong style={{ color: 'var(--text-primary)' }}>Cases</strong> with separate tabs for profiles, activity, links to others, sources, web pages, news, images, locations and contact details, plus metrics and an audit trail. Cases can be re-run, tracked, exported as a PDF report and shared with a view-only link.</li>
+              <li><strong style={{ color: 'var(--text-primary)' }}>Keyword alerts</strong> that watch news and social platforms for your keywords on a schedule and email you — only you — when new results appear, each alert with its own page of results.</li>
               <li><strong style={{ color: 'var(--text-primary)' }}>Analysis</strong> of connections between cases and of the content saved in them.</li>
             </ul>
           </div>

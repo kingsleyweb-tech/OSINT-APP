@@ -117,6 +117,16 @@ const SECTIONS: HelpSection[] = [
       {
         badge: 'EXPLORE', title: 'Trends', link: '/search/trends',
         desc: 'Search interest over time and related queries (Google Trends), what is trending now in a country, and what news, social media and the web are saying about the topic.'
+      },
+      {
+        badge: 'ALERTS', title: 'Alerts', link: '/alerts',
+        desc: 'Keyword alerts: news and the social platforms you choose are checked for your keywords on a schedule (once a day, every 12 or 6 hours), and you get an email — only you — when new results appear.',
+        list: [
+          'The first check shows what was published in the last 7 days; later checks email only results not found before.',
+          'Open an alert to see all its results grouped by check; results since your last visit are marked NEW.',
+          'Not in your inbox? Look in Spam / Junk / Promotions, mark the email “Not spam” and add the sender to your contacts.',
+          'The form shows the searches a check uses; alerts stop for the day at the daily alert limit.'
+        ]
       }
     ]
   },

@@ -31,7 +31,8 @@ const DOCS: DocSection[] = [
       'Start from the Dashboard or New Investigation: choose Name or Username (organisations are found with a Name search), and optionally add a location or organisation.',
       'Watch the progress loader: every engine shows its own status, and you can cancel at any time.',
       'Pick the person or organisation that matches your subject to create a case.',
-      'Review the case tabs, save extra findings from the Social, News, Media, Geo and Trends pages, and export when you are done.'
+      'Review the case tabs, save extra findings from the Social, News, Media, Geo and Trends pages, and export a PDF report or share a view-only link when you are done.',
+      'Optionally, create a keyword alert on the Alerts page to be emailed when new results about your topic are published.'
     ]
   },
   {
@@ -83,6 +84,15 @@ const DOCS: DocSection[] = [
       'Media — images (Google & Bing) and videos (YouTube & Google Videos).',
       'Geo search — places and businesses with reviews (Google Maps), news, social posts, web pages, events and similar places for a location, on a map with a satellite view; with “Any country”, places with the same name elsewhere are listed.',
       'Trends — interest over time and by region, related searches and topics (Google Trends), what is trending now in a country, and what news, social media and the web are saying. Several topics can be compared.'
+    ]
+  },
+  {
+    id: 'alerts', label: 'Keyword alerts', category: 'Search', title: 'Keyword Alerts',
+    paragraphs: [
+      'Alerts watch keywords for you. On the Alerts page, create an alert with up to 5 keywords (for example a hashtag, a place or an event), the sources (news and any social platforms), a country, a language and how often to check: once a day, every 12 hours or every 6 hours.',
+      'The first check shows what was already published in the last 7 days. After that the alert checks on its own schedule and emails you only results that were not found before. Each alert has its own page with every result grouped by check; results that arrived since your last visit are marked NEW, and the Alerts list shows an “N NEW” badge.',
+      'Emails go only to the account that created the alert. If an email is not in your inbox, look in Spam (or Junk / Promotions), mark it “Not spam” and add the sender to your contacts.',
+      'Each check uses SerpApi searches — the form shows the range before you save. Alerts stop for the day at a daily alert limit and keep a monthly reserve, so the rest of the app keeps working. Results come from search engines, so news appears within minutes but social posts can take hours.'
     ]
   },
   {
@@ -164,9 +174,11 @@ const DOCS: DocSection[] = [
     ]
   },
   {
-    id: 'rerun-export', label: 'Re-run & export', category: 'Cases', title: 'Re-running and Exporting Cases',
+    id: 'rerun-export', label: 'Re-run, report & share', category: 'Cases', title: 'Re-running, Reporting and Sharing Cases',
     paragraphs: [
-      'Re-run a case’s searches to see what has changed since it was created; changes are recorded in the Audit tab and you are notified when it finishes. Export a case as JSON, and its Sources and Audit lists as CSV, for reporting.'
+      'Re-run a case’s searches to see what has changed since it was created; changes are recorded in the Audit tab and you are notified when it finishes.',
+      'Export builds a PDF report from the data already in the case (no new searches): a cover page, summary, identity or organisation details, profiles, activity, associations, locations, web and news, images, sources, metrics and the audit trail, with clean, working links only and “Not found” where a detail is missing. JSON and CSV exports are in the case menu.',
+      'Share creates a view-only link: anyone with it can see every tab without signing in, but cannot search, change or export anything. The link always shows your latest data, and Stop sharing turns it off.'
     ]
   },
   {

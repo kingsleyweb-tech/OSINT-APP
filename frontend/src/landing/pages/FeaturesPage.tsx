@@ -291,6 +291,30 @@ export const FeaturesPage: React.FC = () => {
       whatUsersSee: 'Continue with Google on the sign-in page, and Security and Data & privacy settings (export or delete your data).',
       limitations: 'Guest access is not available.',
       whatToVerify: 'Sign out on shared computers.'
+    },
+    {
+      num: '19',
+      id: 'keyword-alerts',
+      title: 'Keyword Alerts by Email',
+      tags: ['Keywords', 'Scheduled Checks', 'Email Only to You', 'NEW Results'],
+      whatItIs: 'Alerts that watch keywords — a hashtag, a place, an event or a name — in the news and on the social platforms you choose.',
+      whyItExists: 'Some investigations need to know as soon as something new is published, without searching again by hand every day.',
+      howItWorks: 'Create an alert with up to 5 keywords, the sources, a country and how often to check (once a day, every 12 or every 6 hours). The first check shows what was published in the last 7 days; later checks run on schedule and email you only results that were not found before. Each alert has its own page listing every result by check, with the new ones marked NEW. Before saving, the form shows how many searches a check uses; alerts stop for the day at a daily limit and keep a monthly reserve.',
+      whatUsersSee: 'The Alerts page (with a “how it works” box), an “N NEW” badge on alerts with unseen results, each alert’s results page, and the alert emails.',
+      limitations: 'Results come from search engines: news usually appears within minutes, social posts can take hours and some are never indexed. It is not live monitoring of the platforms. Emails may land in Spam until you mark them “Not spam”.',
+      whatToVerify: 'Open each result on its original source before relying on it.'
+    },
+    {
+      num: '20',
+      id: 'reports-sharing',
+      title: 'PDF Reports & View-only Sharing',
+      tags: ['PDF Report', 'Clean Links', 'View-only Link', 'Stop Sharing'],
+      whatItIs: 'A professional PDF report of a case, and a link that lets someone view the case without being able to change it.',
+      whyItExists: 'Findings often have to be handed to a supervisor or another investigator.',
+      howItWorks: 'Export builds a PDF from the data already saved in the case — no new searches — with a cover page, summary, identity or organisation details, profiles, activity, associations, locations, web and news, images, sources, metrics and the audit trail. Missing details read “Not found”, results marked Raw are left out, and search-result, tracking, image and duplicate links are removed. Share creates a view-only link: anyone with it can see every tab, but cannot search, change or export anything, and you can stop sharing at any time.',
+      whatUsersSee: 'Export (Download PDF / Open preview) and Share in a case’s header; the shared page shows a “View only” banner.',
+      limitations: 'Links are cleaned, not re-opened, when the report is made; a page can change after it was collected. Anyone who has a share link can view the case.',
+      whatToVerify: 'Share links only with people who are allowed to see the case, and stop sharing when it is no longer needed.'
     }
   ];
 

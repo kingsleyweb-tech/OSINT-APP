@@ -42,8 +42,8 @@ const CAPABILITIES: Capability[] = [
     num: '04', title: 'CASE WORKSPACE', sub: 'Everything about a subject, in tabs',
     desc: 'Each investigation is split into clear tabs: Overview, Profiles, Activity, Associations, Sources, Web, News, Images, Location, Contact, Metrics and Audit — plus an Organisation tab for organisations.',
     left: ['Record your review', 'Mark each result Raw, Relevant or Validated. Every search and change is written to the Audit tab with the time.'],
-    right: ['Follow and export', 'Re-run a case to see what changed, track the subject on the People page, and export to JSON or CSV.'],
-    tags: ['12+ tabs', 'Evidence levels', 'Audit trail', 'Export']
+    right: ['Follow, share and report', 'Re-run a case to see what changed, track the subject, share a view-only link, and export a PDF report, JSON or CSV.'],
+    tags: ['12+ tabs', 'Evidence levels', 'Audit trail', 'PDF report', 'Share link']
   },
   {
     num: '05', title: 'SEARCH PAGES', sub: 'Social, news, media, places and trends',
@@ -53,7 +53,14 @@ const CAPABILITIES: Capability[] = [
     tags: ['Social search', 'News', 'Media', 'Geo search', 'Trends']
   },
   {
-    num: '06', title: 'ANALYSIS & EVIDENCE', sub: 'See connections and patterns',
+    num: '06', title: 'KEYWORD ALERTS', sub: 'Be told when something new appears',
+    desc: 'Set keywords — a hashtag, a place, an event — with news and the social platforms to watch. The first check shows what is already published; after that the alert checks on its own schedule and emails you only about new results.',
+    left: ['Only for you', 'Alert emails go only to the account that created the alert. Each alert has its own page with every result, the new ones marked NEW.'],
+    right: ['Cost under control', 'Each alert shows how many searches a check uses, and alerts stop for the day at a daily limit so the rest of the app keeps working.'],
+    tags: ['Keywords', 'Email alerts', 'New results', 'Schedule']
+  },
+  {
+    num: '07', title: 'ANALYSIS & EVIDENCE', sub: 'See connections and patterns',
     desc: 'The Network page shows how people, usernames, organisations and websites in your cases connect. Content Analysis charts your saved results by time, platform, hashtags, accounts, languages and locations.',
     left: ['Location evidence', 'A place is only recorded when a source states it, with how strong the evidence is: stated, reported, only mentioned or unconfirmed.'],
     right: ['Public contact details', 'Emails and phone numbers are only shown when a public source shows them, each with its source.'],
@@ -68,7 +75,7 @@ const STEPS: Array<{ step: string; title: string; desc: string }> = [
   { step: '04', title: 'Keep look-alikes apart', desc: 'Results are grouped into possible people or organisations. Similar names and usernames are listed separately, never merged.' },
   { step: '05', title: 'Choose and open a case', desc: 'Pick the right person or organisation. The case opens with its tabs and gathers news, images, locations and contact details automatically.' },
   { step: '06', title: 'Review and record', desc: 'Check each finding on its original source and mark it Raw, Relevant or Validated. The Audit tab keeps a record of every step.' },
-  { step: '07', title: 'Follow up', desc: 'Re-run the case later to see what changed, track the subject, and export the case and its sources for your report.' }
+  { step: '07', title: 'Follow up', desc: 'Re-run the case later, track the subject, set a keyword alert to be emailed about new results, and export a PDF report or share a view-only link.' }
 ];
 
 export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
@@ -79,7 +86,8 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
     'Username Handles',
     'Organisations',
     'Public Footprints',
-    'Places & News'
+    'Places & News',
+    'Keyword Alerts'
   ];
 
   return (
@@ -236,7 +244,7 @@ export const HomePage: React.FC<HomePageProps> = ({ currentUser }) => {
               What the Platform Investigates
             </h2>
             <p className="lp-subtitle" style={{ maxWidth: '780px' }}>
-              People, usernames and organisations — with search pages for social media, news, media, places and trends, and tools to review and analyse what you find.
+              People, usernames and organisations — with search pages for social media, news, media, places and trends, keyword alerts by email, and tools to review, analyse and report what you find.
             </p>
           </div>
 

@@ -42,6 +42,7 @@ const SECTIONS: GuideSection[] = [
       { term: 'New Investigation', link: '/new-investigation', text: 'Start a Name or Username search. This is where every case begins.' },
       { term: 'Investigations', link: '/investigations', text: 'All your cases, newest first. Open, search or delete them here.' },
       { term: 'People', link: '/people', text: 'People you chose to “track” from a case, with a shortcut back to their case.' },
+      { term: 'Alerts', link: '/alerts', text: 'Keyword alerts: watch news and social platforms for your keywords on a schedule, and get an email (only you) when new results appear. Open an alert to see all its results, the new ones marked NEW.' },
       { term: 'Social search', link: '/search/social', text: 'Public posts and discussions on social platforms and forums by keyword, with date, country and language filters.' },
       { term: 'News', link: '/search/news', text: 'News articles from Google News and Bing News, optionally for one country.' },
       { term: 'Media', link: '/search/media', text: 'Public images and videos about a subject.' },
@@ -64,6 +65,7 @@ const SECTIONS: GuideSection[] = [
       { term: 'Name search', text: 'Searches Google and the main platforms (LinkedIn, Facebook, Instagram, X, TikTok, Threads, YouTube, GitHub and others) for the exact name. Results are grouped into possible people (identity cards). You can add a location or an organisation to narrow down a common name. If the name belongs to an organisation, an Organisation card appears first (see Organisations below).' },
       { term: 'Username search', text: 'Looks for accounts using a handle (for example 99_humblechild) on many platforms, including spellings with different dots, dashes and underscores. Handles that only look similar are listed as “Similar usernames”, not as the person’s accounts.' },
       { term: 'Social, News, Media, Geo, Trends', text: 'Topic searches that are not tied to one person. Their results can be saved into a case with “Save to case”. If you have no case yet, one is created for you.' },
+      { term: 'Keyword alert', text: 'Not a one-off search: it re-checks news and social platforms for your keywords on a schedule and emails you only new results. The first check shows the last 7 days.' },
       { term: '“Did you mean”', text: 'In Intelligent mode a misspelt search is checked first. You may see “Showing results for …” (with a link to search your original spelling) or a “Did you mean” suggestion. Usernames are never corrected.' }
     ]
   },

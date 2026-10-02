@@ -54,7 +54,7 @@ export const PrivacyPage: React.FC = () => {
               <List>
                 <li><strong>Account:</strong> your email address, display name and how you sign in (email and password, or Google). Sign-in is handled by Google Firebase — the platform never sees or stores your password.</li>
                 <li><strong>Your work:</strong> your investigations (cases) and what they contain — profiles, pages, news, images, places and contact details found, your evidence levels (Raw, Relevant, Validated) and each case’s audit log.</li>
-                <li><strong>Activity in the app:</strong> your search history and saved results, the people and organisations you track, your notifications, and your settings (such as your default search mode).</li>
+                <li><strong>Activity in the app:</strong> your search history and saved results, the people and organisations you track, your keyword alerts and the results they found, your notifications, and your settings (such as your default search mode). When you share a case, a view-only copy of it is kept until you stop sharing.</li>
                 <li><strong>On your device:</strong> your browser keeps your sign-in session, some page state (so results stay when you switch pages) and preferences such as light or dark mode.</li>
               </List>
             </Section>
@@ -65,6 +65,7 @@ export const PrivacyPage: React.FC = () => {
                 <li><strong>SerpApi</strong>, which runs the searches on Google, Bing, DuckDuckGo, Yahoo, YouTube, Google News, Bing News, Google Images, Bing Images, Google Maps and Google Trends.</li>
                 <li><strong>Public platform services</strong> (such as GitHub, Reddit, Mastodon and Bluesky) for username checks.</li>
                 <li><strong>Wikidata</strong>, for organisation names.</li>
+                <li><strong>Brevo</strong>, our email provider, which delivers keyword-alert emails. It receives your account email address and the alert results being sent to you — nothing else.</li>
                 <li><strong>Organisations’ own websites</strong>, whose public pages our server reads to build an organisation profile.</li>
               </List>
               <P mb={0}>

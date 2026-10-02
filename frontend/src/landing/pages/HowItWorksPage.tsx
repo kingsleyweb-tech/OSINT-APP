@@ -29,7 +29,7 @@ const STEPS: Step[] = [
   },
   {
     num: '06', title: 'You review, record and report', sub: 'Evidence levels, audit trail, export',
-    desc: 'Open the original sources and mark each result Raw, Relevant or Validated. Every search and change is written to the Audit tab with the time. Track the subject on the People page, re-run the case later to see what changed, and export it to JSON or CSV. Your cases are stored in your own account and only you can see them.'
+    desc: 'Open the original sources and mark each result Raw, Relevant or Validated. Every search and change is written to the Audit tab with the time. Track the subject on the People page, re-run the case later to see what changed, set a keyword alert to be emailed when something new is published, export a PDF report (or JSON/CSV), or share a view-only link. Your cases are stored in your own account and only you can see them.'
   }
 ];
 

@@ -68,7 +68,7 @@ export const TermsPage: React.FC = () => {
                 organisations. You must not use it for:
               </P>
               <List>
-                <li>Harassment, stalking, bullying or intimidation of anyone.</li>
+                <li>Harassment, stalking, bullying or intimidation of anyone — including using keyword alerts to watch a private person.</li>
                 <li>Doxxing — publishing someone’s home address, phone number, email address or other personal details to harm or expose them.</li>
                 <li>Credit, employment, housing or insurance screening (see the FCRA notice above).</li>
                 <li>Getting around privacy settings, getting into private accounts, or stealing passwords.</li>

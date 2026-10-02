@@ -58,7 +58,7 @@ export const ResponsibleUsePage: React.FC = () => {
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Not allowed</h3>
                   </div>
                   <ul style={{ paddingLeft: '16px', fontSize: '0.925rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <li>Harassment, stalking or intimidation</li>
+                    <li>Harassment, stalking or intimidation — including keyword alerts that follow a private person</li>
                     <li>Doxxing — publishing someone’s address, phone number or email to expose or harm them</li>
                     <li>Credit, job, housing or insurance screening (FCRA)</li>
                     <li>Getting around privacy settings or into private accounts</li>
@@ -93,7 +93,8 @@ export const ResponsibleUsePage: React.FC = () => {
               </p>
               <ul style={{ paddingLeft: '20px', color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.8, marginBottom: '28px' }}>
                 <li>Keep only what your task needs, and delete cases you no longer need.</li>
-                <li>Keep your cases and exports confidential, and share them only with people who are allowed to see them.</li>
+                <li>Keep your cases, reports and exports confidential. Share view-only links only with people who are allowed to see them, and stop sharing when they no longer need access.</li>
+                <li>Use keyword alerts for topics, events and public figures related to your work — not to keep watch on private individuals.</li>
                 <li>Never publish or pass on a person’s contact details or location to expose, harass or harm them.</li>
               </ul>
 

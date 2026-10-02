@@ -109,6 +109,15 @@ How Explore results are handled:
 - **Rate limit.** `POST /api/explore` allows 40 requests per 5 minutes per client.
 
 
+### Keyword alerts, PDF reports and view-only sharing
+
+- **Keyword alerts (`/alerts`).** A user creates an alert (up to 5 keywords, sources = news and/or social platforms, country, language, frequency once a day / every 12 h / every 6 h). The first check looks back 7 days, later checks 1 day, through the same `explore()` searches as the search pages (news, per-platform social). Only results whose own title or snippet contains the keyword are kept, de-duplicated against what the alert already stored, and the new ones are emailed **only to the alert's creator** (their Firebase account email) and added as an in-app notification. Each alert has its own page (`/alerts/:id`) with every result grouped by check and the ones since the last visit marked NEW (`unseenCount`, `lastSeenAt`).
+  - **Scheduling:** an external scheduler (cron-job.org) calls `POST /api/alerts/cron` every 30 minutes with the `x-cron-secret` header; the backend answers 202 at once and runs the due alerts in the background (Render's free plan sleeps, so an in-process timer would not be reliable).
+  - **Budget:** alerts stop for the day at `ALERTS_MAX_SEARCHES_PER_DAY` and pause when fewer than `ALERTS_QUOTA_RESERVE` SerpApi searches are left this month. An alert whose smallest check is above the daily limit cannot be saved.
+  - **Email:** Brevo's HTTPS API when `BREVO_API_KEY` is set (Render's free plan blocks SMTP ports), otherwise SMTP with Nodemailer. Code: `backend/src/services/alerts/`, `backend/src/controllers/alertsController.ts`, `frontend/src/pages/Alerts/`.
+- **PDF report.** Export in a case builds a PDF in the browser (`frontend/src/lib/caseReport.ts`, `reportPdf.ts`, jsPDF) from the saved case only — no searches. Missing details read "Not found"; results marked Raw and search/tracking/image/duplicate links are left out.
+- **View-only sharing.** Share creates `sharedCases/{token}` (random 32-character token) with a copy of the case, refreshed on every save; `/shared/:token` opens it read-only without sign-in. Stop sharing deletes the copy.
+
 ### Search intelligence (typo-tolerant search)
 
 Every search page and the Profiler have a **Search mode** switch (default in Settings → Search defaults):
@@ -665,6 +674,9 @@ The browser reads and writes Firestore directly (`frontend/src/firebase/firestor
 | `users/{uid}` | one per user | `uid`, `email`, `displayName`, `role`, `organisation`, `photoURL` (small resized image or the Google photo), `timeZone`, `dateFormat`, `searchDefaults`, `notificationPrefs`, `createdAt`, `updatedAt`, `lastLoginAt` |
 | `users/{uid}/notifications/{id}` | one per notification | `type`, `title`, `message`, `createdAt`, `read`, `targetInvestigationId` |
 | `investigations/{id}` | one per selected identity | the whole investigation (below); `createdBy` = owner uid |
+| `alerts/{alertId}` | one per keyword alert | `ownerUid`, `name`, `keywords`, `sources`, `country`, `language`, `frequency`, `active`, `emailEnabled`, `nextRunAt`, `lastRunAt`, `lastResult`, `matchCount`, `unseenCount`, `lastSeenAt` — readable and editable only by the owner |
+| `alerts/{alertId}/matches/{id}` | one per result an alert found | `title`, `url`, `source`, `snippet`, `publishedText`, `keyword`, `foundAt` — written only by the server (Admin SDK), readable by the owner |
+| `sharedCases/{token}` | one per shared case | view-only copy of an investigation; readable by anyone with the token, never listable, changed only by the owner |
 | `trackedPeople/{uid}_{investigationId}` | one per tracked person | `userId`, `investigationId`, `name`, `searchType`, `location`, `occupation`, `avatarUrl`, `profilesCount`, `sourcesCount`, `lastSearched`, `trackedAt` |
 
 **Passwords are never stored in Firestore.** Firebase Authentication holds credentials; Firestore only holds the profile and data.
@@ -774,7 +786,8 @@ Users are responsible for lawful and ethical use. See the Responsible Use and Te
 
 What exists today:
 
-- **Secrets in environment files:** `SERPAPI_KEY` and `GITHUB_TOKEN` are read from `backend/.env`. That file and `frontend/.env` are git-ignored, and a check found no secret in any tracked file or in git history. The SerpApi key is only sent to serpapi.com.
+- **Secrets in environment files:** `SERPAPI_KEY`, `GITHUB_TOKEN`, `BREVO_API_KEY`, `FIREBASE_SERVICE_ACCOUNT` and `ALERTS_CRON_SECRET` are read from `backend/.env` (and set as environment variables on Render).
+- **Alerts:** each alert can only be read or changed by its creator (Firestore rules), its emails go only to the creator's account email, and the scheduler endpoint needs the `x-cron-secret` header (constant-time comparison). That file and `frontend/.env` are git-ignored, and a check found no secret in any tracked file or in git history. The SerpApi key is only sent to serpapi.com.
 - **Firebase web config:** read from `VITE_FIREBASE_*` variables. `frontend/src/firebase/config.ts` also contains **hard-coded fallback values** for the project's web config. Firebase treats these as public client identifiers, not secrets; data is protected by the security rules, not by hiding this config.
 - **Credentials:** held by Firebase Authentication; never written to Firestore.
 - **User data isolation:** `firestore.rules` gives every user access to their own documents only:
@@ -1007,7 +1020,16 @@ API endpoints:
 | `GITHUB_TOKEN` | no | Raises GitHub API rate limits for username checks |
 | `SERPAPI_CACHE_TTL_HOURS` | no | Cache lifetime in hours (default 12; 0 disables) |
 | `SERPAPI_CACHE_DIR` | no | Directory for a persistent copy of the cache |
-| `FIREBASE_PROJECT_ID` | no | Listed in `.env.example` but **not read by the backend code** |
+| `FIREBASE_PROJECT_ID` | no | Firebase project used to verify sign-in tokens (default `osint-application-6405b`) |
+| `FIREBASE_SERVICE_ACCOUNT` | for alerts | Firebase service-account JSON on one line; lets the server run alerts while nobody is signed in |
+| `BREVO_API_KEY` | for alert emails | Brevo API key; emails are sent over HTTPS (works on hosts that block SMTP) |
+| `MAIL_FROM` | for alert emails | Sender address — must be a verified sender in Brevo |
+| `SMTP_FROM_NAME` | no | Sender name shown in the inbox (default `OSINT Alerts`) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | no | SMTP instead of Brevo (only used when `BREVO_API_KEY` is not set) |
+| `ALERTS_CRON_SECRET` | for alerts | Secret the scheduler sends in the `x-cron-secret` header |
+| `APP_URL` | for alerts | Site address used in email links (e.g. `https://osint-app-soko.vercel.app`) |
+| `ALERTS_MAX_SEARCHES_PER_DAY` | no | Daily SerpApi budget for all alerts (default 8) |
+| `ALERTS_QUOTA_RESERVE` | no | Alerts pause when fewer SerpApi searches than this are left this month (default 25) |
 
 **Frontend (`frontend/.env`)**
 

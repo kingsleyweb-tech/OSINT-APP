@@ -149,6 +149,14 @@ export const COST_GROUPS: CostGroup[] = [
     ]
   },
   {
+    title: 'Alerts',
+    rows: [
+      { search: 'One alert check', tokens: 'Per keyword: news 1–4 + 1–2 per social platform', notes: 'News is Google News (+ Bing News without a country or in a Bing News country), doubled at most when a phrase is retried in any word order; each social platform is retried once over any time when nothing recent matches. The form shows the exact range before you save. The first check looks back 7 days, later checks 1 day.' },
+      { search: 'Daily alert limit', tokens: 'Set on the server (ALERTS_MAX_SEARCHES_PER_DAY)', notes: 'Alerts stop for the day at this limit and pause when few searches are left this month (ALERTS_QUOTA_RESERVE), so the rest of the app keeps working.' },
+      { search: 'Alert emails, test email, alert pages', tokens: '0', notes: 'Sending emails and viewing an alert’s results use no searches.' }
+    ]
+  },
+  {
     title: 'Free (0 tokens)',
     rows: [
       { search: 'Repeating a search within 12 hours', tokens: '0', notes: 'Identical requests are answered from the server cache.' },
