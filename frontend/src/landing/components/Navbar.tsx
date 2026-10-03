@@ -52,27 +52,53 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const close = () => setMenuOpen(false);
 
-  // While open: lock page scroll, close on Escape or when the screen grows to desktop width.
+  // While open: freeze the page where it is (works on iOS too), close on Escape or at desktop width.
   useEffect(() => {
     if (!menuOpen) return;
     const burger = burgerRef.current;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    panelRef.current?.querySelector<HTMLElement>('a')?.focus();
+    const { body, documentElement: html } = document;
+    const scrollY = window.scrollY;
+    const saved = {
+      position: body.style.position, top: body.style.top, left: body.style.left, right: body.style.right,
+      width: body.style.width, overflow: body.style.overflow, htmlOverflow: html.style.overflow,
+    };
+    const gap = window.innerWidth - html.clientWidth; // scrollbar width, so the page doesn't jump sideways
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = gap ? `${gap}px` : '0';
+    body.style.width = 'auto';
+    panelRef.current?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setMenuOpen(false);
-        burger?.focus();
+        burger?.focus({ preventScroll: true });
       }
+    };
+    // Touch moves outside the menu panel (the dimmed area, the top bar) must not scroll anything.
+    const onTouchMove = (e: TouchEvent) => {
+      if (!panelRef.current?.contains(e.target as Node)) e.preventDefault();
     };
     const wide = window.matchMedia(DESKTOP);
     const onWide = (e: MediaQueryListEvent) => { if (e.matches) setMenuOpen(false); };
     document.addEventListener('keydown', onKey);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
     wide.addEventListener('change', onWide);
     return () => {
-      document.body.style.overflow = overflow;
       document.removeEventListener('keydown', onKey);
+      document.removeEventListener('touchmove', onTouchMove);
       wide.removeEventListener('change', onWide);
+      html.style.overflow = saved.htmlOverflow;
+      body.style.overflow = saved.overflow;
+      body.style.position = saved.position;
+      body.style.top = saved.top;
+      body.style.left = saved.left;
+      body.style.right = saved.right;
+      body.style.width = saved.width;
+      window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
   }, [menuOpen]);
 
