@@ -17,7 +17,9 @@ import { PlatformIcon } from '../ui/PlatformIcon';
 import { UsernameResults } from './UsernameResults';
 import '../../styles/PossibleIdentities.css';
 
-export type NeutralConfidenceLabel = 'Verified' | 'Strong evidence' | 'Possible match' | 'Mention only' | 'Uncertain';
+export type NeutralConfidenceLabel =
+  | 'Verified' | 'Strong evidence' | 'Possible match' | 'Mention only' | 'Uncertain'
+  | 'High confidence' | 'Strong match' | 'Not enough evidence';
 
 export interface EvidenceSignal {
   signal: string;
@@ -26,6 +28,12 @@ export interface EvidenceSignal {
 
 export interface DiscoveredIdentity {
   id: string;
+  /** Stable ID of the person record (name searches). */
+  personId?: string;
+  /** Why the search rates this person as it does, from the evidence found. */
+  confidenceReason?: string;
+  /** The spelling the results agreed on when the typed name matched no profile. */
+  correctedName?: string;
   fullName: string;
   publicRole: string;
   location: string;
@@ -90,8 +98,8 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
 
   const getConfidenceBadgeClass = (label: NeutralConfidenceLabel) => {
     switch (label) {
-      case 'Verified': return 'verified';
-      case 'Strong evidence': return 'strong';
+      case 'Verified': case 'High confidence': return 'verified';
+      case 'Strong evidence': case 'Strong match': return 'strong';
       case 'Possible match': return 'possible';
       case 'Mention only': return 'mention';
       default: return 'uncertain';
@@ -114,6 +122,15 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
         </button>
       </div>
 
+      {(() => {
+        const corrected = identities.find(i => i.correctedName)?.correctedName;
+        return corrected ? (
+          <div className="pi-resolution">
+            <p>Showing results for <b>{corrected}</b> — no profile uses the spelling <b>“{query}”</b>, and the results agree on this one. <Link to={`/new-investigation?type=Name&q=${encodeURIComponent(query)}&run=1`}>Search “{query}” exactly instead</Link>.</p>
+          </div>
+        ) : null;
+      })()}
+
       {isUsernameSearch && <UsernameResults query={query} identities={identities} onSelectIdentity={onSelectIdentity} />}
 
       {/* SECTION 1: POSSIBLE PEOPLE */}
@@ -124,7 +141,7 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
           <span className="section-count-tag">{identities.length}</span>
         </div>
         <p className="section-block-sub">
-          Distinct identity clusters discovered from public evidence. Hover over a card to view detailed match evidence. Select a person to open their isolated investigation file.
+          Distinct identity clusters discovered from public evidence. Each person's case holds only the evidence attributed to them (results that only mention the name are marked as mentions). The sections below list every result in this search.
         </p>
 
         {(() => {
@@ -173,6 +190,7 @@ export const PossibleIdentitiesView: React.FC<PossibleIdentitiesViewProps> = ({
                     <span><MapPin size={13} /> {place || 'Location not specified'}</span>
                   </div>
                   {item.summary && <p className="pi-summary">{item.summary}</p>}
+                  {item.confidenceReason && <p className="pi-reason">{item.confidenceReason}</p>}
                   <div className="pi-foot">
                     {item.matchingPlatforms.length > 0 && (
                       <span className="pi-platforms" aria-label="Known profiles">

@@ -11,6 +11,26 @@ import { caseGender } from '../../../lib/genderEvidence';
 import { allContacts, summariseContacts } from '../../../lib/contactEvidence';
 import { OrgOverview } from './OrgOverview';
 import { aiPending, reviewedAnalysis } from '../../../lib/aiReview';
+import { bestFact, TIER_LABEL } from '../../../lib/personFacts';
+import type { FactSummary } from '../../../types/person';
+
+/** A record value with where it is stated: "Musician · Instagram (own profile) +1 · 88%". */
+const FactValue: React.FC<{ fact: FactSummary; label?: string }> = ({ fact, label }) => {
+  const src = fact.sources[0];
+  const more = fact.sources.length - 1;
+  return (
+    <>
+      {label || fact.value}
+      <span className="ws-sub" style={{ display: 'block', fontSize: '0.75rem' }}>
+        {src.sourceUrl
+          ? <a href={src.sourceUrl} target="_blank" rel="noopener noreferrer" title={src.quote ? `“${src.quote}”` : src.sourceTitle}>{src.sourceName}</a>
+          : src.sourceName}
+        {` (${TIER_LABEL[fact.tier].toLowerCase()})`}{more > 0 ? ` +${more} more` : ''} · {fact.confidence}%
+        {fact.conflicts?.length ? ` · other sources say ${fact.conflicts.join(', ')}` : ''}
+      </span>
+    </>
+  );
+};
 
 const LEVEL_RANK: Record<EvidenceLevel, number> = { validated: 2, relevant: 1, raw: 0 };
 
@@ -36,10 +56,20 @@ export const OverviewTab: React.FC = () => {
   const mainPlatforms = Array.from(platformCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([p]) => p);
 
   const validatedAssoc = associations.filter(a => levelOf(inv, assocKey(a)) === 'validated').length;
-  const role = inv.targetProfile?.occupation && !/not stated|no public role|public individual/i.test(inv.targetProfile.occupation)
+  // The person record (search + verified AI findings) first; older cases fall back to the card fields.
+  const occFact = bestFact(inv, 'occupation') || bestFact(inv, 'role');
+  const placeFact = bestFact(inv, 'location');
+  const nationFact = bestFact(inv, 'nationality');
+  const roleText = inv.targetProfile?.occupation && !/not stated|no public role|public individual/i.test(inv.targetProfile.occupation)
     ? inv.targetProfile.occupation
     : 'Not stated in sources';
-  const place = inv.targetProfile?.location && inv.targetProfile.location !== 'Not specified' ? inv.targetProfile.location : 'Not stated in sources';
+  const placeText = inv.targetProfile?.location && !/not specified|not stated/i.test(inv.targetProfile.location) ? inv.targetProfile.location : 'Not stated in sources';
+  const role: React.ReactNode = occFact ? <FactValue fact={occFact} /> : roleText;
+  const place: React.ReactNode = placeFact
+    ? <FactValue fact={placeFact} />
+    : placeText === 'Not stated in sources' && nationFact
+      ? <FactValue fact={nationFact} label={`${nationFact.value} (nationality stated)`} />
+      : placeText;
   const lastSeen = datedActivity[0];
 
   const strongest = [...d.sources]
@@ -96,7 +126,7 @@ export const OverviewTab: React.FC = () => {
             <div><div className="k">Main platforms</div><div className="v">{mainPlatforms.join(', ') || 'None found'}</div></div>
             <div>
               <div className="k">Last observed activity</div>
-              <div className="v">{lastSeen ? `${fmtDate(lastSeen.date.toISOString())} · ${lastSeen.a.sourceName}` : 'No dated activity'}</div>
+              <div className="v">{lastSeen ? `${fmtDate(lastSeen.date.toISOString())} · ${lastSeen.a.sourceName}` : activities.length ? `${activities.length} item${activities.length === 1 ? '' : 's'}, dates not stated` : 'No activity found'}</div>
             </div>
             <div><div className="k">Documented associations</div><div className="v">{associations.length} ({validatedAssoc} validated)</div></div>
             <div><div className="k">Public contact</div><div className="v">{contact}</div></div>
@@ -106,6 +136,15 @@ export const OverviewTab: React.FC = () => {
             return (
               <div className="ws-infobox">
                 <div><div className="k">Name / target</div><div className="v">{inv.targetProfile?.fullName || inv.name}</div></div>
+                {inv.person && (
+                  <div>
+                    <div className="k">Identity match</div>
+                    <div className="v" title={inv.person.confidenceReason}>
+                      {inv.person.identityConfidence}
+                      {inv.correctedName && <span className="ws-sub" style={{ display: 'block', fontSize: '0.75rem' }}>Showing results for {inv.correctedName}{inv.person.searchedName ? ` (searched "${inv.person.searchedName}")` : ''}</span>}
+                    </div>
+                  </div>
+                )}
                 <div><div className="k">Location</div><div className="v">{place}</div></div>
                 <div><div className="k">Occupation / role</div><div className="v">{role}</div></div>
                 {common}
@@ -159,7 +198,7 @@ export const OverviewTab: React.FC = () => {
 
           <div className="ws-section">
             <SectionHead title="Recent activity" right={<button type="button" className="ws-link" onClick={() => goTab('activity')}>Timeline →</button>} />
-            {datedActivity.length === 0 && <p className="ws-sub" style={{ paddingTop: 12 }}>No dated activity. {activities.length > 0 ? `${activities.length} undated item(s) are in the Activity tab.` : ''}</p>}
+            {datedActivity.length === 0 && <p className="ws-sub" style={{ paddingTop: 12 }}>{activities.length > 0 ? `${activities.length} item${activities.length === 1 ? '' : 's'}, dates not stated — see the Activity tab.` : 'No activity found in the results.'}</p>}
             {datedActivity.slice(0, 3).map(({ a, date }) => (
               <div key={a.id} className="ws-row clickable" onClick={() => goTab('activity')}>
                 <span className="ws-row-date">{fmtShortDate(date.toISOString())}</span>

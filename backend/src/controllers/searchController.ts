@@ -85,6 +85,7 @@ export const handleOSINTSearch = async (req: Request, res: Response): Promise<vo
         success: true,
         query,
         possibleIdentities: identities,
+        ...(nameOutput.correctedName ? { correctedName: nameOutput.correctedName } : {}),
         investigation: primary ? investigation : null,
         results: [...nameOutput.webItems],
         profiles: nameOutput.profiles,

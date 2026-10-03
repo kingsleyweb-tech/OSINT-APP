@@ -9,6 +9,11 @@ import {
   nameTokens, compareName, compareHandle, textHasFullName, parseTitle, extractAttributes,
   normalizeOrg, normalizeText, NameMatchLevel, ExtractedAttributes
 } from './identityMatcher';
+import { extractFacts } from './factExtractor';
+import { isTypoOf } from '../queryIntel/fuzzy';
+import {
+  buildPersonRecord, clusterFacts, stablePersonId, evidenceTypeOfItem, type PersonRecord, type PersonFact
+} from './personRecord';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,7 +21,7 @@ import {
 export interface RawSerpEvidence {
   engine: SerpEngine;
   query: string;
-  resultType: 'organic' | 'knowledge_graph_profile' | 'top_story' | 'youtube_channel' | 'youtube_video' | 'youtube_video_channel';
+  resultType: 'organic' | 'knowledge_graph_profile' | 'top_story' | 'news' | 'youtube_channel' | 'youtube_video' | 'youtube_video_channel';
   position?: number;
   title?: string;
   link?: string;
@@ -94,6 +99,10 @@ export interface IdentityCluster {
   evidenceChecklist: Array<{ signal: string; matched: boolean }>;
   profiles: DiscoveredProfile[];
   webItems: NormalizedResultItem[];
+  /** Why the profiles in this group were put together (shared username, cross-links…). */
+  linkReasons?: string[];
+  /** The evidence-backed record for this group (the same object the card and the case are built from). */
+  record?: PersonRecord;
 }
 
 export interface SerpCallAudit {
@@ -108,6 +117,8 @@ export interface SerpCallAudit {
 export interface NameSearchOutput {
   /** Person or organisation, decided from the knowledge panel and the results (no extra searches). */
   entity: OrganizationDetection;
+  /** The spelling the results agree on when the typed name matched no profile exactly ("Showing results for…"). */
+  correctedName?: string;
   profiles: DiscoveredProfile[];
   webItems: NormalizedResultItem[];
   identities: IdentityCluster[];
@@ -245,6 +256,15 @@ function extractHits(call: PlannedCall, data: any): RawHit[] {
     });
   }
 
+  if (call.engine === 'google_news') {
+    (data.news_results || []).forEach((n: any, idx: number) => {
+      // A news result can be a single story or a cluster of stories about one event.
+      [n, ...(Array.isArray(n?.stories) ? n.stories : [])].forEach((s: any) => {
+        if (s?.link) hits.push({ raw: { ...base, resultType: 'news', position: s.position || idx + 1, title: s.title, link: s.link, source: s.source?.name || s.source, snippet: s.snippet, date: s.date, thumbnail: s.thumbnail } });
+      });
+    });
+  }
+
   if (call.engine === 'youtube') {
     (data.channel_results || []).forEach((c: any, idx: number) => {
       hits.push({
@@ -294,6 +314,7 @@ const SOURCE_LABEL: Record<RawSerpEvidence['resultType'], string> = {
   organic: 'Google Search',
   knowledge_graph_profile: 'Google knowledge panel',
   top_story: 'Google Top Stories',
+  news: 'Google News',
   youtube_channel: 'YouTube Search',
   youtube_video: 'YouTube Search',
   youtube_video_channel: 'YouTube Search (video uploader)'
@@ -465,7 +486,7 @@ const FB_FACT_PATTERNS: Array<{ re: RegExp; attr: 'organization' | 'education' |
 ];
 
 async function confirmProfiles(
-  serp: SerpApiProvider,
+  serp: Pick<SerpApiProvider, 'request'>,
   targetName: string,
   tokens: string[],
   profiles: DiscoveredProfile[],
@@ -624,12 +645,54 @@ function neutralLabel(best?: DiscoveredProfile): IdentityCluster['confidenceLabe
   return 'Uncertain';
 }
 
-function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems: NormalizedResultItem[]): IdentityCluster[] {
-  // Union-find over shared usernames and shared organizations.
+/** Text in which a profile might refer to another account: its title, bio, snippet and evidence notes. */
+function profileText(p: DiscoveredProfile): string {
+  return `${p.title} ${p.snippet} ${p.bio} ${p.evidence.map(e => e.text).join(' ')}`.toLowerCase();
+}
+
+/** The URL without scheme, "www." or trailing slash, for spotting it inside text. */
+function bareUrl(u: string): string {
+  return u.toLowerCase().replace(/^https?:\/\/(www\.|m\.)?/, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
+}
+
+const factKey = (v: string) => normalizeText(v).replace(/\b(ltd|limited|inc|llc|plc|the|and)\b/g, '').replace(/\s+/g, ' ').trim();
+
+interface FactKeys { occ: Set<string>; org: Set<string>; loc: Set<string>; facts: PersonFact[] }
+
+/** Occupation/role, organisation and location keys stated in a profile (its own words only). */
+function profileKeys(p: DiscoveredProfile, name: string, nowIso: string): FactKeys {
+  const facts = clusterFacts({ profiles: [p], webItems: [] }, [p.profileName || name], false, nowIso);
+  const keys = (fields: string[]) => new Set(facts.filter(f => fields.includes(f.field)).map(f => factKey(f.value)).filter(k => k.length >= 3));
+  return { occ: keys(['occupation', 'role']), org: keys(['employer', 'organization', 'education']), loc: keys(['location']), facts };
+}
+
+const overlaps = (a: Set<string>, b: Set<string>) => Array.from(a).some(x => b.has(x));
+/** Two descriptions that cannot both be true of one person: different occupations and different places. */
+const contradicts = (a: FactKeys, b: FactKeys) =>
+  a.occ.size > 0 && b.occ.size > 0 && !overlaps(a.occ, b.occ) && a.loc.size > 0 && b.loc.size > 0 && !overlaps(a.loc, b.loc);
+
+function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems: NormalizedResultItem[], nowIso: string, names: string[]): IdentityCluster[] {
+  // Union-find. Profiles are put together only for a stated reason, never for the name alone:
+  // a shared username or organisation, one account naming the other, or the same occupation together
+  // with the same organisation or place.
   const parent = profiles.map((_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-  const keyOwner = new Map<string, number>();
   const linkReasons = new Map<DiscoveredProfile, Set<string>>();
+  const keys = profiles.map(p => profileKeys(p, name, nowIso));
+  const members = (root: number) => profiles.map((_, i) => i).filter(i => find(i) === root);
+  const union = (i: number, j: number, reason: string, guard: boolean) => {
+    const ri = find(i), rj = find(j);
+    if (ri === rj) return;
+    // Groups whose stated facts contradict each other stay apart, however similar the name.
+    if (guard && members(ri).some(a => members(rj).some(b => contradicts(keys[a], keys[b])))) return;
+    parent[ri] = rj;
+    [profiles[i], profiles[j]].forEach(x => {
+      if (!linkReasons.has(x)) linkReasons.set(x, new Set());
+      linkReasons.get(x)!.add(reason);
+    });
+  };
+
+  const keyOwner = new Map<string, number>();
   profiles.forEach((p, i) => {
     [handleKey(p), orgKey(p)].filter(Boolean).forEach(k => {
       const owner = keyOwner.get(k!);
@@ -637,14 +700,31 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
         keyOwner.set(k!, i);
         return;
       }
-      parent[find(i)] = find(owner);
-      const reason = k!.startsWith('h:') ? `the username @${p.username}` : `the organization "${p.attributes.organization}"`;
-      [p, profiles[owner]].forEach(x => {
-        if (!linkReasons.has(x)) linkReasons.set(x, new Set());
-        linkReasons.get(x)!.add(reason);
-      });
+      const byHandle = k!.startsWith('h:');
+      union(i, owner, byHandle ? `the username @${p.username}` : `the organization "${p.attributes.organization}"`, !byHandle);
     });
   });
+
+  // One account naming another (a bio link, an @handle or the profile URL in its text).
+  profiles.forEach((p, i) => {
+    const text = profileText(p);
+    profiles.forEach((o, j) => {
+      if (i === j || o.platformId === p.platformId) return;
+      const handle = (o.username || '').toLowerCase();
+      const url = bareUrl(o.profileUrl);
+      if ((url.length >= 10 && text.includes(url)) || (handle.length >= 4 && text.includes(`@${handle}`))) {
+        union(i, j, `a link from the ${p.platform} account to the ${o.platform} account`, false);
+      }
+    });
+  });
+
+  profiles.forEach((_, i) => profiles.forEach((__, j) => {
+    if (j <= i) return;
+    const a = keys[i], b = keys[j];
+    if (overlaps(a.occ, b.occ) && (overlaps(a.org, b.org) || overlaps(a.loc, b.loc))) {
+      union(i, j, `the same stated occupation and ${overlaps(a.org, b.org) ? 'organisation' : 'location'}`, true);
+    }
+  }));
 
   const groups = new Map<number, DiscoveredProfile[]>();
   profiles.forEach((p, i) => {
@@ -653,7 +733,8 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
     groups.get(root)!.push(p);
   });
 
-  const hasFacts = (ps: DiscoveredProfile[]) => ps.some(p => p.attributes.organization || p.attributes.headline || p.attributes.location || p.attributes.education);
+  const factsOf = new Map(profiles.map((p, i) => [p, keys[i]]));
+  const hasFacts = (ps: DiscoveredProfile[]) => ps.some(p => factsOf.get(p)!.facts.length > 0);
   const distinct: DiscoveredProfile[][] = [];
   const unlinked: DiscoveredProfile[] = [];
   groups.forEach(ps => (ps.length >= 2 || hasFacts(ps) ? distinct.push(ps) : unlinked.push(...ps)));
@@ -676,20 +757,37 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
     });
   });
 
+  // Facts each web result states about the subject, to link a result to the group it describes.
+  const webKeys = new Map(webItems.map(w => {
+    const facts = names.flatMap(n => extractFacts(n, `${w.title || ''}. ${w.description || ''}`));
+    const k = (fields: string[]) => new Set(facts.filter(f => fields.includes(f.field)).map(f => factKey(f.value)).filter(x => x.length >= 3));
+    return [w, { occ: k(['occupation', 'role']), org: k(['employer', 'organization', 'education']), loc: k(['location']) }] as const;
+  }));
+
   const linkWeb = (ps: DiscoveredProfile[]) => {
     const orgs = ps.map(p => normalizeOrg(p.attributes.organization)).filter(o => o.length >= 4);
     const handles = ps.map(p => (p.username || '').toLowerCase()).filter(h => h.length >= 4);
     const urls = new Set(ps.map(p => p.canonicalUrl));
+    const bare = ps.map(p => bareUrl(p.profileUrl)).filter(u => u.length >= 10);
+    const occ = new Set(ps.flatMap(p => Array.from(factsOf.get(p)!.occ)));
+    const org = new Set(ps.flatMap(p => Array.from(factsOf.get(p)!.org)));
+    const loc = new Set(ps.flatMap(p => Array.from(factsOf.get(p)!.loc)));
     return webItems.filter(w => {
       const text = normalizeText(`${w.title} ${w.description}`);
       const raw = `${w.title} ${w.description}`.toLowerCase();
       const owner = w.metadata?.ownerProfileUrl;
-      return orgs.some(o => text.includes(o)) || handles.some(h => raw.includes(`@${h}`)) || urls.has(w.metadata?.canonicalUrl) || ps.some(p => p.profileUrl === owner);
+      const wk = webKeys.get(w)!;
+      // The result states the group's organisation, or its occupation together with its organisation or place
+      // (or its occupation alone when the group's profiles state no organisation or place).
+      const sameFacts = overlaps(wk.org, org)
+        || (overlaps(wk.occ, occ) && (overlaps(wk.loc, loc) || org.size + loc.size === 0));
+      return orgs.some(o => text.includes(o)) || handles.some(h => raw.includes(`@${h}`)) || bare.some(u => raw.includes(u))
+        || urls.has(w.metadata?.canonicalUrl) || ps.some(p => p.profileUrl === owner) || sameFacts;
     });
   };
 
   const linkedWebIds = new Set<string>();
-  const identities: IdentityCluster[] = distinct.map((ps, idx) => {
+  const identities: IdentityCluster[] = distinct.map(ps => {
     ps.sort((a, b) => b.confidence - a.confidence);
     const best = ps[0];
     const linked = linkWeb(ps);
@@ -703,7 +801,7 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
     const org = ps.find(p => p.attributes.organization)?.attributes.organization;
     const loc = ps.find(p => p.attributes.location)?.attributes.location;
     return {
-      id: `person-${idx + 1}`,
+      id: '',
       kind: 'distinct' as const,
       fullName: best.profileName || name,
       publicRole: ps.find(p => p.attributes.headline)?.attributes.headline || 'Not stated in sources',
@@ -720,7 +818,8 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
         { signal: `Linked across platforms (${platforms.join(', ')})`, matched: platforms.length > 1 }
       ],
       profiles: ps,
-      webItems: linked
+      webItems: linked,
+      linkReasons: reasons
     };
   });
 
@@ -742,7 +841,7 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
         ? describeProfile(unlinked[0], name)
         : `${unlinked.length} profiles on ${platforms.join(', ')} use the name "${name}" but share no username or organization with each other, so they may belong to different people.`;
     identities.push({
-      id: identities.length === 0 ? 'person-1' : 'person-unlinked',
+      id: '',
       kind: unlinked.length === 0 ? 'web_only' : 'unlinked',
       fullName: identities.length === 0 && unlinked.length === 1 ? (unlinked[0].profileName || name) : name,
       publicRole: 'Not stated in sources',
@@ -764,26 +863,141 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
     });
   }
 
-  identities.forEach(i => i.profiles.forEach(p => (p.personId = i.id)));
+  // One evidence-backed record per group; its stable ID is the group's ID everywhere.
+  // Facts from results that only mention the name are used only when no other group could be meant.
+  const allowMentionFacts = identities.length === 1;
+  const usedIds = new Set<string>();
+  identities.forEach(i => {
+    i.record = buildPersonRecord({
+      cluster: i, names: Array.from(new Set([i.fullName, ...names])), searchedName: names[names.length - 1], allowMentionFacts, linkReasons: i.linkReasons, nowIso
+    });
+    let id = i.record.personId;
+    // Two groups share an anchor only when neither has its own page; keep IDs unique within the search.
+    for (let n = 2; usedIds.has(id); n++) id = stablePersonId(i.fullName, `${i.record.personId}#${n}`);
+    usedIds.add(id);
+    i.id = i.record.personId = id;
+    applyRecordToCluster(i);
+    i.profiles.forEach(p => {
+      if (p.relation !== 'similar') p.personId = i.id;
+    });
+    i.webItems.forEach(w => {
+      w.metadata = { ...w.metadata, evidenceType: evidenceTypeOfItem(w) };
+      if (w.metadata.identityLink === 'linked') w.metadata.personId = i.id;
+    });
+  });
   return identities;
+}
+
+/** The card shows what the record holds: its best role and location, with the record's facts in the summary. */
+export function applyRecordToCluster(i: IdentityCluster): void {
+  const r = i.record;
+  if (!r) return;
+  // The profile's own headline is the strongest statement of a role; otherwise the best stated occupation.
+  const role = r.best.role?.tier === 'own-profile' ? r.best.role : (r.best.occupation || r.best.role);
+  if (role && i.kind !== 'organization') i.publicRole = role.value;
+  if (r.best.location && i.kind !== 'organization') i.location = r.best.location.value;
+  const facts: string[] = [];
+  if (r.best.occupation && r.best.occupation.value !== i.publicRole) facts.push(`Occupation: ${r.best.occupation.value}`);
+  if (r.best.employer) facts.push(`Organisation: ${r.best.employer.value}`);
+  if (r.best.education) facts.push(`Education: ${r.best.education.value}`);
+  if (r.best.nationality && !r.best.location) facts.push(`Nationality: ${r.best.nationality.value}`);
+  if (facts.length && i.kind !== 'organization') i.summary = `${i.summary} ${facts.join(' · ')}.`.trim();
+  const orgIdx = i.evidenceChecklist.findIndex(c => c.signal.startsWith('Organization listed'));
+  if (orgIdx >= 0 && !i.evidenceChecklist[orgIdx].matched && r.best.employer) i.evidenceChecklist[orgIdx] = { signal: `Organization stated (${r.best.employer.value})`, matched: true };
+  const locIdx = i.evidenceChecklist.findIndex(c => c.signal.startsWith('Location listed'));
+  if (locIdx >= 0 && !i.evidenceChecklist[locIdx].matched && r.best.location) i.evidenceChecklist[locIdx] = { signal: `Location stated (${r.best.location.value})`, matched: true };
+  if (role && i.kind !== 'organization') i.evidenceChecklist.push({ signal: `Occupation / role stated (${role.value})`, matched: true });
+}
+
+/**
+ * When no profile carries the typed name but the similar-name profiles and results agree on one close
+ * spelling (on at least two independent results, and more than any other spelling), that spelling is
+ * what the search found: those profiles are treated as matches for it instead of as other people.
+ * Unusual names with no such agreement are left as typed.
+ */
+function spellingConsensus(targetName: string, tokens: string[], profiles: DiscoveredProfile[], content: Candidate[]): string | undefined {
+  if (tokens.length < 2) return undefined;
+  if (profiles.some(p => p.relation !== 'similar' && p.evidence.some(e => e.code === 'name'))) return undefined;
+  const support = new Map<string, { display: string; sources: Set<string> }>();
+  profiles.filter(p => p.relation === 'similar' && p.profileName).forEach(p => {
+    const t = nameTokens(p.profileName!);
+    if (t.length !== tokens.length || !t.every((x, i) => x === tokens[i] || isTypoOf(tokens[i], x).related)) return;
+    const k = t.join(' ');
+    const e = support.get(k) || { display: p.profileName!, sources: new Set<string>() };
+    e.sources.add(p.platformId);
+    support.set(k, e);
+  });
+  support.forEach((e, k) => {
+    const t = k.split(' ');
+    content.forEach(c => {
+      if (textHasFullName(t, c.hits.map(h => `${h.raw.title || ''} ${h.raw.snippet || ''}`).join(' '))) e.sources.add(c.canonicalUrl);
+    });
+  });
+  const ranked = Array.from(support.values()).sort((a, b) => b.sources.size - a.sources.size);
+  if (!ranked[0] || ranked[0].sources.size < 2 || (ranked[1] && ranked[1].sources.size === ranked[0].sources.size)) return undefined;
+  const corrected = ranked[0].display.trim();
+  const ct = nameTokens(corrected);
+  profiles.filter(p => p.relation === 'similar' && p.profileName && nameTokens(p.profileName).join(' ') === ct.join(' ')).forEach(p => {
+    delete p.relation;
+    p.evidence = p.evidence.filter(e => e.code !== 'similar_name');
+    p.evidence.unshift({ code: 'name', text: `Profile name on ${p.platform} is exactly "${p.profileName}" — the spelling the results agree on for the searched "${targetName}"` });
+    finalizeScore(p, p.confidence + 20, true);
+  });
+  return corrected;
+}
+
+/**
+ * Follow-up calls after the first pass: Google News for the quoted name, and the name with the occupation
+ * (or organisation) that the first results state about it — only when one value clearly leads, so a
+ * search for a common name is not steered towards one of several people.
+ */
+function followUpPlan(name: string, plan: PlannedCall[], results: SerpCallResult[]): PlannedCall[] {
+  const quoted = `"${name.replace(/"/g, '')}"`;
+  const out: PlannedCall[] = [{ engine: 'google_news', params: { q: quoted }, query: quoted, purpose: 'News coverage (Google News)', platformIds: [] }];
+  const counts = new Map<string, { value: string; n: number; field: string }>();
+  plan.forEach((call, i) => extractHits(call, results[i]?.data).forEach(h => {
+    extractFacts(name, `${h.raw.title || ''}. ${h.raw.snippet || ''}`)
+      .filter(f => f.field === 'occupation' || f.field === 'role' || f.field === 'employer')
+      .forEach(f => {
+        const k = `${f.field === 'employer' ? 'org' : 'occ'}:${normalizeText(f.value)}`;
+        const c = counts.get(k) || { value: f.value, n: 0, field: f.field };
+        c.n++;
+        counts.set(k, c);
+      });
+  }));
+  const ranked = Array.from(counts.values()).sort((a, b) => b.n - a.n || (a.field === 'employer' ? 1 : -1));
+  if (ranked[0] && (ranked.length === 1 || ranked[0].n > ranked[1].n)) {
+    const q = `${quoted} "${ranked[0].value.replace(/"/g, '')}"`;
+    out.push({ engine: 'google', params: { q, num: 10 }, query: q, purpose: `Context: ${ranked[0].field === 'employer' ? 'organisation' : 'occupation'} "${ranked[0].value}"`, platformIds: [] });
+  }
+  return out;
 }
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export class NameSearchEngine {
-  public static async execute(query: OSINTQuery, options: { searchDepth?: string; onProgress?: ProgressCallback } = {}): Promise<NameSearchOutput> {
+  public static async execute(
+    query: OSINTQuery,
+    options: { searchDepth?: string; onProgress?: ProgressCallback; serp?: Pick<SerpApiProvider, 'request'> } = {}
+  ): Promise<NameSearchOutput> {
     const progress = options.onProgress;
     const targetName = (query.name || query.queryValue || '').trim().replace(/^["']|["']$/g, '');
     const tokens = nameTokens(targetName);
     const depth = options.searchDepth || 'deep';
     const nowIso = new Date().toISOString();
-    const serp = new SerpApiProvider();
+    // Injectable so offline checks can replay recorded SerpApi responses.
+    const serp = options.serp || new SerpApiProvider();
+    const followUps = depth !== 'quick';
 
     const plan = buildPlan(targetName, query, depth);
     console.log(`[NameSearchEngine] "${targetName}" — ${plan.length} planned SerpApi calls (${depth})`);
 
     progress?.({ type: 'plan', steps: [
       ...plan.map((c, i) => ({ id: `q${i}`, label: c.purpose })),
+      ...(followUps ? [
+        { id: 'news', label: 'News coverage (Google News)' },
+        { id: 'context', label: 'Follow-up search for a stated occupation or organisation' }
+      ] : []),
       { id: 'confirm', label: 'Facebook & Instagram profile checks' }
     ] });
     const results: SerpCallResult[] = await Promise.all(plan.map(async (c, i) => {
@@ -798,6 +1012,26 @@ export class NameSearchEngine {
     if (!broad.data && !broad.quotaExhausted) {
       plan.push({ engine: 'bing', params: { q: plan[0].query }, query: plan[0].query, purpose: 'Broad web (Bing fallback)', platformIds: [] });
       results.push(await serp.request('bing', { q: plan[0].query }));
+    }
+
+    // Targeted follow-ups (at most 2 calls): news coverage of the name, and the name together with the
+    // occupation or organisation the first results state about it, when one clearly stands out.
+    if (followUps) {
+      const extra = followUpPlan(targetName, plan, results);
+      if (results.some(r => r.quotaExhausted)) {
+        progress?.({ type: 'step', id: 'news', status: 'empty', note: 'Skipped (search quota exhausted)' });
+        progress?.({ type: 'step', id: 'context', status: 'empty', note: 'Skipped (search quota exhausted)' });
+      } else {
+        if (!extra.some(c => c.purpose.startsWith('Context:'))) progress?.({ type: 'step', id: 'context', status: 'empty', note: 'No single occupation or organisation stood out' });
+        const extraResults = await Promise.all(extra.map(async c => {
+          const r = await serp.request(c.engine, c.params);
+          const n = extractHits(c, r.data).length;
+          progress?.({ type: 'step', id: c.engine === 'google_news' ? 'news' : 'context', status: !r.data ? 'failed' : n === 0 ? 'empty' : r.fromCache ? 'cached' : 'done', count: n, note: !r.data ? (r.error || 'Failed') : `${n} result${n === 1 ? '' : 's'}` });
+          return r;
+        }));
+        plan.push(...extra);
+        results.push(...extraResults);
+      }
     }
 
     const auditTrail: SerpCallAudit[] = [];
@@ -849,6 +1083,7 @@ export class NameSearchEngine {
     const profiles: DiscoveredProfile[] = [];
     const webItems: NormalizedResultItem[] = [];
     let potentialProfiles = 0;
+    const contentCands: Candidate[] = [];
 
     candidates.forEach(cand => {
       const kind = cand.classified.pageKind;
@@ -866,15 +1101,26 @@ export class NameSearchEngine {
         rejected.push({ url: cand.resolvedUrl, title: primary.title || '', reason: `Not a profile or content page (${PAGE_KIND_LABELS[kind]})` });
         return;
       }
+      contentCands.push(cand);
+    });
 
+    // A misspelt search: no profile carries the typed name, but the results agree on one close spelling.
+    const correctedName = spellingConsensus(targetName, tokens, profiles, contentCands);
+    const nameVariants = (correctedName ? [correctedName, targetName] : [targetName]).map(n => ({ name: n, tokens: nameTokens(n) }));
+    if (correctedName) console.log(`[NameSearchEngine] "${targetName}" — results agree on the spelling "${correctedName}"`);
+
+    contentCands.forEach(cand => {
+      const kind = cand.classified.pageKind;
+      const primary = cand.hits[0].raw;
       // Web / news / posts / videos: keep only when the full name (not one word of it) appears.
       const text = cand.hits.map(h => `${h.raw.title || ''} ${h.raw.snippet || ''}`).join(' ');
-      if (!textHasFullName(tokens, text)) {
+      const matched = nameVariants.find(v => textHasFullName(v.tokens, text));
+      if (!matched) {
         rejected.push({ url: cand.resolvedUrl, title: primary.title || '', reason: `Full name "${targetName}" does not appear in the result` });
         return;
       }
 
-      const isNews = cand.hits.some(h => h.raw.resultType === 'top_story') || kind === 'article';
+      const isNews = cand.hits.some(h => h.raw.resultType === 'top_story' || h.raw.resultType === 'news') || kind === 'article';
       const sourceType = kind === 'video' ? 'Video & Streaming' : cand.classified.host.endsWith('wikipedia.org') ? 'Knowledge & Wikipedia' : 'Websites & News';
       webItems.push({
         id: `web-${Buffer.from(cand.canonicalUrl).toString('base64url').slice(-16)}`,
@@ -883,7 +1129,7 @@ export class NameSearchEngine {
         title: primary.title || cand.classified.host,
         description: primary.snippet || '',
         url: cand.resolvedUrl,
-        possibleName: targetName,
+        possibleName: matched.name,
         discoveredAt: nowIso,
         confidence: 60,
         confidenceLevel: 'Medium',
@@ -895,7 +1141,7 @@ export class NameSearchEngine {
           pageKind: kind,
           pageKindLabel: isNews && kind !== 'article'
             ? 'News'
-            : (kind === 'post' || kind === 'video' || kind === 'group') && !textHasFullName(tokens, primary.title || '')
+            : (kind === 'post' || kind === 'video' || kind === 'group') && !textHasFullName(matched.tokens, primary.title || '')
               ? `Mention in a ${kind === 'video' ? 'video' : 'post'}`
               : PAGE_KIND_LABELS[kind],
           date: cand.hits.find(h => h.raw.date)?.raw.date,
@@ -910,7 +1156,7 @@ export class NameSearchEngine {
     const confirmCalls = depth === 'deep' ? 3 : depth === 'standard' ? 1 : 0;
     if (confirmCalls > 0 && !quotaExhausted) {
       let checked = 0;
-      const confirmed = await confirmProfiles(serp, targetName, tokens, profiles, confirmCalls, auditTrail, () => { checked++; });
+      const confirmed = await confirmProfiles(serp, nameVariants[0].name, nameVariants[0].tokens, profiles, confirmCalls, auditTrail, () => { checked++; });
       progress?.({ type: 'step', id: 'confirm', status: confirmed.calls.length ? 'done' : 'empty', count: checked, note: confirmed.calls.length ? `${checked} profile${checked === 1 ? '' : 's'} checked` : 'No Facebook/Instagram accounts to check' });
       confirmed.rejected.forEach(r => rejected.push(r));
       confirmed.rejectedIds.forEach(id => {
@@ -926,7 +1172,7 @@ export class NameSearchEngine {
     profiles.sort((a, b) => b.confidence - a.confidence);
     // Similar-name profiles are other people: not clustered into anyone, listed alongside for checking.
     const similarProfiles = profiles.filter(p => p.relation === 'similar');
-    const identities = clusterIdentities(targetName, profiles.filter(p => p.relation !== 'similar'), webItems);
+    const identities = clusterIdentities(correctedName || targetName, profiles.filter(p => p.relation !== 'similar'), webItems, nowIso, nameVariants.map(v => v.name));
     identities.forEach(i => { i.profiles = [...i.profiles, ...similarProfiles]; });
     profiles.sort((a, b) => b.confidence - a.confidence);
 
@@ -964,6 +1210,6 @@ export class NameSearchEngine {
     const entity = detectOrganization(targetName, results[0]?.data, profiles, webItems);
     if (entity.kind === 'organization') console.log(`[NameSearchEngine] "${targetName}" looks like an organisation: ${entity.reason}`);
 
-    return { entity, profiles, webItems, identities, searchCoverage, auditTrail, rejected, stats };
+    return { entity, ...(correctedName ? { correctedName } : {}), profiles, webItems, identities, searchCoverage, auditTrail, rejected, stats };
   }
 }

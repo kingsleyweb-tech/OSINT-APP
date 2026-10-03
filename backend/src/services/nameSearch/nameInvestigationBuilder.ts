@@ -3,6 +3,7 @@ import { IntelligenceAssociation } from '../../types/intelligence';
 import { EntityAnalyzer } from '../intelligence/entityAnalyzer';
 import { TrackingEngine } from '../intelligence/trackingEngine';
 import { IdentityCluster, NameSearchOutput, DiscoveredProfile } from './nameSearchEngine';
+import { buildPersonRecord, type PersonRecord } from './personRecord';
 
 /**
  * Converts a name-search identity cluster into the investigation document the frontend stores
@@ -25,6 +26,28 @@ function profileAsResultItem(p: DiscoveredProfile): NormalizedResultItem {
     confidenceLevel: p.confidenceLevel,
     metadata: { itemType: 'profile', canonicalUrl: p.canonicalUrl }
   };
+}
+
+/** Organisations, schools and groups the record's sources state, each with the page that states it. */
+function recordAssociations(record: PersonRecord | undefined): IntelligenceAssociation[] {
+  if (!record) return [];
+  const CATEGORY: Record<string, IntelligenceAssociation['category']> = { employer: 'Companies', organization: 'Organizations', education: 'Education' };
+  const RELATION: Record<string, string> = { employer: 'Works or worked at (stated in source)', organization: 'Member / affiliated (stated in source)', education: 'Studied at (stated in source)' };
+  return record.summary
+    .filter(s => s.field === 'employer' || s.field === 'organization' || s.field === 'education')
+    .map((s, i) => {
+      const src = s.sources[0];
+      return {
+        id: `assoc-rec-${i}`,
+        name: s.value,
+        category: CATEGORY[s.field],
+        relationship: RELATION[s.field],
+        evidenceState: s.sources.length > 1 || src.tier === 'own-profile' ? 'Strong evidence' : 'Documented',
+        evidenceCitation: src.quote ? `"${src.quote}" — ${src.sourceName}` : `Stated on ${src.sourceName}: "${src.sourceTitle}".`,
+        sourceName: src.sourceName,
+        sourceUrl: src.sourceUrl
+      } as IntelligenceAssociation;
+    });
 }
 
 function profileAssociations(profiles: DiscoveredProfile[]): IntelligenceAssociation[] {
@@ -70,8 +93,13 @@ export function buildNameInvestigation(
   const profileUrls = new Set(profiles.map(p => p.profileUrl));
   const activities = analyzed.activities.filter(a => !profileUrls.has(a.sourceUrl));
 
+  // The identity's evidence-backed record (built with the cluster; organisations get one here).
+  const record: PersonRecord | undefined = identity?.record || (identity ? buildPersonRecord({
+    cluster: identity, names: [identity.fullName, name], searchedName: name, allowMentionFacts: false, nowIso
+  }) : undefined);
+
   const assocMap = new Map<string, IntelligenceAssociation>();
-  [...profileAssociations(profiles), ...analyzed.associations].forEach(a => {
+  [...profileAssociations(profiles), ...recordAssociations(record), ...analyzed.associations].forEach(a => {
     if (!assocMap.has(a.name.toLowerCase())) assocMap.set(a.name.toLowerCase(), a);
   });
   const associations = Array.from(assocMap.values());
@@ -82,6 +110,9 @@ export function buildNameInvestigation(
   return {
     id: investigationId,
     name: fullName,
+    personId: record?.personId,
+    ...(record ? { person: record } : {}),
+    ...(output.correctedName ? { correctedName: output.correctedName } : {}),
     description: identity?.summary || `Name search for ${name}`,
     searchInputs: { searchType: 'name', name, queryValue: name, ...(query.location ? { location: query.location } : {}), ...(query.organization ? { organization: query.organization } : {}) },
     searchType: 'name',
@@ -176,16 +207,21 @@ export function buildIdentityPayload(query: OSINTQuery, identity: IdentityCluste
     investigation.organization = { ...output.entity.profile, detectionReason: output.entity.reason };
     investigation.targetProfile = { ...investigation.targetProfile, gender: 'Not applicable', age: 'Not applicable', occupation: output.entity.profile.type?.value || 'Organisation' };
   }
+  // Card fields are read from the case it opens, so the two can never disagree.
+  const person: PersonRecord | undefined = investigation.person;
   return {
     id: identity.id,
+    personId: investigation.personId,
     kind: identity.kind,
-    fullName: identity.fullName,
-    publicRole: identity.publicRole,
-    location: identity.location,
+    fullName: investigation.targetProfile.fullName,
+    publicRole: investigation.targetProfile.occupation,
+    location: investigation.targetProfile.location,
     avatarUrl: identity.avatarUrl,
-    summary: identity.summary,
+    summary: investigation.quickSummary,
     confidenceScore: identity.confidenceScore,
-    confidenceLabel: identity.confidenceLabel,
+    confidenceLabel: person?.identityConfidence || identity.confidenceLabel,
+    confidenceReason: person?.confidenceReason,
+    ...(output.correctedName ? { correctedName: output.correctedName } : {}),
     evidenceChecklist: identity.evidenceChecklist,
     profilesCount: investigation.socialProfiles.filter((p: any) => p.relation !== 'similar').length,
     similarAccountsCount: investigation.socialProfiles.filter((p: any) => p.relation === 'similar').length,
@@ -259,6 +295,9 @@ export function rescanNameInvestigation(query: OSINTQuery, investigation: any, o
       ...fresh,
       id: investigation.id,
       name: investigation.name,
+      // The case keeps following the same person: its ID does not change on a rescan.
+      personId: investigation.personId || fresh.personId,
+      ...(fresh.person ? { person: { ...fresh.person, personId: investigation.personId || fresh.person.personId } } : {}),
       createdAt: investigation.createdAt,
       isTracked: investigation.isTracked,
       scanHistory: [scanHistoryItem, ...(investigation.scanHistory || [])]

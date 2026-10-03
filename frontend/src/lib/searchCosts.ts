@@ -25,10 +25,10 @@ export function geoCost(country?: string): number {
   return 1 + newsCost(country) + DEFAULT_SOCIAL_PLATFORM_COUNT + 1 + 1 + (country ? 0 : 1);
 }
 
-/** Trends: Google Trends (4 calls for one term, 2 when comparing) + news + social + web + trending now. */
+/** Trends topic: Google Trends (4 calls for one term, 2 when comparing) + news + social + web (platform signals: lib/trendsClient). */
 export function trendsCost(country: string | undefined, termCount: number): number {
   const trends = termCount > 1 ? 2 : 4;
-  return trends + newsCost(country) + DEFAULT_SOCIAL_PLATFORM_COUNT + 1 + 1;
+  return trends + newsCost(country) + DEFAULT_SOCIAL_PLATFORM_COUNT + 1;
 }
 
 // ─── Ranges shown on each search page ───────────────────────────────────────
@@ -73,9 +73,9 @@ export function geoRange(country?: string): CostRange {
   return add(fixed(1), newsRange('a b', country), socialRange('a b', DEFAULT_SOCIAL_PLATFORM_COUNT, false), webRange(), fixed(1), fixed(country ? 0 : 1));
 }
 
-/** Trends: Google Trends (4 for one term, 2 when comparing) + news + social (dated) + web + trending now. */
+/** Trends topic: Google Trends (4 for one term, 2 when comparing) + news + social (dated) + web (platform signals: lib/trendsClient). */
 export function trendsRange(mainTerm: string, country: string | undefined, termCount: number, dated = true): CostRange {
-  return add(fixed(termCount > 1 ? 2 : 4), newsRange(mainTerm, country), socialRange(mainTerm, DEFAULT_SOCIAL_PLATFORM_COUNT, dated), webRange(), fixed(1));
+  return add(fixed(termCount > 1 ? 2 : 4), newsRange(mainTerm, country), socialRange(mainTerm, DEFAULT_SOCIAL_PLATFORM_COUNT, dated), webRange());
 }
 
 /** Name search by depth (+1 per location/organisation; Bing replaces Google's broad search only if Google fails). */
@@ -132,9 +132,10 @@ export const COST_GROUPS: CostGroup[] = [
       { search: 'Geo search · with a country', tokens: `${geoCost('gh')} (${geoCost('us')} in a Bing News country)`, notes: `Google Maps, news, ${DEFAULT_SOCIAL_PLATFORM_COUNT} social platforms, web and events. ${SPELLING}.` },
       { search: 'Geo search · Any country', tokens: `${geoCost()}`, notes: 'As above + places with the same name in other countries.' },
       { search: 'Geo search · Load public reviews', tokens: '1', notes: 'Per place, only when you click it.' },
-      { search: 'Trends · one term', tokens: `${trendsCost('gh', 1)} (${trendsCost(undefined, 1)} worldwide or in a Bing News country)`, notes: `Google Trends (interest over time, related queries, interest by region, related topics), news, ${DEFAULT_SOCIAL_PLATFORM_COUNT} social platforms, web, trending now. ${SPELLING}.` },
+      { search: 'Trends · one term', tokens: `${trendsCost('gh', 1)} (${trendsCost(undefined, 1)} worldwide or in a Bing News country)`, notes: `Google Trends (interest over time, related queries, interest by region, related topics), news, ${DEFAULT_SOCIAL_PLATFORM_COUNT} social platforms and web. Platform signals for the topic are counted below. ${SPELLING}.` },
       { search: 'Trends · comparing 2–5 terms', tokens: `${trendsCost('gh', 2)} (${trendsCost(undefined, 2)} worldwide or in a Bing News country)`, notes: 'Related queries and topics only work for one term, so they are skipped. No spelling check.' },
-      { search: 'Trends · Trending now (Load)', tokens: '1', notes: 'Only when you click Load for a country.' }
+      { search: 'Trends · platform signals for a topic', tokens: 'up to 7', notes: 'With "All": Google trending list 1 (with a country), news 1–2, X 2 (posts carousel + site search), YouTube 1, Reddit 1. TikTok, Facebook, Instagram +1 each when selected. Cached for 30 minutes (2 hours for YouTube and indexed mentions).' },
+      { search: 'Trends · Scan trending topics', tokens: 'up to 5', notes: 'With "All": Google trending list 1 (needs a country), news top stories 1, X checked for the top 3 topics 3. Each other selected platform +3. Cached for 30 minutes.' }
     ]
   },
   {

@@ -4,6 +4,7 @@ import { handleUsernameDiscoveryStream, handleUsernameDiscovery } from '../contr
 import { checkLinks } from '../services/nameSearch/linkHealth';
 import { handleExplore, handleExploreCatalog, handleExplorePlan, handleQuota } from '../controllers/exploreController';
 import { handleQueryIntel } from '../controllers/queryIntelController';
+import { handleTrends } from '../controllers/trendsController';
 import { handleAlertsStatus, handleRunAlert, handleTestEmail } from '../controllers/alertsController';
 import { handleAiAnalyze, handleAiResearch, handleAiStatus } from '../controllers/aiController';
 import { rateLimited } from '../controllers/exploreController';
@@ -92,6 +93,8 @@ router.post('/link-health', async (req, res) => {
 // Explore capabilities: news, images, videos, social posts, places, events, trends
 router.post('/explore', handleExplore);
 router.post('/explore/plan', handleExplorePlan);
+// Trend intelligence: Google Trends, news and platform signals in one request (labelled by signal type)
+router.post('/trends', handleTrends);
 // Search intelligence: typo detection and corrections before a search (1 cached Google probe; none in Precise mode)
 router.post('/query-intel', handleQueryIntel);
 router.get('/explore/catalog', handleExploreCatalog);

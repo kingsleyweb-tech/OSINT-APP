@@ -526,6 +526,16 @@ export interface Investigation {
   aiResearch?: AIResearch;
   /** Organisation facts the investigator accepted from the AI analysis (each keeps its source and quote). */
   aiClaims?: OrgClaim[];
+  /** Stable ID of the person this case follows (the same ID the search card carried). */
+  personId?: string;
+  /** The evidence-backed person record: every fact with its source; Overview reads its best values. */
+  person?: import('./person').PersonRecord;
+  /** The spelling the search results agreed on when the typed name matched no profile ("Showing results for…"). */
+  correctedName?: string;
+  /** Set when the search response carried no case data for the selected person (nothing was invented). */
+  incomplete?: boolean;
+  /** When the automatic AI enrichment ran (it runs once per case). */
+  autoEnrichedAt?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

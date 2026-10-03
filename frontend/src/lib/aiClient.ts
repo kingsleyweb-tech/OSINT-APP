@@ -12,6 +12,7 @@ import { apiFetch } from './apiAuth';
 import { getApiBase } from './searchClient';
 import { getInvestigationFromDb, saveInvestigationToDb } from '../firebase/firestore';
 import { newAuditEvent } from './workspace';
+import { mergeAiFindings } from './personFacts';
 
 export interface AiStatus { configured: boolean; provider: string; model: string; usedToday: number; dailyLimit: number; researchUsedToday?: number; researchLimit?: number }
 
@@ -80,7 +81,7 @@ export function startAiAnalysis(inv: Investigation): void {
     if (r.status === 'done' && !r.applied && !(listeners.get(inv.id)?.size)) {
       const fresh = await getInvestigationFromDb(inv.id);
       if (fresh && r.analysis) {
-        await saveInvestigationToDb({ ...fresh, aiAnalysis: r.analysis, auditLog: [aiCompletedEvent(r.analysis, r.cached), ...(fresh.auditLog || [])] }).catch(() => undefined);
+        await saveInvestigationToDb({ ...mergeAiFindings({ ...fresh, aiAnalysis: r.analysis }, r.analysis), auditLog: [aiCompletedEvent(r.analysis, r.cached), ...(fresh.auditLog || [])] }).catch(() => undefined);
         markAiRunApplied(inv.id);
       }
     }

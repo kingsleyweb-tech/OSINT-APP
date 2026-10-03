@@ -164,7 +164,10 @@ export function identityToInvestigation(
   identity: DiscoveredIdentity,
   opts: { activeQuery: string; searchType: ProfilerSearchType; userId: string; searchDepth?: string }
 ): Investigation {
+  // The backend builds the whole case for each person; the card fields are only a fallback for old responses.
+  if (!identity.investigation) console.warn(`[identityToInvestigation] the response carried no case data for "${identity.fullName}" (${identity.id})`);
   const inv = identity.investigation || {};
+  const tp = inv.targetProfile || {};
   const nowIso = new Date().toISOString();
   const type = opts.searchType.toLowerCase() as 'name' | 'username' | 'email' | 'phone';
 
@@ -206,7 +209,7 @@ export function identityToInvestigation(
     lastSearched: inv.lastSearched || nowIso,
     overallConfidence: identity.confidenceScore || 0,
     confidenceLevel: identity.confidenceScore >= 75 ? 'High' : identity.confidenceScore >= 55 ? 'Medium' : 'Low',
-    quickSummary: identity.summary || '',
+    quickSummary: inv.quickSummary || identity.summary || '',
     searchCoverage: Array.isArray(inv.searchCoverage) ? inv.searchCoverage : [],
     deepStats: inv.deepStats || undefined,
     auditTrail: Array.isArray(inv.auditTrail) ? inv.auditTrail : [],
@@ -216,10 +219,10 @@ export function identityToInvestigation(
     targetProfile: {
       initials: (identity.fullName || 'OS').split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OS',
       fullName: identity.fullName || opts.activeQuery,
-      location: identity.location || 'Not specified',
+      location: tp.location || identity.location || 'Not specified',
       gender: inv.entityKind === 'organization' ? 'Not applicable' : 'Unverified',
       age: inv.entityKind === 'organization' ? 'Not applicable' : 'Unverified',
-      occupation: identity.publicRole || 'Not stated in sources',
+      occupation: tp.occupation || identity.publicRole || 'Not stated in sources',
       avatarUrl: identity.avatarUrl,
       interests: identity.matchingPlatforms || [],
       lastActive: inv.targetProfile?.lastActive || 'Not established'
@@ -249,6 +252,9 @@ export function identityToInvestigation(
     ...(inv.entityKind === 'organization' && inv.organization ? { entityKind: 'organization', organization: inv.organization } : {}),
     ...(inv.entityResolution ? { entityResolution: inv.entityResolution } : {}),
     ...(Array.isArray(inv.usernameVariations) ? { usernameVariations: inv.usernameVariations } : {}),
+    ...(inv.person ? { person: inv.person, personId: inv.person.personId } : identity.personId ? { personId: identity.personId } : {}),
+    ...(inv.correctedName ? { correctedName: inv.correctedName } : {}),
+    ...(identity.investigation ? {} : { incomplete: true }),
     createdBy: opts.userId,
     createdAt: inv.createdAt || nowIso,
     updatedAt: nowIso

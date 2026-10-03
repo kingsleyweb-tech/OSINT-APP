@@ -33,8 +33,8 @@ function buildCacheKey(engine: string, params: Record<string, string | number>):
   return crypto.createHash('sha1').update(`${engine}?${sorted}`).digest('hex');
 }
 
-function readCache(key: string): any | null {
-  const ttl = cacheTtlMs();
+function readCache(key: string, ttlOverrideMs?: number): any | null {
+  const ttl = ttlOverrideMs ?? cacheTtlMs();
   if (ttl === 0) return null;
 
   const mem = memoryCache.get(key);
@@ -83,19 +83,21 @@ export class SerpApiProvider {
    *    same query is not billed twice within SERPAPI_CACHE_TTL_HOURS (default 12h)
    *  - explicit error reporting (quota exhaustion, "no results", HTTP errors) instead of silently returning null
    */
-  public async request(engine: SerpEngine, params: Record<string, string | number>): Promise<SerpCallResult> {
-    const first = await this.requestOnce(engine, params);
+  public async request(engine: SerpEngine, params: Record<string, string | number>, opts: { ttlHours?: number } = {}): Promise<SerpCallResult> {
+    // A shorter cache life for fast-moving data (trending lists, news, posts); never longer than the global setting.
+    const ttlMs = opts.ttlHours != null && cacheTtlMs() > 0 ? Math.min(cacheTtlMs(), opts.ttlHours * 3600 * 1000) : undefined;
+    const first = await this.requestOnce(engine, params, ttlMs);
     // SerpApi keeps identical searches cached for an hour and serves them free, so one retry after a
     // timeout usually returns quickly without using another search.
-    if (first.error === 'Timed out waiting for SerpApi') return this.requestOnce(engine, params);
+    if (first.error === 'Timed out waiting for SerpApi') return this.requestOnce(engine, params, ttlMs);
     return first;
   }
 
-  private async requestOnce(engine: SerpEngine, params: Record<string, string | number>): Promise<SerpCallResult> {
+  private async requestOnce(engine: SerpEngine, params: Record<string, string | number>, ttlMs?: number): Promise<SerpCallResult> {
     const apiKey = this.getApiKey();
     const cacheKey = buildCacheKey(engine, params);
 
-    const cached = readCache(cacheKey);
+    const cached = readCache(cacheKey, ttlMs);
     if (cached) {
       return { engine, params, data: cached, error: null, fromCache: true, quotaExhausted: false };
     }

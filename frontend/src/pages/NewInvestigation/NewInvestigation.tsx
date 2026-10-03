@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { openIdentityCase } from '../../lib/openCase';
 import { useNavigate } from 'react-router-dom';
 import { usePageSearch } from '../../components/explore/usePageSearch';
 import { clearPageState, usePageState } from '../../lib/pageState';
@@ -19,9 +20,8 @@ import { QueryIntelBanner, SearchModeToggle } from '../../components/search/Quer
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
 import { useProfilerSearch } from '../../components/search/useProfilerSearch';
 import { EntitySuggestions } from '../../components/search/EntitySuggestions';
-import { linkHistoryToCase } from '../../lib/history';
 import type { Investigation } from '../../types/investigation';
-import { saveInvestigationToDb, getUserInvestigationsFromDb } from '../../firebase/firestore';
+import { getUserInvestigationsFromDb } from '../../firebase/firestore';
 import { useToast } from '../../components/ui/Toast';
 import { identityToInvestigation, SearchError } from '../../lib/searchClient';
 import { useNotifications } from '../../context/NotificationContext';
@@ -86,23 +86,24 @@ export const NewInvestigationPage: React.FC<NewInvestigationPageProps> = ({ curr
       searchDepth: searchDefaults.depth
     });
 
-    // Open the case at once; saving to Firestore continues in the background.
-    try { sessionStorage.setItem(`osint_inv_${invData.id}`, JSON.stringify(invData)); } catch { /* storage full */ }
-    linkHistoryToCase(profiler.historyId.current, invData.id);
-    saveInvestigationToDb(invData)
-      .then(() => addNotification({
-        type: 'investigation_saved',
-        title: 'Identity Confirmed',
-        message: `Investigation created for "${invData.name}".`,
-        targetInvestigationId: invData.id
-      }))
-      .catch(err => {
-        console.error('Save investigation error:', err);
-        toastError('Case not saved', 'The case opened, but it could not be saved to your account. Check your connection.');
-      });
+    // The same person from the same search reopens its stored case; a new case is saved before it opens.
+    const opened = await openIdentityCase(invData, { known: realInvestigations, historyId: profiler.historyId.current });
+    if (!opened.reused) {
+      opened.saved
+        .then(() => addNotification({
+          type: 'investigation_saved',
+          title: 'Identity Confirmed',
+          message: `Investigation created for "${invData.name}".`,
+          targetInvestigationId: invData.id
+        }))
+        .catch(err => {
+          console.error('Save investigation error:', err);
+          toastError('Case not saved', 'The case opened, but it could not be saved to your account. Check your connection.');
+        });
+    }
 
-    setRealInvestigations(prev => [invData, ...prev.filter(i => i.id !== invData.id)]);
-    navigate(`/investigations/${invData.id}`, { state: { investigation: invData } });
+    setRealInvestigations(prev => [opened.investigation, ...prev.filter(i => i.id !== opened.investigation.id)]);
+    navigate(`/investigations/${opened.investigation.id}`, { state: { investigation: opened.investigation } });
   };
 
   const handleSearchSubmit = async (e?: React.FormEvent, opts: { q?: string; keepOriginal?: boolean; chosen?: string } = {}) => {

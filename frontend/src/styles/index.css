@@ -39,6 +39,17 @@
   --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.95);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.6);
   --shadow-xl: 0 24px 80px rgba(0, 0, 0, 0.95);
+
+  /* Chart series and trend direction (Trends page) */
+  --series-1: var(--accent-warm);
+  --series-2: #0ea5e9;
+  --series-3: #10b981;
+  --series-4: #a855f7;
+  --series-5: #f59e0b;
+  --trend-up: #10b981;
+  --trend-up-bg: rgba(16, 185, 129, 0.14);
+  --trend-down: #ef4444;
+  --trend-down-bg: rgba(239, 68, 68, 0.14);
 }
 
 :root[data-theme="light"] {
@@ -65,6 +76,11 @@
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 24px 80px rgba(0, 0, 0, 0.1);
+
+  --trend-up: #047857;
+  --trend-up-bg: rgba(16, 185, 129, 0.14);
+  --trend-down: #b91c1c;
+  --trend-down-bg: rgba(239, 68, 68, 0.12);
 }
 
 h1, h2, h3, .brand-title, .target-name-title, .profile-name, .hero-username, .pane-title {

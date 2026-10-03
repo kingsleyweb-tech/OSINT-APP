@@ -12,7 +12,10 @@ import type { SearchHistoryResult, SearchMode } from '../../types/user';
 export interface ProfilerRunOptions {
   mode?: SearchMode;
   /** The investigator's own cases (for "you already have a case" and the correction check). */
-  cases?: Array<{ id: string; name: string; searchType?: string; lastSearched?: string; createdAt?: string }>;
+  cases?: Array<{
+    id: string; name: string; searchType?: string; lastSearched?: string; createdAt?: string;
+    socialProfiles?: unknown[]; sources?: unknown[]; webAndNews?: unknown[];
+  }>;
   keepOriginal?: boolean;
   chosen?: string;
 }
@@ -76,10 +79,12 @@ export function useProfilerSearch(page = 'profiler') {
     const mode = opts.mode || 'intelligent';
 
     // Investigation memory: the same name/username searched in the last 24 hours already has a case.
+    // Only a case from the same kind of search that holds evidence is offered — never an empty placeholder.
     if (!opts.keepOriginal && !opts.chosen) {
       const recent = (opts.cases || []).find(c =>
         norm(c.name).replace(/^@/, '') === norm(query).replace(/^@/, '') &&
-        (!c.searchType || c.searchType === kind) &&
+        c.searchType === kind &&
+        ((c.socialProfiles || []).length > 0 || (c.sources || []).length > 0 || (c.webAndNews || []).length > 0) &&
         Date.now() - Date.parse(c.lastSearched || c.createdAt || '') < DAY_MS);
       if (recent) {
         const openCase = await confirm({

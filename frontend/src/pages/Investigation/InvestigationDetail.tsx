@@ -34,7 +34,8 @@ import { RadarLoader } from '../../components/ui/RadarLoader';
 import { MetricsTab } from '../../components/investigations/tabs/MetricsTab';
 import { AuditTab } from '../../components/investigations/tabs/AuditTab';
 import { AiTab } from '../../components/investigations/tabs/AiTab';
-import { aiCompletedEvent, getAiRun, markAiRunApplied, subscribeAiRun, type AiRun } from '../../lib/aiClient';
+import { aiCompletedEvent, fetchAiStatus, getAiRun, markAiRunApplied, runAiResearch, startAiAnalysis, subscribeAiRun, type AiRun } from '../../lib/aiClient';
+import { mergeAiFindings, missingKeyFields } from '../../lib/personFacts';
 import '../../styles/Workspace.css';
 
 const TABS: Array<{ key: TabKey; label: string; group: 'Summary' | 'Evidence' | 'Record' }> = [
@@ -66,7 +67,16 @@ interface InvestigationDetailPageProps {
   activeTabRoute?: string;
 }
 
-export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = ({ activeTabRoute }) => {
+/**
+ * Moving straight from one case to another keeps the route mounted, so the page is keyed by the case:
+ * each case starts with its own state and loads its own record (never the previous case's data).
+ */
+export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = props => {
+  const { id, token } = useParams<{ id: string; token?: string }>();
+  return <InvestigationDetailView key={token ? `shared:${token}` : id || ''} {...props} />;
+};
+
+const InvestigationDetailView: React.FC<InvestigationDetailPageProps> = ({ activeTabRoute }) => {
   const { id, tab, token } = useParams<{ id: string; tab?: string; token?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -88,7 +98,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   const [investigation, setInvestigation] = useState<Investigation | null>(() => {
     if (token) return null;
     const fromState = (location.state as any)?.investigation;
-    if (fromState) return fromState;
+    if (fromState && (!id || fromState.id === id)) return fromState;
     if (id) {
       try {
         const saved = sessionStorage.getItem(`osint_inv_${id}`);
@@ -122,7 +132,8 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
   }, [id, token]);
 
   useEffect(() => {
-    if (investigation && id && !readOnly) {
+    // Only the case this page is showing is written under its own ID.
+    if (investigation && id && !readOnly && investigation.id === id) {
       try { sessionStorage.setItem(`osint_inv_${id}`, JSON.stringify(investigation)); } catch { /* quota */ }
     }
   }, [investigation, id, readOnly]);
@@ -152,7 +163,7 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
       markAiRunApplied(id);
       if (r.status === 'done' && r.analysis) {
         const a = r.analysis;
-        commit(inv => ({ ...inv, aiAnalysis: a }), [aiCompletedEvent(a, r.cached)]);
+        commit(inv => mergeAiFindings({ ...inv, aiAnalysis: a }, a), [aiCompletedEvent(a, r.cached)]);
         toast.success('AI analysis complete', `${a.metrics.findings} finding${a.metrics.findings === 1 ? '' : 's'}, ${a.metrics.timeline} dated events and ${a.metrics.relationships} relationships to review.`);
       } else if (r.status === 'error') {
         commit(inv => inv, [newAuditEvent({ action: 'AI analysis failed', object: invRef.current?.name || id, detail: `${r.code || 'error'}: ${r.error || ''} (case unchanged)`, group: 'Investigation', kind: 'system' })]);
@@ -162,6 +173,54 @@ export const InvestigationDetailPage: React.FC<InvestigationDetailPageProps> = (
     apply(getAiRun(id));
     return subscribeAiRun(id, apply);
   }, [id, readOnly, commit, toast]);
+
+  // Automatic AI enrichment, once per person case: up to two searches for missing key fields (only when the
+  // match is at least "Possible match"), then one analysis of the collected evidence. Its verified findings are
+  // merged into the person record when the run finishes (above). Skipped when AI is off or today's quota is used.
+  const enriching = useRef<string | null>(null);
+  useEffect(() => {
+    const inv = investigation;
+    if (!inv || readOnly || inv.id !== id || enriching.current === inv.id) return;
+    if (inv.entityKind === 'organization' || inv.aiAnalysis || inv.autoEnrichedAt) return;
+    const kind = inv.searchInputs?.searchType || inv.searchType;
+    if (!kind || !/^(name|username)$/i.test(String(kind))) return;
+    if (getAiRun(inv.id)?.status === 'running') return;
+    enriching.current = inv.id;
+    (async () => {
+      const status = await fetchAiStatus();
+      if (invRef.current?.id !== inv.id) return;
+      const at = new Date().toISOString();
+      if (!status?.configured || status.usedToday >= status.dailyLimit) {
+        commit(i => ({ ...i, autoEnrichedAt: at }), [newAuditEvent({
+          action: 'Automatic AI analysis skipped', object: inv.name,
+          detail: !status?.configured ? 'AI analysis is not configured.' : "Today's AI analysis limit is used. It can be run from the AI tab later.",
+          group: 'Investigation', kind: 'system'
+        })]);
+        return;
+      }
+      let current: Investigation = { ...inv, autoEnrichedAt: at };
+      const events = [newAuditEvent({ action: 'Automatic AI analysis started', object: inv.name, detail: 'Runs once per case on the evidence already collected.', group: 'Investigation', kind: 'system' })];
+      const missing = missingKeyFields(inv).slice(0, 2);
+      const matchOk = ['High confidence', 'Strong match', 'Possible match'].includes(inv.person?.identityConfidence || '');
+      const researchLeft = (status.researchLimit ?? 0) - (status.researchUsedToday ?? 0);
+      if (missing.length && matchOk && researchLeft > 0) {
+        try {
+          const { research, run } = await runAiResearch(inv, missing, false);
+          current = { ...current, aiResearch: research };
+          events.unshift(newAuditEvent({
+            action: 'Missing-information searches run', object: inv.name,
+            detail: `Automatic, for ${missing.join(', ')}: ` + run.steps.map(st => `${st.label}: ${st.status === 'failed' ? `failed (${st.error || 'error'})` : `${st.kept} of ${st.results} results name the subject${st.fromCache ? ', cached' : ''}`}`).join(' · '),
+            group: 'Investigation', kind: 'system'
+          }));
+        } catch (e) {
+          events.unshift(newAuditEvent({ action: 'Missing-information searches failed', object: inv.name, detail: (e as Error).message, group: 'Investigation', kind: 'system' }));
+        }
+      }
+      if (invRef.current?.id !== inv.id) return;
+      commit(i => ({ ...i, autoEnrichedAt: at, ...(current.aiResearch ? { aiResearch: current.aiResearch } : {}) }), events);
+      startAiAnalysis(current);
+    })();
+  }, [investigation, id, readOnly, commit]);
 
   const goTab = useCallback((key: TabKey, focusKey?: string) => {
     setFocus(focusKey || null);

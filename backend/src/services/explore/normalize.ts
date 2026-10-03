@@ -6,7 +6,7 @@ import type { ExploreItem, ExploreItemKind } from '../../types/explore';
  */
 
 type Raw = Record<string, any>;
-type Draft = Omit<ExploreItem, 'id' | 'domain' | 'engines' | 'relevance'>;
+export type Draft = Omit<ExploreItem, 'id' | 'domain' | 'engines' | 'relevance'>;
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
 const decode = (t: string) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENTITIES[e]);
@@ -153,6 +153,32 @@ function googleNews(data: Raw, engine: string): Draft[] {
     if (r.highlight) add(r.highlight);
     arr(r.stories).forEach(add);
     if (r.link) add(r);
+  });
+  return out;
+}
+
+/**
+ * Google's X (Twitter) posts carousel on a search page ("twitter_results"): posts by one account or about the
+ * query, each with its link, text and the date text Google shows ("3 hours ago").
+ */
+export function twitterResults(data: Raw, engine = 'google'): Draft[] {
+  const blocks = Array.isArray(data?.twitter_results) ? arr(data.twitter_results) : data?.twitter_results ? [data.twitter_results as Raw] : [];
+  const out: Draft[] = [];
+  blocks.forEach(b => {
+    const account = str(b.title);
+    arr(b.tweets || b.items).forEach(t => {
+      const url = str(t.link) || '';
+      const h = handleFromUrl(url);
+      const d = draft(engine, 'post', t, {
+        title: str(t.snippet) || str(t.title) || account || url,
+        platform: 'X',
+        username: h.username,
+        author: str(t.author?.name) || str(t.author) || account,
+        publishedText: str(t.published_date) || str(t.date),
+        metadata: { carousel: account, carouselLink: str(b.link) }
+      });
+      if (d) out.push(d);
+    });
   });
   return out;
 }

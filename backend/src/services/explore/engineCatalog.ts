@@ -212,3 +212,57 @@ export const QUERYLESS_CAPABILITIES: ExploreCapability[] = ['placeReviews', 'tre
 export function planLabels(capability: ExploreCapability, query: string, o: ExploreOptions = {}): Array<{ index: number; engine: string; label: string }> {
   return planCalls(capability, query, o).map((c, index) => ({ index, engine: c.engine, label: c.label }));
 }
+
+// ─── Trends (POST /api/trends) ───────────────────────────────────────────────
+
+export type TrendWindow = 'live' | '1h' | '6h' | '24h' | '7d';
+export type TrendSource = 'google' | 'news' | 'x' | 'youtube' | 'reddit' | 'tiktok' | 'facebook' | 'instagram';
+
+/**
+ * How each time window maps onto the engines: Google Trends "trending now" only offers 4 / 24 / 48 / 168 hours,
+ * Google Search only past hour / day / week, YouTube only last hour / today / this week. Results are then
+ * filtered to the exact window by their own dates.
+ */
+export const TREND_WINDOWS: Record<TrendWindow, { label: string; ms: number; hours: number; when: 'h' | 'd' | 'w'; ytSp: string }> = {
+  live: { label: 'Live', ms: 3600_000, hours: 4, when: 'h', ytSp: 'EgIIAQ==' },
+  '1h': { label: 'Past hour', ms: 3600_000, hours: 4, when: 'h', ytSp: 'EgIIAQ==' },
+  '6h': { label: 'Past 6 hours', ms: 6 * 3600_000, hours: 24, when: 'd', ytSp: 'EgIIAg==' },
+  '24h': { label: 'Past 24 hours', ms: 24 * 3600_000, hours: 24, when: 'd', ytSp: 'EgIIAg==' },
+  '7d': { label: 'Past 7 days', ms: 7 * 24 * 3600_000, hours: 168, when: 'w', ytSp: 'EgIIAw==' }
+};
+
+/**
+ * Engine calls for one trend source. `term` is the topic checked on that platform (required for every
+ * source except Google Trends and News, which list what is trending / in the news without one).
+ * Social sources reuse the Social search's exact requests, so a topic already searched there is served from cache.
+ * `xPosts`: 'add' runs Google's X posts carousel search as well as the site:x.com search; 'only' runs just the carousel.
+ */
+export function trendCalls(source: TrendSource, term: string | undefined, o: { window: TrendWindow; country?: string; language?: string; xPosts?: 'add' | 'only' }): EngineCall[] {
+  const w = TREND_WINDOWS[o.window];
+  const strip = (calls: EngineCall[]) => calls.map(({ fallback: _f, ...c }) => c);
+  switch (source) {
+    case 'google':
+      if (!o.country) return [];
+      return [{
+        engine: 'google_trends_trending_now', label: 'Google Trends · trending now',
+        params: { geo: o.country.toUpperCase(), hours: w.hours, ...(o.language ? { hl: o.language } : {}) }
+      }];
+    case 'news':
+      if (term) return strip(planCalls('news', term, { when: w.when, country: o.country, language: o.language }));
+      // No topic: the edition's top stories (Google groups them into story clusters).
+      return [{ engine: 'google_news', label: `Google News · top stories${o.country ? ` · ${o.country.toUpperCase()} edition` : ''}`, params: { ...(o.country ? { gl: o.country } : {}), hl: o.language || 'en' } }];
+    case 'youtube':
+      if (!term) return [];
+      return [{ engine: 'youtube', label: 'YouTube · uploads in the window', params: { search_query: term, sp: w.ytSp, ...(o.country ? { gl: o.country } : {}) } }];
+    case 'x': {
+      if (!term) return [];
+      const site = strip(planCalls('social', term, { platforms: ['x'], when: w.when, country: o.country, language: o.language }));
+      if (!o.xPosts) return site;
+      const carousel: EngineCall = { engine: 'google', label: 'Google · X posts carousel', params: { q: term, tbs: WHEN_TBS[w.when], ...locale(o) } };
+      return o.xPosts === 'only' ? [carousel] : [carousel, ...site];
+    }
+    default:
+      if (!term) return [];
+      return strip(planCalls('social', term, { platforms: [source], when: w.when, country: o.country, language: o.language }));
+  }
+}

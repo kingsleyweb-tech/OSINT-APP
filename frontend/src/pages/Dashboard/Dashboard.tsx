@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { openIdentityCase } from '../../lib/openCase';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowUpRight, 
@@ -14,11 +15,10 @@ import { RadarLoader } from '../../components/ui/RadarLoader';
 import { QueryIntelBanner, SearchModeToggle } from '../../components/search/QueryIntelBanner';
 import { useSearchMode } from '../../components/search/useIntelligentSearch';
 import { useProfilerSearch } from '../../components/search/useProfilerSearch';
-import { linkHistoryToCase } from '../../lib/history';
 import { clearPageState, usePageState } from '../../lib/pageState';
 import { PossibleIdentitiesView, type DiscoveredIdentity } from '../../components/search/PossibleIdentitiesView';
 import type { Investigation } from '../../types/investigation';
-import { subscribeToUserInvestigations, saveInvestigationToDb } from '../../firebase/firestore';
+import { subscribeToUserInvestigations } from '../../firebase/firestore';
 import { useToast } from '../../components/ui/Toast';
 import { identityToInvestigation, SearchError } from '../../lib/searchClient';
 import { useNotifications } from '../../context/NotificationContext';
@@ -221,23 +221,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser }) => 
       searchDepth: searchDefaults.depth
     });
 
-    // Open the case at once; saving to Firestore continues in the background.
-    try { sessionStorage.setItem(`osint_inv_${invData.id}`, JSON.stringify(invData)); } catch { /* storage full */ }
-    linkHistoryToCase(profiler.historyId.current, invData.id);
-    saveInvestigationToDb(invData)
-      .then(() => addNotification({
-        type: 'investigation_saved',
-        title: 'Identity Confirmed',
-        message: `Investigation created for "${invData.name}".`,
-        targetInvestigationId: invData.id
-      }))
-      .catch(err => {
-        console.error('Save investigation error:', err);
-        toastError('Case not saved', 'The case opened, but it could not be saved to your account. Check your connection.');
-      });
+    // The same person from the same search reopens its stored case; a new case is saved before it opens.
+    const opened = await openIdentityCase(invData, { known: realInvestigations, historyId: profiler.historyId.current });
+    if (!opened.reused) {
+      opened.saved
+        .then(() => addNotification({
+          type: 'investigation_saved',
+          title: 'Identity Confirmed',
+          message: `Investigation created for "${invData.name}".`,
+          targetInvestigationId: invData.id
+        }))
+        .catch(err => {
+          console.error('Save investigation error:', err);
+          toastError('Case not saved', 'The case opened, but it could not be saved to your account. Check your connection.');
+        });
+    }
 
-    setRealInvestigations(prev => [invData, ...prev.filter(i => i.id !== invData.id)]);
-    navigate(`/investigations/${invData.id}`, { state: { investigation: invData } });
+    setRealInvestigations(prev => [opened.investigation, ...prev.filter(i => i.id !== opened.investigation.id)]);
+    navigate(`/investigations/${opened.investigation.id}`, { state: { investigation: opened.investigation } });
   };
 
   if (discoveredIdentities) {

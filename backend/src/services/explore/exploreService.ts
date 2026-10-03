@@ -25,7 +25,7 @@ export function sanitizeQuery(q: unknown): string {
   return String(q ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_QUERY);
 }
 
-function withTimeout(p: Promise<SerpCallResult>, call: { engine: any; params: any }, ms = CALL_TIMEOUT_MS): Promise<SerpCallResult> {
+export function withTimeout(p: Promise<SerpCallResult>, call: { engine: any; params: any }, ms = CALL_TIMEOUT_MS): Promise<SerpCallResult> {
   return Promise.race([
     p,
     new Promise<SerpCallResult>(resolve => setTimeout(() => resolve({
