@@ -734,7 +734,10 @@ function clusterIdentities(name: string, profiles: DiscoveredProfile[], webItems
   });
 
   const factsOf = new Map(profiles.map((p, i) => [p, keys[i]]));
-  const hasFacts = (ps: DiscoveredProfile[]) => ps.some(p => factsOf.get(p)!.facts.length > 0);
+  // A profile stating anything about its owner (headline, organisation, place, school) is a person of its own,
+  // even when no fact could be extracted from that text.
+  const hasFacts = (ps: DiscoveredProfile[]) => ps.some(p => factsOf.get(p)!.facts.length > 0
+    || p.attributes.organization || p.attributes.headline || p.attributes.location || p.attributes.education);
   const distinct: DiscoveredProfile[][] = [];
   const unlinked: DiscoveredProfile[] = [];
   groups.forEach(ps => (ps.length >= 2 || hasFacts(ps) ? distinct.push(ps) : unlinked.push(...ps)));
