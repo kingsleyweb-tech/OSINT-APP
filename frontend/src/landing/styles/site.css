@@ -134,9 +134,6 @@
 .pf .mnav, .pf .mnav-scrim { display: none; }
 
 /* ---------- mobile menu ---------- */
-.pf .tb-open { z-index: 40; }
-.pf .tb-open::before { content: ""; position: absolute; inset: 0; z-index: 2; background: var(--paper); }
-.pf .tb-open .tb-in { position: relative; z-index: 3; }
 .pf .burger-lines { position: relative; display: block; width: 18px; height: 14px; }
 .pf .burger-lines i { position: absolute; left: 0; width: 18px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .3s var(--ease), opacity .2s ease, top .3s var(--ease), width .3s var(--ease); }
 .pf .burger-lines i:nth-child(1) { top: 0; }
@@ -147,8 +144,8 @@
 .pf .burger.is-open .burger-lines i:nth-child(1) { top: 6px; transform: rotate(45deg); }
 .pf .burger.is-open .burger-lines i:nth-child(2) { opacity: 0; transform: scaleX(0); }
 .pf .burger.is-open .burger-lines i:nth-child(3) { top: 6px; transform: rotate(-45deg); }
-.pf .mnav-scrim { position: fixed; inset: 0; z-index: 1; background: rgba(28, 20, 16, .32); backdrop-filter: blur(2px); animation: mnav-fade .25s ease both; }
-.pf .mnav { position: absolute; top: 100%; left: 0; right: 0; z-index: 2; max-height: calc(100dvh - 73px); overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); box-shadow: 0 30px 50px -30px rgba(28, 20, 16, .45); animation: mnav-drop .32s var(--ease) both; }
+.pf .mnav-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(28, 20, 16, .32); backdrop-filter: blur(2px); animation: mnav-fade .25s ease both; }
+.pf .mnav { position: fixed; top: 73px; left: 0; right: 0; z-index: 85; max-height: calc(100dvh - 73px); overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); box-shadow: 0 30px 50px -30px rgba(28, 20, 16, .45); animation: mnav-drop .32s var(--ease) both; }
 .pf .mnav-in { display: flex; flex-direction: column; padding-top: 18px; padding-bottom: 22px; }
 .pf .mnav-h { margin: 6px 0 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
 .pf .mnav-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
@@ -704,7 +701,7 @@
 }
 @media (max-width: 767px) {
   .pf .wrap { padding: 0 20px; }
-  .pf .mnav { max-height: calc(100dvh - 61px); }
+  .pf .mnav { top: 61px; max-height: calc(100dvh - 61px); }
   .pf .mnav-list { grid-template-columns: minmax(0, 1fr); }
   .pf .mnav-in { padding-top: 14px; padding-bottom: 18px; }
   .pf .mnav-list { gap: 6px; margin-bottom: 14px; }
@@ -763,3 +760,6 @@
 @media (max-width: 767px) {
   .pf .el-ic { width: 30px; height: 30px; }
 }
+
+/* The floating back-to-top button stays out of the way while the menu is open. */
+.pf:has(.mnav) .scroll-to-top-btn { visibility: hidden; }

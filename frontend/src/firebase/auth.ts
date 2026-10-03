@@ -151,7 +151,7 @@ export const subscribeToAuth = (callback: (user: User | null) => void) => onAuth
 // ─── Notices shown on the homepage after being signed out ──────────────────
 
 export const AUTH_NOTICE_KEY = 'osint_auth_notice';
-export type AuthNotice = 'expired' | 'guest-removed' | 'disabled';
+export type AuthNotice = 'expired' | 'guest-removed' | 'disabled' | 'inactive';
 
 export function setAuthNotice(notice: AuthNotice): void {
   try { sessionStorage.setItem(AUTH_NOTICE_KEY, notice); } catch { /* storage unavailable */ }
@@ -172,6 +172,7 @@ export function clearAuthNotice(): void {
 export const AUTH_NOTICE_TEXT: Record<AuthNotice, string> = {
   expired: 'Your session has expired. Please sign in again.',
   disabled: 'This account has been disabled. Contact your administrator.',
+  inactive: 'You were signed out after 30 minutes of inactivity. Please sign in again.',
   'guest-removed': 'Guest access is no longer available. Continue with Google or sign in with your account.'
 };
 

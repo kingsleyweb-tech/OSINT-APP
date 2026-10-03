@@ -134,3 +134,37 @@
     max-width: none;
   }
 }
+
+/* ─── Inactivity warning (live countdown) ─── */
+.idle-portal {
+  bottom: auto;
+  top: 24px;
+  z-index: 10000;
+}
+.idle-toast .toast-message { color: #d4d4d8; }
+.idle-clock { color: #fbbf24; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.idle-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.idle-progress { animation: none; transition: width 1s linear; }
+.idle-stay {
+  margin-top: 10px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.idle-stay:hover { background: rgba(245, 158, 11, 0.24); border-color: #f59e0b; }
+.idle-stay:focus-visible { outline: 2px solid #fbbf24; outline-offset: 2px; }
+
+@media (max-width: 480px) {
+  .idle-portal { top: 12px; bottom: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .idle-toast, .idle-progress { animation: none; transition: none; }
+}

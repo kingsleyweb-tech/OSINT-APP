@@ -9,6 +9,9 @@ import { GoogleIcon } from '../../components/ui/GoogleIcon';
 import { updateUserProfileInDb } from '../../firebase/firestore';
 import { browserTimeZone } from '../../lib/session';
 import { isValidPhone } from '../../lib/validation';
+import {
+  countsAsFailedAttempt, isTooManyRequests, lockMessage, lockNow, recordAttempt, recordSuccess, useLockout, type ThrottleBucket
+} from '../../lib/authThrottle';
 import { DEFAULT_NOTIFICATION_PREFS, DEFAULT_SEARCH_DEFAULTS } from '../../types/user';
 import '../../styles/AuthPages.css';
 
@@ -30,6 +33,9 @@ export const AuthPage: React.FC = () => {
   const [busy, setBusy] = useState<'form' | 'google' | 'reset' | null>(null);
   const { user, authError, clearAuthError } = useSession();
   const [ownError, setOwnError] = useState('');
+  const [signinLeft, refreshSignin] = useLockout('signin');
+  const [signupLeft, refreshSignup] = useLockout('signup');
+  const [resetLeft, refreshReset] = useLockout('reset');
 
   // Auto-redirect if already signed in
   useEffect(() => {
@@ -39,7 +45,9 @@ export const AuthPage: React.FC = () => {
   }, [user, navigate, from]);
 
   // Also shows a Google sign-in that went through a full-page redirect and failed.
-  const error = ownError || authError;
+  const formLeft = mode === 'signin' ? signinLeft : signupLeft;
+  const error = formLeft > 0 ? lockMessage(formLeft) : ownError || authError;
+  const refreshFor = (bucket: ThrottleBucket) => (bucket === 'signin' ? refreshSignin : bucket === 'signup' ? refreshSignup : refreshReset)();
   const setError = (message: string) => {
     setOwnError(message);
     clearAuthError();
@@ -60,6 +68,7 @@ export const AuthPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setInfo('');
+    if (formLeft > 0) return;
     if (mode === 'signup') {
       if (!name.trim()) return setError('Enter your full name.');
       if (!isValidPhone(phone)) return setError('Enter a valid phone number, including the country code (e.g. +233 24 123 4567).');
@@ -86,8 +95,12 @@ export const AuthPage: React.FC = () => {
           createdAt: new Date().toISOString()
         });
       }
+      recordSuccess(mode);
       navigate(from && from !== '/auth' ? from : '/dashboard', { replace: true });
     } catch (err) {
+      if (isTooManyRequests(err)) lockNow(mode);
+      else if (countsAsFailedAttempt(err)) recordAttempt(mode);
+      refreshFor(mode);
       setError(authErrorMessage(err));
       setBusy(null);
     }
@@ -112,14 +125,19 @@ export const AuthPage: React.FC = () => {
   const forgot = async () => {
     setError('');
     setInfo('');
+    if (resetLeft > 0) return setError(lockMessage(resetLeft));
     if (!email.trim()) return setError('Enter your email address above, then choose "Forgot password" again.');
     setBusy('reset');
     try {
       await resetPassword(email);
       setInfo(`If an account exists for ${email.trim()}, a password reset link has been sent to it.`);
     } catch (err) {
+      if (isTooManyRequests(err)) lockNow('reset');
       setError(authErrorMessage(err));
     } finally {
+      // Every reset request counts, whether or not the address has an account.
+      recordAttempt('reset');
+      refreshReset();
       setBusy(null);
     }
   };
@@ -192,7 +210,7 @@ export const AuthPage: React.FC = () => {
               <span className="au-label-row">
                 <label className="au-label" htmlFor="au-password">Password</label>
                 {mode === 'signin' && (
-                  <button type="button" className="au-link" onClick={forgot} disabled={busy === 'reset'}>
+                  <button type="button" className="au-link" onClick={forgot} disabled={busy === 'reset' || resetLeft > 0}>
                     {busy === 'reset' ? 'Sending…' : <><span className="au-hide-mobile">Forgot password?</span><span className="au-show-mobile">Forgot?</span></>}
                   </button>
                 )}
@@ -229,7 +247,7 @@ export const AuthPage: React.FC = () => {
             {error && <p className="au-msg au-error" role="alert">{error}</p>}
             {info && <p className="au-msg au-info" role="status">{info}</p>}
 
-            <button type="submit" className="au-submit" disabled={busy !== null}>
+            <button type="submit" className="au-submit" disabled={busy !== null || formLeft > 0}>
               {busy === 'form' ? <Loader2 size={20} className="au-spin" /> : null}
               {mode === 'signin' ? 'Sign in' : 'Create account'} {busy !== 'form' && <ArrowRight size={20} />}
             </button>

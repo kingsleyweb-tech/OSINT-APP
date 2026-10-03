@@ -31,6 +31,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SignOutPromptProvider, useSignOutPrompt } from './context/SignOutPromptContext';
+import { IdleLogout } from './context/IdleLogout';
 
 // Landing Page Integration
 import { LandingLayout } from './landing/LandingLayout';
@@ -103,6 +104,7 @@ const AppRoutes: React.FC = () => {
   return (
     <SignOutPromptProvider>
     <ReturnAfterSignIn />
+    <IdleLogout />
     <Routes>
       {/* Public landing pages */}
       <Route element={<LandingLayout currentUser={user} />}>

@@ -3,12 +3,17 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import searchRoutes from './routes/searchRoutes';
 import { requireAuth } from './middleware/requireAuth';
+import { floodLimit, ipLimit } from './middleware/rateLimit';
 import { handleAlertsCron } from './controllers/alertsController';
 
 dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
+
+// Behind Render's proxy the real client address is in X-Forwarded-For. TRUST_PROXY_HOPS is how many proxies
+// sit in front of this server (1 for Render alone; 2 when the request also passes through a Vercel rewrite).
+app.set('trust proxy', Math.max(0, parseInt(process.env.TRUST_PROXY_HOPS || '1', 10) || 0));
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
@@ -48,10 +53,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // Alert scheduler (cron-job.org): protected by the x-cron-secret header instead of a user sign-in.
-app.post('/api/alerts/cron', handleAlertsCron);
+app.post('/api/alerts/cron', ipLimit(30), handleAlertsCron);
 
 // OSINT Search Routes: signed-in users only (Firebase ID token verified on every request)
-app.use('/api', requireAuth, searchRoutes);
+app.use('/api', floodLimit, requireAuth, searchRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`=================================`);

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
+import { recordBadToken, recordUserRequest, tooMany } from './rateLimit';
 
 /**
  * API protection: every /api request must carry a valid Firebase ID token (Authorization: Bearer …).
@@ -106,12 +107,17 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const header = String(req.headers.authorization || '');
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) {
+    const wait = recordBadToken(req);
+    if (wait) return tooMany(res, wait, 'Too many failed sign-in checks. Please wait a few minutes and try again.');
     res.status(401).json({ error: 'Please sign in to continue.', code: 'auth/required' });
     return;
   }
   try {
     const user = await verifyIdToken(token);
     if (!user) {
+      // Repeated bad tokens from one address are slowed down; requests with a valid token are never affected.
+      const wait = recordBadToken(req);
+      if (wait) return tooMany(res, wait, 'Too many failed sign-in checks. Please wait a few minutes and try again.');
       res.status(401).json({ error: 'Your session has expired. Please sign in again.', code: 'auth/invalid-session' });
       return;
     }
@@ -122,6 +128,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         return;
       }
     }
+    const slow = recordUserRequest(user.uid);
+    if (slow) return tooMany(res, slow, 'You are sending requests too quickly. Please wait a moment and try again.');
     if (req.method === 'POST' && COSTLY.test(req.path) && overLimit(user.uid)) {
       res.status(429).json({ error: 'Too many searches in a short time. Wait a few minutes and try again.', code: 'rate-limited' });
       return;

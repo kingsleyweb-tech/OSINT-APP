@@ -53,7 +53,7 @@ export const AuthRequiredNotice: React.FC = () => {
     <div className="auth-required-notice" role="alert">
       <div className="arn-icon"><Lock size={18} /></div>
       <div className="arn-text">
-        <strong>{notice === 'expired' ? 'Session expired' : 'Sign in required'}</strong>
+        <strong>{notice === 'inactive' ? 'Signed out for inactivity' : notice === 'expired' ? 'Session expired' : 'Sign in required'}</strong>
         <span>{notice ? AUTH_NOTICE_TEXT[notice] : 'You need to sign in before you can open the dashboard. Continue with Google or sign in with your account.'}</span>
         {error && <span className="arn-error">{error}</span>}
       </div>

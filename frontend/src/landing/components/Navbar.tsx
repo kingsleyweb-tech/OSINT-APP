@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import appLogo from '../../assets/images/osint-logo.svg';
@@ -46,61 +47,46 @@ const DESKTOP = '(min-width: 1101px)';
 const linkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'on' : '');
 
 export const Navbar: React.FC<NavbarProps> = ({ currentUser }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  // The menu is drawn outside the header (in the page root), so it always sits on the screen, wherever the page is scrolled.
+  const [menuHost, setMenuHost] = useState<Element | null>(null);
+  const menuOpen = menuHost !== null;
   const { theme, toggleTheme, setTheme } = useTheme();
   const burgerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const close = () => setMenuOpen(false);
+  const close = () => setMenuHost(null);
 
-  // While open: freeze the page where it is (works on iOS too), close on Escape or at desktop width.
+  // While open the page behind must not scroll. The page's overflow is left alone on purpose: setting
+  // overflow:hidden on the page makes a sticky header jump back to the top of the document, which would
+  // take the menu with it. Instead, scrolling input aimed outside the menu panel is blocked.
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuHost) return;
     const burger = burgerRef.current;
-    const { body, documentElement: html } = document;
-    const scrollY = window.scrollY;
-    const saved = {
-      position: body.style.position, top: body.style.top, left: body.style.left, right: body.style.right,
-      width: body.style.width, overflow: body.style.overflow, htmlOverflow: html.style.overflow,
-    };
-    const gap = window.innerWidth - html.clientWidth; // scrollbar width, so the page doesn't jump sideways
-    html.style.overflow = 'hidden';
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = '0';
-    body.style.right = gap ? `${gap}px` : '0';
-    body.style.width = 'auto';
-    panelRef.current?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
-
+    const insidePanel = (e: Event) => !!panelRef.current?.contains(e.target as Node);
+    const SCROLL_KEYS = [' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown'];
+    const onWheel = (e: WheelEvent) => { if (!insidePanel(e)) e.preventDefault(); };
+    const onTouchMove = (e: TouchEvent) => { if (!insidePanel(e)) e.preventDefault(); };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMenuOpen(false);
+        setMenuHost(null);
         burger?.focus({ preventScroll: true });
+      } else if (SCROLL_KEYS.includes(e.key) && !insidePanel(e) && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
       }
     };
-    // Touch moves outside the menu panel (the dimmed area, the top bar) must not scroll anything.
-    const onTouchMove = (e: TouchEvent) => {
-      if (!panelRef.current?.contains(e.target as Node)) e.preventDefault();
-    };
     const wide = window.matchMedia(DESKTOP);
-    const onWide = (e: MediaQueryListEvent) => { if (e.matches) setMenuOpen(false); };
-    document.addEventListener('keydown', onKey);
+    const onWide = (e: MediaQueryListEvent) => { if (e.matches) setMenuHost(null); };
+    panelRef.current?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
+    document.addEventListener('wheel', onWheel, { passive: false });
     document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('keydown', onKey);
     wide.addEventListener('change', onWide);
     return () => {
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('wheel', onWheel);
       document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('keydown', onKey);
       wide.removeEventListener('change', onWide);
-      html.style.overflow = saved.htmlOverflow;
-      body.style.overflow = saved.overflow;
-      body.style.position = saved.position;
-      body.style.top = saved.top;
-      body.style.left = saved.left;
-      body.style.right = saved.right;
-      body.style.width = saved.width;
-      window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
-  }, [menuOpen]);
+  }, [menuHost]);
 
   return (
     <header className={`tb${menuOpen ? ' tb-open' : ''}`}>
@@ -139,14 +125,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser }) => {
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
             aria-controls="site-menu"
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={(e) => setMenuHost(menuOpen ? null : e.currentTarget.closest('.pf'))}
           >
             <span className="burger-lines" aria-hidden="true"><i /><i /><i /></span>
           </button>
         </div>
       </div>
 
-      {menuOpen && (
+      {menuHost && createPortal(
         <>
           <div className="mnav-scrim" onClick={close} aria-hidden="true" />
           <div className="mnav" id="site-menu" ref={panelRef}>
@@ -194,7 +180,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser }) => {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        menuHost
       )}
     </header>
   );
